@@ -1,0 +1,5 @@
+discover:
+    how: fmf
+    test: /reserve
+execute:
+    how: tmt

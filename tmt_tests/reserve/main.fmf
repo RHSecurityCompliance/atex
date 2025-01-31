@@ -1,0 +1,5 @@
+test: ./test.sh
+duration: 1000h
+# just re-connect on losing ssh connection
+restart-on-exit-code: [255]
+restart-max-count: 10000

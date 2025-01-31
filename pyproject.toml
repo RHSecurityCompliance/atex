@@ -1,0 +1,102 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "atex"
+description = "Ad-hoc Test EXecutor"
+readme = "README.md"
+version = "0.7"
+license = "GPL-3.0-or-later"
+requires-python = ">= 3.9"
+dependencies = [
+    "urllib3 >= 2, < 3",
+    "fmf >= 1.6",
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: POSIX :: Linux",
+    "Topic :: Software Development :: Testing",
+]
+
+[project.urls]
+Homepage = "https://github.com/RHSecurityCompliance/atex"
+
+[project.scripts]
+atex = "atex:cli.main"
+
+[tool.hatch.build.targets.wheel]
+only-include = ["atex"]
+exclude = ["*.md"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+log_cli = true
+log_cli_level = "INFO"
+log_cli_format = "%(asctime)s %(name)s: %(message)s"
+log_cli_date_format = "%Y-%m-%d %H:%M:%S"
+
+[tool.ruff]
+line-length = 99
+indent-width = 4
+target-version = "py39"
+
+[tool.ruff.lint]
+preview = true
+select = [
+    "F",    # Pyflakes
+    "E",    # pycodestyle
+    "W",    # pycodestyle
+    "N",    # pep8-naming
+    "UP",   # pyupgrade
+    "B",    # flake8-bugbear
+    "COM",  # flake8-commas
+    "C4",   # flake8-comprehensions
+    "EXE",  # flake8-executable
+    "Q",    # flake8-quotes
+    "SIM",  # flake8-simplify
+    "ARG",  # flake8-unused-arguments
+    "PTH",  # flake8-use-pathlib
+    "PL",   # Pylint
+    "RUF",  # Ruff-specific rules
+]
+ignore = [
+#    "Q001",     # bad-quotes-multiline-string
+    "PTH123",   # builtin-open
+    "SIM108",   # if-else-block-instead-of-if-exp
+    "SIM102",   # collapsible-if
+    "SIM117",   # multiple-with-statements
+    "SIM401",   # if-else-block-instead-of-dict-get
+    "PLR0904",  # too-many-public-methods
+    "PLR0911",  # too-many-return-statements
+    "PLR0912",  # too-many-branches
+    "PLR0913",  # too-many-arguments
+    "PLR0914",  # too-many-locals
+    "PLR0915",  # too-many-statements
+    "PLR0916",  # too-many-boolean-expressions
+    "PLR0917",  # too-many-positional-arguments
+    "PLR1702",  # too-many-nested-blocks
+    "PLR2004",  # magic-value-comparison
+    "PLR5501",  # collapsible-else-if
+    "PLW0603",  # global-statement
+    "PLW1510",  # subprocess-run-without-check
+    "PLW2901",  # redefined-loop-name
+    "RUF010",   # explicit-f-string-type-conversion
+    "RUF012",   # mutable-class-default
+
+    # rules from preview
+    "E115",     # no-indented-block-comment
+    "E226",     # missing-whitespace-around-arithmetic-operator
+    "E231",     # missing-whitespace
+    "E265",     # no-space-after-block-comment
+    "E266",     # multiple-leading-hashes-for-block-comment
+    "PLR0904",  # too-many-public-methods
+    "PLR0917",  # too-many-positional-arguments
+    "PLR6201",  # literal-membership
+    "PLW1514",  # unspecified-encoding
+    "PLW1641",  # eq-without-hash
+]
+
+[tool.ruff.format]
+indent-style = "space"
+quote-style = "double"

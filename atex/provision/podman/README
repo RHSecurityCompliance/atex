@@ -1,0 +1,59 @@
+
+making a podman image from the currently installed OS:
+
+1) dnf install into a separate installroot
+
+dnf
+    --installroot=$INSTALLROOT \
+    --setopt=install_weak_deps=False \
+    --setopt=tsflags=nodocs \
+    -y groupinstall minimal-environment
+
+as root (doesn't work well with unshare, maybe could work via bwrap (bubblewrap))
+
+maybe the unprivileged solution is pulling image from hub + installing @minimal-environment
+into it (perhaps via podman build)
+
+
+2) post process it
+
+echo -n > "$INSTALLROOT/etc/machine-id"
+echo container > "$INSTALLROOT/etc/hostname"
+
+rm -rf "$INSTALLROOT/etc/yum.repos.d"
+cp -f /etc/yum.repos.d/* "$INSTALLROOT/etc/yum.repos.d/."
+cp -f /etc/pki/rpm-gpg/* "$INSTALLROOT/etc/pki/rpm-gpg/."
+
+echo install_weak_deps=False >> "$INSTALLROOT/etc/dnf/dnf.conf"
+echo tsflags=nodocs >> "$INSTALLROOT/etc/dnf/dnf.conf"
+
+ln -sf \
+    /usr/lib/systemd/system/multi-user.target \
+    "$INSTALLROOT/etc/systemd/system/default.target"
+
+# disable auditd
+# disable other services
+# set root password
+
+dnf clean all --installroot="$INSTALLROOT"
+
+
+3) pack it
+
+tar --xattrs -C "$INSTALLROOT" -cvf tarball.tar .
+
+rm -rf "$INSTALLROOT"
+
+
+4) import it to podman
+
+podman import --change 'CMD ["/sbin/init"]' tarball.tar my-image-name
+
+
+5) run it
+
+podman {run,create} --systemd=always --cgroups=split ...
+
+
+
+------------------------------

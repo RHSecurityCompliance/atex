@@ -1,0 +1,74 @@
+The idea is to use systemd-nspawn containers on the host, binding
+/dev/kvm to each, thus avoiding the need for nested virt as our first layer
+of Contest tests will run in the containers (installing libvirtd, etc.)
+and the second layer (VMs created by tests) will use virtual machines,
+via a non-nested HVM.
+
+systemd-nspawn containers can have CPU core limits, memory limits, etc.
+done via cgroups, so we can provide some level of isolation/safety.
+
+
+systemd-nspawn can create its own veth via --network-veth=... and put it into
+a bridge automatically via --network-bridge=...
+
+We can then use NetworkManager + firewalld to pre-create a bridge with built-in
+DHCP and NAT to the outside, via something like
+
+  nmcli connection add type bridge ifname br0 con-name br0 ipv4.method shared ipv6.method ignore
+
+According to https://fedoramagazine.org/internet-connection-sharing-networkmanager/
+the ipv4.method=shared :
+
+    enables IP forwarding for the interface;
+    adds firewall rules and enables masquerading;
+    starts dnsmasq as a DHCP and DNS server.
+
+Specifically it should add MASQUERADE on packets *outgoing* from the bridge subnet,
+so shouldn't need any modification of the upstream eth0 device or any fw rules tied to it.
+
+There also seems to be ipv4.addresses 192.168.42.1/24 to modify the subnet?
+
+If that doesn't work, firewalld has an External zone that has <masquerade/>
+by default, so 
+
+  nmcli connection modify br0 connection.zone external
+
+should work.
+
+
+--------
+
+TODO: We need some way to get DHCP leases for started containers (so we can connect
+      to the containerized sshd).
+
+      If there is no command for it via nmcli, it should be possible to just
+      extract it from wherever NetworkManager pointed dnsmasq to store its leases file.
+
+      We can then probably correlate --network-veth=... device from systemd-nspawn
+      (named after --machine=... name, prefixed with ve-* or vb-* if --network-bridge=* is used)
+      to the leased IP address.
+
+      ls -l /var/lib/NetworkManager/dnsmasq-*.leases
+
+      Or perhaps parse it out of 'ip neigh' to make sure the guest is *really* up.
+        - 'ip neigh' gives us MAC-to-IP, but device is always br0
+        - 'ip link show dev vb-contname' should give us the MAC for 'ip neigh'
+          - if container veth endpoint uses different mac, we can query bridge forward DB
+            via 'bridge fdb' to get all MACs that appeared on the veth
+
+--------
+
+Containers can be installed via ie.
+
+dnf  --releasever=41 --installroot=/var/lib/machines/f41 --use-host-config \
+     --setopt=install_weak_deps=False \
+     install \
+     passwd dnf fedora-release vim-minimal util-linux systemd NetworkManager
+
+where --use-host-config re-uses host repositories.
+
+Maybe consider 'machinectl'-managed containers (start/terminate/kill/reboot/etc.)
+which are just repackaged systemd-nspawn@ services.
+ - Especially since there is no concept of "throw away disk snapshot with container exit",
+   we always need some copy/clone of the --installroot for each instance of the container,
+   so using ie. 'machinectl clone ...' would provide a nice interface for it.

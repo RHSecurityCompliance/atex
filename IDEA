@@ -1,0 +1,44 @@
+- have a class for handling UNIX control socket from test
+  - it would do UNIX socket listen(), take care of accept()s, etc.
+  - initial to-be-created listening UNIX socket path (on the server) would be
+    passed by parent (Executor)
+    - probably reusing SSHConn tmpdir
+  - given atex.minitmt.report.CSVReporter + files_dir, it would take care of
+    writing out result lines from JSON sent by test + writing out binary files
+    sent by the test
+  - it would probably have externally-controlled logic and provide just tools
+    (functions) managing the socket,
+    - it would be Executor itself calling ie.
+        get_next_command()
+      because if that command is ie. 'duration +10', we need to handle it in
+      Executor itself
+    - but if the command is 'result ...', we would just pass it to another
+      function of the UNIX control class, ie.
+        write_out_result(command)
+
+- have a 'while True' loop in Executor, with a 'try/finally' inside, checking
+  various things:
+  - ensuring we don't overrun test 'duration', so do time.monotonic() before
+    the loop and check if we are within duration bounds each loop
+  - making sure SSHConn master is alive, conn.assert_master() and re-trying
+    the loop (disconnect() if necessary + kill the spawned .ssh() client
+    running the test) if the master fails
+  - processing UNIX control socket messages (see above)
+  - ...
+  - have the 'finally' clean everything up, even on SIGINT or other signal:
+    - kill any running .ssh() test
+    - .disconnect() master
+    - close UNIX control socket listening side, close any accepted conns
+    - remove any TemporaryDirectory with UNIX control socket
+      - or leave it to SSHConn __exit__ / destructor to cleanup its own
+        if we reused it
+
+- how does Executor feed back to Orchestrator?
+  - it needs to somehow pass "testing was destructive" to Orchestrator,
+    so it can .release() and re-provision a new Provisioner instance,
+    as a replacement for the destroyed one
+  - it also needs to signal whether we need a re-run of the test
+  - maybe namedtuple ?
+
+
+- replace quotes, add ruff rule for double quotes

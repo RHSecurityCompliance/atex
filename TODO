@@ -1,0 +1,100 @@
+
+- proper cleaning of tmpdirs on the host system ?
+
+- test special cases; ie.
+
+  - Executor running test and the remote loses connection
+    (ie. iptables -I INPUT 1 -j DROP)
+
+  - ssh after reboot doesn't actually work (ssh.ConnectError)
+    - might need generalization of all Connection exceptions
+    - does the test result get saved anywhere? .. as 'infra' ?
+
+    - are non-0 exit codes and exceptions raised by orchestrator, like
+        atex: unexpected exception happened while running ...
+      logged anywhere aside from ./contest.py stderr?
+
+  - raise non-0 exit code and unexpected exceptions to util.warning
+
+
+- come up with a more universal API for making tmpfiles in class Reporter
+  - current implementation relies on returning a 'fd' integer that can be
+    linked back to a file, which ONLY works with AT_EMPTY_PATH linkat,
+    not any alternate implementation (ie. using files)
+  - maybe wrap it in some class instance return (that could ie. store
+    file path/name) or something
+  - eventually get rid of AT_EMPTY_PATH for a regular NamedTemporaryFile
+    implementation, because unprivileged AT_EMPTY_PATH was added in 2024
+    https://lkml.org/lkml/2024/4/10/1671
+
+  - actually, we don't need that "create tmpfile + link it later" for any
+    regular file upload; we need it only for testout.log
+    - ditch the open_tmpfile / link_tmpfile_to approach completely, have
+      just one function used as context manager (like open()), returning
+      file object; basically open() with automatic path
+    - handle testout.log via NamedTemporaryFile and just hardlink it to
+      any {"testout": "blabla.log"} the user gives; deleting the tmpfile
+      at the end (or hardlinking it to default output.txt + deleting it)
+
+
+- make it python3.12 (RHEL-10) compatible, ideally 3.11 (RHEL-9)
+
+- in the CLI tool (for contest), block further SIGINT/SIGTERM
+  while already running cleanup (regular one, not induced by ctrl-c)
+
+  - got hit by this in podman provision; 'podman container rm -t 0 -f'
+    was already removing a container (waiting for kill) when the user
+    issued SIGINT and it killed the 'rm', leaving container behind
+
+- notable TODOs
+  - testingfarm and automatically limiting 'class Request' refreshes
+  - atex/util/threads.py documentation
+  - generic ConnectError-ish for all Connections
+
+- interactive mode for Executor (without redirecting stderr to file,
+  and with stdin routed through)
+
+- more tests
+  - testingfarm API directly
+    - API functions
+    - class Request
+    - class Reserve + manual use by ssh(1), see tf.py
+  - ssh connection tests (both Standalone and Managed) using
+    systemd-based podman container (PodmanProvisioner with extra run opts)
+  - reporter (part of executor)
+  - executor
+  - aggregators
+  - orchestrator
+  - provisioners (see TODO at the end of shared.py)
+    - start() and stop()
+    - stop_defer()
+
+- clarify, in docstrings for API definitions, what functions may block
+  and which ones may be run in different threads
+
+
+- no output.txt (in the temporary storage) on timeout, linked only for final results:
+
+2025-06-30 19:06:33 atex: unexpected exception happened while running '/hardening/host-os/oscap/anssi_bp28_high' on TestingFarmRemote(RHEL-9.7.0-Nightly @ x86_64, 0x7f91ce81ed50):
+Traceback (most recent call last):
+  File "/root/atex/atex/util/threads.py", line 26, in _wrapper
+    ret = func(*func_args, **func_kwargs)
+  File "/root/atex/atex/executor/executor.py", line 332, in run_test
+    abort("test duration timeout reached")
+    ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/root/atex/atex/executor/executor.py", line 250, in abort
+    raise TestAbortedError(msg) from None
+atex.executor.executor.TestAbortedError: test duration timeout reached
+
+
+--------------------------
+
+atex: unexpected exception happened while running '/hardening/host-os/oscap/stig'
+
+2025-06-17 07:53:03 atex: unexpected exception happened while running '/per-rule/12/oscap' on TestingFarmRemote(RHEL-9.7.0-Nightly @ x86_64, 0x7f0e5cf46df0):
+atex.executor.testcontrol.BadReportJSONError: file 'out.txt' already exists
+
+2025-06-17 08:23:13 atex: unexpected exception happened while running '/hardening/host-os/oscap/stig' on TestingFarmRemote(RHEL-9.7.0-Nightly @ x86_64, 0x7f0e5cef3610):
+atex.connection.ssh.ConnectError: SSH ControlMaster failed to start on /tmp/atex-ssh-de1w7ayl with 255:
+b'kex_exchange_identification: read: Connection reset by peer\r\n'
+

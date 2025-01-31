@@ -1,0 +1,20 @@
+execute:
+    how: tmt
+
+prepare:
+  - how: install
+    package: pkg1
+  - how: install
+    package: [pkg2, pkg3]
+  - how: shell
+    script: foo bar
+  - how: shell
+    script: baz
+  - how: ansible
+    playbook: foobar.yml
+
+finish:
+  - how: shell
+    script: finish bar
+  - how: ansible
+    playbook: foobar.yml

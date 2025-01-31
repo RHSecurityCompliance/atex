@@ -1,0 +1,5 @@
+execute:
+    how: tmt
+
+environment:
+    VAR_FROM_PLAN: foo bar

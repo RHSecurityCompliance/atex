@@ -1,0 +1,11 @@
+test: ./test.sh
+duration: 1000h
+
+# just re-connect on losing ssh connection
+restart-on-exit-code: [255]
+restart-max-count: 10000
+
+# store the TF-spawned test pidfile on a non-default location,
+# avoiding conflicts with a manual 'tmt run provision -h connect'
+environment:
+    TMT_TEST_PIDFILE_ROOT: /var/tmp/testing-farm-reserve

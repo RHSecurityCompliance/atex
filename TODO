@@ -1,0 +1,302 @@
+
+- proper cleaning of tmpdirs on the host system ?
+
+- delete tmt_tests (it's now in its own branch)
+
+- get rid of testout_fobj, replace it iwth testout_fd
+  - and os.open() in .start() / os.close() in .stop()
+  - have some reporter function to close it manually, close_testout()
+    - and call it from executor after doing Popen, to avoid opened fd hanging around
+      in the main python process when we don't need it
+  - make sure to open with O_WRONLY | O_CREAT | O_APPEND, so reconnects don't override the log
+  - verify by 'ls -l /proc/$pyproc/fd' to ensure there are no .../testout.temp fds open
+
+- test special cases; ie.
+
+  - Executor running test and the remote loses connection
+    (ie. iptables -I INPUT 1 -j DROP)
+
+  - ssh after reboot doesn't actually work (ssh.ConnectError)
+    - might need generalization of all Connection exceptions
+    - does the test result get saved anywhere? .. as 'infra' ?
+
+    - are non-0 exit codes and exceptions raised by orchestrator, like
+        atex: unexpected exception happened while running ...
+      logged anywhere aside from ./contest.py stderr?
+
+  - raise non-0 exit code and unexpected exceptions to util.warning
+
+- orchestrator is still calling Remote.release() directly, which may block
+  for a long time; have some worker/queue that does it in the background
+  - probably as some new BackgroundRemoteReleaser class
+    - would be .start()ed from orchestrator start
+    - orchestrator would end it from .stop()
+    - the class would have a worker function running in the thread,
+      reading from a SimpleQueue and calling .release()
+      - if it reads None, it ends
+    - the class would have some .terminate(), which would push None
+      to the queue and wait for .join()
+      - orchestrator could return that waiting-for-join function
+        as a callable in stop_defer()
+
+    --> actually, do it differently:
+        - make existing ThreadQueue more similar to ThreadPoolExecutor
+          by having a configurable 'max_workers' argument, default = infinity
+          (and thus start_thread() gets renamed to submit())
+
+        - then make a simplified version of it that doesn't need to
+          return anything, just runs functions pushed to queue
+          - and then use it for .release() with max_workers=2 or so
+
+        - (make sure to self.lock the ThreadPoolExecutor for actions that need it)
+          - and have a semaphore for tracking how many threads are active,
+            giving .submit() a clue whether to spawn a new one
+        - have threads self-shutdown themselves by .get(block=False) checking
+          whether the queue is empty - if it is, shut down the worker
+
+- contest bug?, reporting log with full path
+  - :238: PASS / [report.html, scan-arf.xml.gz, /var/lib/libvirt/images/contest-osbuild.txt]
+  - does it upload correctly with name: contest-osbuild.txt ?
+
+- priority system for contest
+  - 'extra-priority' or something like that
+  - run problematic tests (ie. image-builder) first, so they can
+    rerun while others run
+
+- per-test rerun counts ('extra-reruns')
+  - root-level main.fmf could set it to 1, except RHEL-10 (because OpenGPG dnf bug) to 3
+  - image-builder test could set it to 5
+
+- make testing farm point to an ATEX repo tag when downloading the
+  reserve test, to freeze given ATEX versions in time (so they're not
+  broken by future git commits)
+
+  - also parametrize reserve test via module-level constants or TestingFarmProvisioner args
+
+- make it python3.12 (RHEL-10) compatible, ideally 3.11 (RHEL-9)
+
+- in the CLI tool (for contest), block further SIGINT/SIGTERM
+  while already running cleanup (regular one, not induced by ctrl-c)
+
+  - got hit by this in podman provision; 'podman container rm -t 0 -f'
+    was already removing a container (waiting for kill) when the user
+    issued SIGINT and it killed the 'rm', leaving container behind
+
+- notable TODOs
+  - testingfarm and automatically limiting 'class Request' refreshes
+  - testingfarm provisioner scaling up/down remotes, to avoid 40 "empty"
+    remotes being used up while waiting for the last 1-3 tests to finish
+  - atex/util/threads.py documentation
+  - generic ConnectError-ish for all Connections
+
+- interactive mode for Executor (without redirecting stderr to file,
+  and with stdin routed through)
+
+- enable gpgchck=1 on TestingFarm RHEL-based systems
+  - TODO: check RHEL-8 and 10 too, are they the same?
+  - /etc/yum.repos.d/rhel.repo
+    - search for "^name=rhel-BaseOS$" to check the file is not OS default
+    - replace all "^gpgcheck=0$' with 1
+
+- appending to a previous results.json.gz + files_dir
+  - gzip should be able to append a new gz header, and we can reuse a files_dir easily
+  - maybe append=False param for Orchestrator/Aggregator that would
+    - return error if False and one of the two exists
+    - append to them if True
+  - add test for it
+
+- testingfarm failure backoff cooldown
+  - if provisioning fails, retry getting new machines in increasing intervals;
+    ie. wait 1min, 2min, 4min, 8min, 16min, etc.
+  - maybe ditch the concept of an "infra retry" for provisioning, and just always
+    expect infinite retries based on ^^^, or use a high number like 8 (backoffs)
+    or an absolute giveup time
+
+  - different approach: add .provision(count=1) to the Provisioner API
+    - allows the user to signal to the Provisioner how many Remotes to provision
+      and (eventually) return via .get_remote()
+      - maybe raise some unique Exception if .get_remote() is called and there is no
+        provisioning in progress (it will never return a remote, user has to call
+        .provision() first)
+    - gets rid of static max_remotes=20 and lets the user request remotes on-the-fly
+      - there would probably be absolute_max_remotes=100 or a similar safety fallback
+        - have it as class attribute (constant), not __init__ argument
+      - Orchestrator could .provision(20) when first starting up, and call .provision()
+        to replace a destroyed Remote, BUT CRITICALLY, it could simply not call it
+        when to_run is empty and there's >= 2 Remotes already ready in setup queue
+        (for use by reruns)
+        - this effectively "shuts down" the reservations as tests wind down
+    - .provision() should probably internally clamp count= to absolute max, not raise
+      an Exception, to allow the user to say "as many as possible" by 'math.inf'
+
+- centralized TF API querying for one Provisioner and its remotes
+  - possibly do that in one class TestingFarmAPI instance - throttle API queries
+    globally to ie. 1/sec, maybe via some queue
+    - or a derived RateLimitedTestingFarmAPI instance ?
+
+- some interface on SIGUSR1 (?) on the state of the orchestration
+  - what tests are running / how many setups running / how many remotes / etc.
+  - how long have the running tests been running?
+  - what tests are still in to_run
+
+- more tests
+  - testcontrol (incl. reporting many results)
+    - incl. reporting after reboot
+  - testingfarm API directly
+    - API functions
+    - class Request
+    - class Reserve + manual use by ssh(1), see tf.py
+  - ssh connection tests (both Standalone and Managed) using
+    systemd-based podman container (PodmanProvisioner with extra run opts)
+  - reporter (part of executor)
+  - executor
+    - incl. corner cases (see above)
+    - shared_dir across multiple parallel Executor instances
+    - reboot
+      - partial results preserved across reboots
+      - disconnect without requested reconnect --> error
+      - etc.
+  - aggregators
+  - orchestrator
+    - incl. corner cases like setup failing and being retried
+  - provisioners (see TODO at the end of shared.py)
+    - start() and stop()
+    - stop_defer()
+  - testingfarm simple sanity reserve for centos stream 8 9 10
+    - to catch distro-specific bugs
+
+- clarify, in docstrings for API definitions, what functions may block
+  and which ones may be run in different threads
+
+- demo examples
+  - parallel Executors on one system with multiple Connections
+  - Aggregator in append=True mode, re-running tests that never finished
+    (building up excludes=[] from finished results.json.gz)
+  - image mode, implemented as additional run_setup() Orchestrator hook,
+    that collects required packages from all to_run tests, installs them,
+    does bootc switch, and that's it
+  - additional waiving logic on aggregated JSON results, before rendering
+    HTML
+
+- formalize coding style in some Markdown doc
+  - mention that class member variables and functions that are for internal
+    use only (private) start with _ (underscore), everything else is considered
+    public, incl. attributes / variables
+    - TODO: actually revise the codebase, applying this
+
+- make rsync install in podman provisioner optional
+  - maybe check with 'rpm -q' and install only if missing?
+  - maybe install_rsync=True or install_deps=True __init__ arg?
+
+- detailed logging.DEBUG log of everything, for debugging
+  - to be redirected to a file, with INFO on the console
+  - maybe without pipeline output, that seems useless for debugging
+  - but with every ssh attempt, every reconnection, every provisioning query, etc.
+
+- properly document which parts of various APIs need to be thread safe,
+  which functions are safe, which are not
+
+- mention in Orchestrator documentation that it is explicitly about running
+  tests on **ONE** platform (string)
+
+- reevaluate which func helpers (ie. _private_helper()) make sense on a module
+  level vs inside a class
+
+- document that Connection MUST use some subprocess-style commands
+  for cmd and rsync, and support func=
+  - because Executor uses func=Popen to run a test in the background
+
+- probably rename ManagedSSHConn -> ManagedSSHConnection
+  - for all Conn classes
+
+- get rid of skip_frames=
+  - this would make Connection methods using func= fully subprocess-compatible,
+    ie. with func=subprocess.Popen instead of having to use util.*
+  - instead, have a list of names to skip on top of util/log.py,
+        UNWIND = [
+            "util.subprocess_run",
+            ...
+        ]
+  - mention the list is iterated multiple times until nothing matches, so that
+    two levels of wrappers can be unwound just be including both wrappers in the list
+
+- add an 'EXTRADEBUG = 5' to util/extra_debug.py and use it for
+  - pipeline.log
+  - printing domain XMLs
+  - etc.
+
+- atex tf sr
+  - make --state optional, have it be action='append'
+  - have the default --state be all non-end states and print '(running)' or '(queued)'
+    etc. on each line
+
+- rename atex/provision --> atex/provisioner
+
+- move aggregator out of orchestrator
+
+- remove Provisioner.stop_defer(), have just a blocking .stop() that may internally
+  paralelize resource releasing if necessary
+  - stop_defer() made sense for TF and other state-less releases, but doesn't for
+    libvirt, which needs to release all first, and *then* close the connection
+- give .stop() a block=True/False similar to Remote.release(block=True/False)
+  - "just stop/release it in the background, I don't care about return"
+  - useful when calling .stop() on many Provisioners from the main program
+  - these should be daemon=False threads; to make sure they finish before exit
+
+--------------------------
+
+atex: unexpected exception happened while running '/hardening/host-os/oscap/stig'
+
+2025-06-17 07:53:03 atex: unexpected exception happened while running '/per-rule/12/oscap' on TestingFarmRemote(RHEL-9.7.0-Nightly @ x86_64, 0x7f0e5cf46df0):
+atex.executor.testcontrol.BadReportJSONError: file 'out.txt' already exists
+
+2025-06-17 08:23:13 atex: unexpected exception happened while running '/hardening/host-os/oscap/stig' on TestingFarmRemote(RHEL-9.7.0-Nightly @ x86_64, 0x7f0e5cef3610):
+atex.connection.ssh.ConnectError: SSH ControlMaster failed to start on /tmp/atex-ssh-de1w7ayl with 255:
+b'kex_exchange_identification: read: Connection reset by peer\r\n'
+
+
+
+2025-07-23 02:15:47 atex: TestingFarmRemote(root@10.0.178.211:22@/tmp/tmp_86glufe/key_rsa, dd48242e-3956-4ca3-bc59-a00b1b6a1a93): '/static-checks/html-links' threw NotConnectedError during test runtime, reruns exceeded, giving up:
+atex.connection.ssh.NotConnectedError: SSH ControlMaster is not running
+
+
+   ---> IDENTIFIED: the problem is that orchestrator releases the remote on ANY non-0 exit code,
+
+                          elif finfo.exit_code != 0:
+                              msg = f"{remote_with_test} exited with non-zero: {finfo.exit_code}"
+                              finfo.remote.release()
+
+                    but then REUSES it if the test was not destructive - by default, any non-0
+                    is destructive, but custom ContestOrchestrator allows reuse on 'exit 1'
+                    as it doesn't consider regular test fail destructive
+                       ---> but the remote is already dead, connection disconnected
+   
+
+    - TODO: maybe have some destructive sanity check between tests?
+
+    - TODO: maybe check if there *was* a SSH ControlMaster running, but it exited with some error?
+
+   - it's /static-checks/html-links somehow destroying the system by successfully exiting with FAIL:
+
+      2025-07-23 02:15:46 atex: TestingFarmRemote(root@10.0.178.211:22@/tmp/tmp_86glufe/key_rsa, dd48242e-3956-4ca3-bc59-a00b1b6a1a93): '/static-checks/html-links' exited with non-zero: 2, re-running (1 reruns left)
+      2025-07-23 02:15:46 atex: starting '/static-checks/html-links' on TestingFarmRemote(root@10.0.178.211:22@/tmp/tmp_86glufe/key_rsa, dd48242e-3956-4ca3-bc59-a00b1b6a1a93)
+      2025-07-23 02:15:47 atex: TestingFarmRemote(root@10.0.178.211:22@/tmp/tmp_86glufe/key_rsa, dd48242e-3956-4ca3-bc59-a00b1b6a1a93): '/static-checks/html-links' threw NotConnectedError during test runtime, reruns exceeded, giving up:
+      Traceback (most recent call last):
+        File "/root/atex/atex/util/threads.py", line 26, in _wrapper
+          ret = func(*func_args, **func_kwargs)
+        File "/root/atex/atex/executor/executor.py", line 233, in run_test
+          self.conn.cmd(("bash",), input=setup_script, text=True, check=True)
+          ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        File "/root/atex/atex/connection/ssh.py", line 366, in cmd
+          self.assert_master()
+          ~~~~~~~~~~~~~~~~~~^^
+        File "/root/atex/atex/connection/ssh.py", line 254, in assert_master
+          raise NotConnectedError("SSH ControlMaster is not running")
+      atex.connection.ssh.NotConnectedError: SSH ControlMaster is not running
+
+      ...
+      2025-07-23 00:15:30 test.py:23: lib.results.report_plain:238: PASS http://www.avahi.org
+      2025-07-23 00:15:30 test.py:23: lib.results.report_plain:238: PASS https://chrony-project.org/
+      2025-07-23 00:15:41 test.py:21: lib.results.report_plain:238: FAIL https://www.iso.org/contents/data/standard/05/45/54534.html (HTTPSConnectionPool(host='www.iso.org', port=443): Read timed out. (read timeout=10))
+      2025-07-23 00:15:44 test.py:23: lib.results.report_plain:238: PASS https://public.cyber.mil/stigs/downloads/?_dl_facet_stigs=container-platform
+      2025-07-23 00:15:44 test.py:25: lib.results.report_plain:238: FAIL /

@@ -1,0 +1,11 @@
+story:
+    As a developer, I want to test this story.
+description:
+    Some description.
+    This references https://tmt.readthedocs.io/en/stable/spec/stories.html
+example:
+  - first command
+  - second command
+link:
+  - implemented-by: /foo/bar
+priority: must have

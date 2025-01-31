@@ -1,0 +1,12 @@
+summary: Used for /plans/filtered testing
+test: ./test.sh
+
+tag: []
+
+/filter1:
+    tag+: [tagged]
+/filter2:
+/filter3:
+/filter4:
+/filter5:
+    extra_foobar: 123

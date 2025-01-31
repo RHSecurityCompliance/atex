@@ -1,0 +1,23 @@
+test: ./test.sh
+
+/no_foobar:
+    adjust:
+        extra_foobar: 123
+        when: distro == fedora-1
+
+/equals:
+    adjust:
+        extra_foobar: 123
+        when: distro == fedora-2
+
+/greater_lesser:
+    adjust:
+        extra_foobar: 123
+        when: distro > fedora-1 && distro < fedora-3
+
+/listlike:
+    adjust:
+      - extra_foobar: 123
+        when: distro == fedora-2
+      - extra_baz: 234
+        when: arch == x86_64

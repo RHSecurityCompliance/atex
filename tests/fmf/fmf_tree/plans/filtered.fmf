@@ -1,0 +1,21 @@
+execute:
+    how: tmt
+
+discover:
+    how: fmf
+
+    # excldue filter1 via tag
+    filter:
+      - tag:-tagged
+
+    # exclude filter2 by omission
+    test:
+      - /filters/filter3
+      - /filters/filter4
+      - /filters/filter5
+
+    # exclude filter3 explicitly
+    exclude:
+      - /filters/filter3
+
+    # leaving filter4,5

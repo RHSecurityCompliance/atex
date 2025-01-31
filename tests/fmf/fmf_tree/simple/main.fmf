@@ -1,0 +1,4 @@
+summary: Simple test
+test: ./test.sh
+require: some_package
+duration: 5m

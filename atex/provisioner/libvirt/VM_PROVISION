@@ -1,0 +1,59 @@
+IMAGED INSTALLS:
+
+- have an independent script to install/prepare an image from install URL / nightly name
+  - could be invoked as a "setup task" by the user
+  - could be run automatically via cron on the VM host, etc.
+  - some script that does virt-install --transient and installs new prepared
+    template images into some pool
+  - use virt-sysprep from guestfs-tools when preparing an image during setup
+
+- have another independent script that pre-creates domains (XMLs) on the VM host
+  - script that (without locking, it should never be run alongside the above)
+    pre-creates domains on the system (specifying various options, etc.)
+    - maybe generating XML directly from given opts?
+    - maybe using virt-install?
+
+- from the many (60+) provision modules:
+  - don't create new libvirt domains from scratch, that's too inefficient remotely
+    - have pre-created persistent domains (see above)
+  - have pre-installed ready-to-use images to be cloned
+    - or otherwise separate the process of installing images from using domains for testing
+  - have some limitation on volume storage for a domain, to make things simpler
+    - (don't deal with path-based image storage, many disks, etc.)
+    - we will ONLY touch volumes in some specified --pool that are named EXACTLY
+      the same as domain names (ie. volume called scap-t12 for scap-t12 domain)
+    - domains can have many other disks/sources/volumes, we don't care
+
+  - provision client would
+    - list all inactive domains, match some name pattern (scap-*)
+    - pick one at random (and remember it into some list, so it doesn't pick it again)
+    - check custom <metadata>
+    - if the metadata indicate it's unused (no metadata or not-ours-UUID)
+      - write our UUID to the metadata
+      - re-read it (completing the mutex)
+      - leave the XML otherwise as-is, just swap out volume via vol-clone
+        - support --reflink
+
+
+KICKSTARTED INSTALLS:
+
+- somewhat similar:
+  - also use pre-created libvirt domains, but do not use images
+  - use virt-install --reinstall to retain the original domain XML, while being able
+    to reinstall it ad-hoc with a custom kickstart
+
+
+FULLY CUSTOM INSTALLS:
+
+- useful for special use cases with custom HW (emulated TPM2, etc.)
+- basically virt-install creating a new domain (ignoring any pre-defined ones)
+  - probably shouldn't be used by automation, only for one-VM-at-a-time on user request
+    - (no free memory/disk checking, no libvirt locking, etc.)
+
+
+
+# ssh via ProxyJump allowing ssh keys specification
+ssh \
+    -o ProxyCommand='ssh -i /tmp/proxy_sshkey root@3.21.232.206 -W %h:%p' \
+    -i /tmp/destination_sshkey \
+    root@192.168.123.218

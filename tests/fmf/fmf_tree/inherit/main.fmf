@@ -1,0 +1,4 @@
+summary: Simple inheritance testing
+test: ./test.sh
+require:
+  - foo bar

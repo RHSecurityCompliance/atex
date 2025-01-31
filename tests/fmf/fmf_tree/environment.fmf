@@ -1,0 +1,3 @@
+test: ./test.sh
+environment:
+    VAR_FROM_TEST: foo bar

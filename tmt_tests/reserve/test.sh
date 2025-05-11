@@ -41,24 +41,26 @@ efi_boot_into_current
 # (if running tmt via 'provision -h connect', tmt will upload its own)
 rm -f /usr/local/bin/tmt-*
 
-# remove useless daemons to free up RAM a bit
-dnf remove -y rng-tools irqbalance
+if [[ ! -e /sysroot/ostree ]]; then
+    # remove useless daemons to free up RAM a bit
+    dnf remove -y rng-tools irqbalance
 
-# clean up packages from extra repos, restoring original vanilla OS (sorta)
-rm -v -f \
-    /etc/yum.repos.d/{tag-repository,*beakerlib*,rcmtools}.repo \
-    /etc/yum.repos.d/beaker-{client,harness,tasks}.repo
-# downgrade any packages installed/upgraded from the extra package repos
-function list_foreign_rpms {
-    dnf list --installed \
-    | grep -e @koji-override -e @testing-farm -e @epel -e @copr: -e @rcmtools \
-    | sed 's/ .*//'
-}
-rpms=$(list_foreign_rpms)
-[[ $rpms ]] && dnf downgrade -y --skip-broken $rpms
-rpms=$(list_foreign_rpms)
-[[ $rpms ]] && dnf remove -y --noautoremove $rpms
-dnf clean all
+    # clean up packages from extra repos, restoring original vanilla OS (sorta)
+    rm -v -f \
+        /etc/yum.repos.d/{tag-repository,*beakerlib*,rcmtools}.repo \
+        /etc/yum.repos.d/beaker-{client,harness,tasks}.repo
+    # downgrade any packages installed/upgraded from the extra package repos
+    function list_foreign_rpms {
+        dnf list --installed \
+        | grep -e @koji-override -e @testing-farm -e @epel -e @copr: -e @rcmtools \
+        | sed 's/ .*//'
+    }
+    rpms=$(list_foreign_rpms)
+    [[ $rpms ]] && dnf downgrade -y --skip-broken $rpms
+    rpms=$(list_foreign_rpms)
+    [[ $rpms ]] && dnf remove -y --noautoremove $rpms
+    dnf clean all
+fi
 
 # install SSH key
 if [[ $RESERVE_SSH_PUBKEY ]]; then

@@ -289,9 +289,12 @@ class PipelineLogStreamer:
 
                 log = f"{artifacts}/pipeline.log"
                 reply = _http.request("HEAD", log)
-                # TF has a race condition of adding the .log entry without it being created
-                if reply.status == 404:
-                    util.debug(f"got 404 for {log}, retrying")
+                # 404: TF has a race condition of adding the .log entry without
+                #      it being created
+                # 403: happens on internal OSCI artifacts server, probably
+                #      due to similar reasons (folder exists without log)
+                if reply.status in (404,403):
+                    util.debug(f"got {reply.status} for {log}, retrying")
                     continue
                 elif reply.status != 200:
                     raise APIError(f"got HTTP {reply.status} on HEAD {log}", reply)

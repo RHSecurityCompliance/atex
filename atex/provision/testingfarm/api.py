@@ -492,7 +492,9 @@ class Reserve:
             # wait for user/host to ssh to
             ssh_user = ssh_host = None
             for line in PipelineLogStreamer(self.request):
-                util.debug(f"pipeline: {line}")
+                # the '\033[0m' is to reset colors sometimes left in a bad
+                # state by pipeline.log
+                util.debug(f"pipeline: {line}\033[0m")
                 # find hidden login details
                 m = re.search(r"\] Guest is ready: ArtemisGuest\([^,]+, (\w+)@([0-9\.]+), ", line)
                 if m:

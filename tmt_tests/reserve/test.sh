@@ -3,7 +3,10 @@
 set -e -x
 
 function efi_boot_into_current {
-    if command -v efibootmgr >/dev/null; then
+    # we're executing efibootmgr here instead of just checking its existence
+    # because some systems have the binary, but, when run, it fails with:
+    #   EFI variables are not supported on this system.
+    if efibootmgr &>/dev/null; then
         current=$(efibootmgr | sed -n 's/^BootCurrent: //p')
         efibootmgr -n "$current"
     fi

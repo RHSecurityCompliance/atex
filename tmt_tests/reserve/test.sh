@@ -41,7 +41,7 @@ efi_boot_into_current
 # (if running tmt via 'provision -h connect', tmt will upload its own)
 rm -f /usr/local/bin/tmt-*
 
-if [[ ! -e /sysroot/ostree ]]; then
+if [[ ! -e /run/ostree-booted ]]; then
     # remove useless daemons to free up RAM a bit
     dnf remove -y rng-tools irqbalance
 

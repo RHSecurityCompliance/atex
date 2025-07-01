@@ -55,28 +55,27 @@ os_id=$(. /etc/os-release; echo "$ID:$VERSION_ID")
 # 8 is on vault/archive, 10 is currently broken
 if [[ $os_id == centos:9 ]]; then
     rm -f /etc/yum.repos.d/centos{,-addons}.repo
-    variants=(
-        BaseOS AppStream CRB HighAvailability NFV RT ResilientStorage
-    )
-    declare -A paths=(
-        [repo]="\$basearch/os/"
-        [debuginfo]="\$basearch/debug/tree/"
-        [source]="source/tree/"
-    )
-    repofile=/etc/yum.repos.d/centos-aws.repo
-    truncate -s 0 "$repofile"
-    for variant in "${variants[@]}"; do
-        for path_name in "${!paths[@]}"; do
-            {
-                echo "[$variant-$path_name]"
-                echo "name=$variant-$path_name"
-                echo "baseurl=https://mirror.stream.centos.org/\$stream/$variant/${paths[$path_name]}"
-                echo "gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-centosofficial"
-                echo "gpgcheck=1"
-                echo "enabled=1"
-            } >> "$repofile"
-        done
-    done
+    for variant in BaseOS AppStream CRB HighAvailability NFV RT ResilientStorage; do
+        echo "[centos-aws-$variant]"
+        echo "name=centos-aws-$variant"
+        echo "baseurl=https://mirror.stream.centos.org/\$stream/$variant/\$basearch/os/"
+        echo "gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-centosofficial"
+        echo "gpgcheck=1"
+        echo "enabled=1"
+        echo "[centos-aws-$variant-source]"
+        echo "name=centos-aws-$variant-source"
+        echo "baseurl=https://mirror.stream.centos.org/\$stream/$variant/source/tree/"
+        echo "gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-centosofficial"
+        echo "gpgcheck=1"
+        echo "enabled=0"
+        echo "[centos-aws-$variant-debuginfo]"
+        echo "name=centos-aws-$variant-debuginfo"
+        echo "baseurl=https://mirror.stream.centos.org/\$stream/$variant/\$basearch/debug/tree/"
+        echo "gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-centosofficial"
+        echo "gpgcheck=1"
+        echo "enabled=0"
+        echo
+    done > /etc/yum.repos.d/centos-aws.repo
 fi
 
 # ------------------------------------------------------------------------------

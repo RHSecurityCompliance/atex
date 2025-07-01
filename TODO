@@ -37,6 +37,10 @@
       at the end (or hardlinking it to default output.txt + deleting it)
 
 
+- make testing farm point to an ATEX repo tag when downloading the
+  reserve test, to freeze given ATEX versions in time (so they're not
+  broken by future git commits)
+
 - make it python3.12 (RHEL-10) compatible, ideally 3.11 (RHEL-9)
 
 - in the CLI tool (for contest), block further SIGINT/SIGTERM

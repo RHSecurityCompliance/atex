@@ -57,7 +57,7 @@ class PodmanRemote(Remote, connection.podman.PodmanConn):
 
         name = f"{self.container[:17]}..." if len(self.container) > 20 else self.container
 
-        return f"{class_name}({image}, {name}, {hex(id(self))})"
+        return f"{class_name}({image}, {name})"
 
 
 class PodmanProvisioner(Provisioner):

@@ -426,7 +426,6 @@ class Reserve:
                         "tags": {
                             "ArtemisUseSpot": "false",
                         },
-                        "security_group_rules_ingress": [],
                     },
                 },
                 "secrets": {},
@@ -472,15 +471,18 @@ class Reserve:
         # add source_host firewall filter on the public ranch
         if self.api.whoami()["token"]["ranch"] == "public":
             source_host = self._source_host or f"{self._guess_host_ipv4()}/32"
-            ingress = \
-                spec["environments"][0]["settings"]["provisioning"]["security_group_rules_ingress"]
-            ingress.append({
+            ingress_rule = {
                 "type": "ingress",
                 "protocol": "-1",
                 "cidr": source_host,
                 "port_min": 0,
                 "port_max": 65535,
-            })
+            }
+            provisioning = spec["environments"][0]["settings"]["provisioning"]
+            if "security_group_rules_ingress" in provisioning:
+                provisioning["security_group_rules_ingress"].append(ingress_rule)
+            else:
+                provisioning["security_group_rules_ingress"] = [ingress_rule]
 
         try:
             # read user-provided ssh key, or generate one

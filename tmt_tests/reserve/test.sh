@@ -81,14 +81,11 @@ fi
 # ------------------------------------------------------------------------------
 
 # remove useless legacy mountpoints (some have sticky bits)
-mntpoints=(
-    /mnt/brew /mnt/brew_scratch /mnt/engarchive /mnt/qa /mnt/redhat
-    /mnt/scratchspace /mnt/testarea/test /mnt/testarea /mnt/tests
-    /mnt/tpsdist
-)
-for mntpoint in "${mntpoints[@]}"; do
-    [[ -d $mntpoint ]] && rmdir "$mntpoint" || true
-done
+umount -f /mnt/* || true
+rmdir /mnt/*/*/* /mnt/*/* /mnt/* || true
+sed -rn '/^[^ ]+ \/mnt/!p' -i /etc/fstab
+# prevent /mnt/scratch* from being created on reboot
+echo -n > /etc/tmpfiles.d/restraint.conf
 
 # ------------------------------------------------------------------------------
 

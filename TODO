@@ -37,6 +37,21 @@
       at the end (or hardlinking it to default output.txt + deleting it)
 
 
+- contest bug?, reporting log with full path
+  - :238: PASS / [report.html, scan-arf.xml.gz, /var/lib/libvirt/images/contest-osbuild.txt]
+  - does it upload correctly with name: contest-osbuild.txt ?
+
+
+- priority system for contest
+  - 'extra-priority' or something like that
+  - run problematic tests (ie. image-builder) first, so they can
+    rerun while others run
+
+- per-test rerun counts ('extra-reruns')
+  - root-level main.fmf could set it to 1, except RHEL-10 (because OpenGPG dnf bug) to 3
+  - image-builder test could set it to 5
+
+
 - make testing farm point to an ATEX repo tag when downloading the
   reserve test, to freeze given ATEX versions in time (so they're not
   broken by future git commits)

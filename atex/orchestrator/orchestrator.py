@@ -163,7 +163,7 @@ class Orchestrator:
         """
         'finfo' is a FinishedInfo instance.
         """
-        test_id = f"'{finfo.test_name}' on {finfo.remote}"
+        remote_with_test = f"{finfo.remote}: '{finfo.test_name}'"
 
         def ingest_result():
             tmp_dir_path = Path(finfo.tmp_dir.name)
@@ -177,50 +177,46 @@ class Orchestrator:
 
         # if executor (or test) threw exception, schedule a re-run
         if finfo.exception:
-            exc_str = "".join(traceback.format_exception(finfo.exception)).rstrip("\n")
-            util.info(f"unexpected exception happened while running {test_id}:\n{exc_str}")
             finfo.remote.release()
-            if self.reruns[finfo.test_name] > 0:
+            exc_str = "".join(traceback.format_exception(finfo.exception)).rstrip("\n")
+            msg = f"{remote_with_test} threw {type(finfo.exception)} during test runtime"
+            if reruns_left := self.reruns[finfo.test_name] > 0:
+                util.info(f"{msg}, re-running ({reruns_left} reruns left):\n{exc_str}")
                 self.reruns[finfo.test_name] -= 1
                 self.to_run.add(finfo.test_name)
             else:
-                util.info(f"reruns for {test_id} exceeded, ignoring it")
+                util.info(f"{msg}, reruns exceeded, giving up:\n{exc_str}")
                 # record the final result anyway
                 ingest_result()
 
         # if the test exited as non-0, try a re-run
         elif finfo.exit_code != 0:
             finfo.remote.release()
-            if self.reruns[finfo.test_name] > 0:
-                util.info(
-                    f"{test_id} exited with non-zero: {finfo.exit_code}, re-running "
-                    f"({self.reruns[finfo.test_name]} reruns left)",
-                )
+            msg = f"{remote_with_test} exited with non-zero: {finfo.exit_code}"
+            if reruns_left := self.reruns[finfo.test_name] > 0:
+                util.info(f"{msg}, re-running ({reruns_left} reruns left)")
                 self.reruns[finfo.test_name] -= 1
                 self.to_run.add(finfo.test_name)
             else:
-                util.info(
-                    f"{test_id} exited with non-zero: {finfo.exit_code}, "
-                    "all reruns exceeded, giving up",
-                )
+                util.info(f"{msg}, reruns exceeded, giving up")
                 # record the final result anyway
                 ingest_result()
 
         # test finished successfully - ingest its results
         else:
-            util.info(f"{test_id} finished successfully")
+            util.info(f"{remote_with_test} finished successfully")
             ingest_result()
 
         # if destroyed, release the remote
         test_data = self.fmf_tests.tests[finfo.test_name]
         if self.destructive(finfo, test_data):
-            util.debug(f"{test_id} was destructive, releasing remote")
+            util.debug(f"{remote_with_test} was destructive, releasing remote")
             finfo.remote.release()
 
         # if still not destroyed, run another test on it
         # (without running plan setup, re-using already set up remote)
         elif self.to_run:
-            util.debug(f"{test_id} was non-destructive, running next test")
+            util.debug(f"{remote_with_test} was non-destructive, running next test")
             self._run_new_test(finfo)
 
     def serve_once(self):
@@ -271,7 +267,7 @@ class Orchestrator:
 
             if treturn.exception:
                 exc_str = "".join(traceback.format_exception(treturn.exception).rstrip("\n"))
-                util.info(f"setup failed with exception:\n{exc_str}")
+                util.info(f"{sinfo.remote}: setup failed with exception:\n{exc_str}")
                 sinfo.remote.release()
                 if self.failed_setups_left <= 0:
                     raise FailedSetupError("failed setups limit exceeded, broken infra?")
@@ -296,7 +292,7 @@ class Orchestrator:
                     sinfo=sinfo,
                 )
                 self.running_setups.append(sinfo)
-                util.info(f"got {remote} from {provisioner}, running setup")
+                util.info(f"{provisioner}: running setup on new {remote}")
 
         return True
 

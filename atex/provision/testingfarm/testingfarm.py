@@ -14,8 +14,10 @@ class TestingFarmRemote(Remote, connection.ssh.ManagedSSHConn):
     as implemented by ManagedSSHConn.
     """
 
-    def __init__(self, ssh_options, *, release_hook):
+    def __init__(self, request_id, ssh_options, *, release_hook):
         """
+        'request_id' is a string with Testing Farm request UUID (for printouts).
+
         'ssh_options' are a dict, passed to ManagedSSHConn __init__().
 
         'release_hook' is a callable called on .release() in addition
@@ -24,6 +26,7 @@ class TestingFarmRemote(Remote, connection.ssh.ManagedSSHConn):
         # NOTE: self.lock inherited from ManagedSSHConn
         # start with empty ssh options, we'll fill them in later
         super().__init__(options=ssh_options)
+        self.request_id = request_id
         self.release_hook = release_hook
         self.release_called = False
 
@@ -43,7 +46,7 @@ class TestingFarmRemote(Remote, connection.ssh.ManagedSSHConn):
         ssh_host = self.options.get("Hostname", "unknown")
         ssh_port = self.options.get("Port", "unknown")
         ssh_key = self.options.get("IdentityFile", "unknown")
-        return f"{class_name}({ssh_user}@{ssh_host}:{ssh_port}@{ssh_key}, {hex(id(self))})"
+        return f"{class_name}({ssh_user}@{ssh_host}:{ssh_port}@{ssh_key}, {self.request_id})"
 
 
 class TestingFarmProvisioner(Provisioner):
@@ -112,6 +115,7 @@ class TestingFarmProvisioner(Provisioner):
             tf_reserve.release()
 
         remote = TestingFarmRemote(
+            tf_reserve.request.id,
             ssh_options,
             release_hook=release_hook,
         )

@@ -95,7 +95,7 @@ class TestControl:
     processing test-issued commands, results and uploaded files.
     """
 
-    def __init__(self, *, control_fd, reporter, duration, testout_fd):
+    def __init__(self, *, reporter, duration, control_fd=None):
         """
         'control_fd' is a non-blocking file descriptor to be read.
 
@@ -103,22 +103,36 @@ class TestControl:
         and uploaded files will be written to.
 
         'duration' is a class Duration instance.
-
-        'testout_fd' is an optional file descriptor handle which the test uses
-        to write its output to - useful here for the 'result' control word and
-        its protocol, which allows "hardlinking" the fd to a real file name.
         """
-        self.control_fd = control_fd
-        self.stream = NonblockLineReader(control_fd)
         self.reporter = reporter
         self.duration = duration
-        self.testout_fd = testout_fd
+        if control_fd:
+            self.control_fd = control_fd
+            self.stream = NonblockLineReader(control_fd)
+        else:
+            self.control_fd = None
+            self.stream = None
         self.eof = False
         self.in_progress = None
         self.partial_results = collections.defaultdict(dict)
         self.exit_code = None
         self.reconnect = None
         self.nameless_result_seen = False
+
+    def reassign(self, new_fd):
+        """
+        Assign a new control file descriptor to read test control from,
+        replacing a previous one. Useful on test reconnect.
+        """
+        err = "tried to assign new control fd while "
+        if self.in_progress:
+            raise BadControlError(f"{err} old one is reading non-control binary data")
+        elif self.eof:
+            raise BadControlError(f"{err} old one is already EOF")
+        elif self.stream and self.stream.bytes_read != 0:
+            raise BadControlError(f"{err} old one is in the middle of reading a control line")
+        self.control_fd = new_fd
+        self.stream = NonblockLineReader(new_fd)
 
     def process(self):
         """
@@ -254,28 +268,28 @@ class TestControl:
             except ValueError as e:
                 raise BadReportJSONError(f"file entry {file_name} length: {str(e)}") from None
 
-            with self.reporter.open_tmpfile() as fd:
-                while file_length > 0:
-                    try:
-                        # try a more universal sendfile first, fall back to splice
+            try:
+                with self.reporter.open_file(file_name, name) as f:
+                    fd = f.fileno()
+                    while file_length > 0:
                         try:
-                            written = os.sendfile(fd, self.control_fd, None, file_length)
-                        except OSError as e:
-                            if e.errno == 22:  # EINVAL
-                                written = os.splice(self.control_fd, fd, file_length)
-                            else:
-                                raise
-                    except BlockingIOError:
+                            # try a more universal sendfile first, fall back to splice
+                            try:
+                                written = os.sendfile(fd, self.control_fd, None, file_length)
+                            except OSError as e:
+                                if e.errno == 22:  # EINVAL
+                                    written = os.splice(self.control_fd, fd, file_length)
+                                else:
+                                    raise
+                        except BlockingIOError:
+                            yield
+                            continue
+                        if written == 0:
+                            raise BadControlError("EOF when reading data")
+                        file_length -= written
                         yield
-                        continue
-                    if written == 0:
-                        raise BadControlError("EOF when reading data")
-                    file_length -= written
-                    yield
-                try:
-                    self.reporter.link_tmpfile_to(fd, file_name, name)
-                except FileExistsError:
-                    raise BadReportJSONError(f"file '{file_name}' already exists") from None
+            except FileExistsError:
+                raise BadReportJSONError(f"file '{file_name}' already exists") from None
 
         # either store partial result + return,
         # or load previous partial result and merge into it
@@ -304,7 +318,7 @@ class TestControl:
             if not testout:
                 raise BadReportJSONError("'testout' specified, but empty")
             try:
-                self.reporter.link_tmpfile_to(self.testout_fd, testout, name)
+                self.reporter.link_testout(testout, name)
             except FileExistsError:
                 raise BadReportJSONError(f"file '{testout}' already exists") from None
 

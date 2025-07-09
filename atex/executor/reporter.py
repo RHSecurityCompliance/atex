@@ -1,37 +1,8 @@
 import os
 import json
-import ctypes
-import ctypes.util
-import contextlib
 from pathlib import Path
 
 from .. import util
-
-
-libc = ctypes.CDLL(ctypes.util.find_library("c"), use_errno=True)
-
-# int linkat(int olddirfd, const char *oldpath, int newdirfd, const char *newpath, int flags)
-libc.linkat.argtypes = (
-    ctypes.c_int,
-    ctypes.c_char_p,
-    ctypes.c_int,
-    ctypes.c_char_p,
-    ctypes.c_int,
-)
-libc.linkat.restype = ctypes.c_int
-
-# fcntl.h:#define AT_EMPTY_PATH                0x1000  /* Allow empty relative pathname */
-AT_EMPTY_PATH = 0x1000
-
-# fcntl.h:#define AT_FDCWD             -100    /* Special value used to indicate
-AT_FDCWD = -100
-
-
-def linkat(*args):
-    if (ret := libc.linkat(*args)) == -1:
-        errno = ctypes.get_errno()
-        raise OSError(errno, os.strerror(errno))
-    return ret
 
 
 class Reporter:
@@ -40,31 +11,62 @@ class Reporter:
     a specific test, storing them persistently.
     """
 
-    def __init__(self, json_file, files_dir):
-        """
-        'json_file' is a destination file (string or Path) for results.
+    # internal name, stored inside 'output_dir' and hardlinked to
+    # 'testout'-JSON-key-specified result entries; deleted on exit
+    TESTOUT = "testout.temp"
 
-        'files_dir' is a destination dir (string or Path) for uploaded files.
+    def __init__(self, output_dir, results_file, files_dir):
         """
-        self.json_file = Path(json_file)
-        self.files_dir = Path(files_dir)
-        self.json_fobj = None
+        'output_dir' is a destination dir (string or Path) for results reported
+        and files uploaded.
 
-    def __enter__(self):
-        if self.json_file.exists():
-            raise FileExistsError(f"{self.json_file} already exists")
-        self.json_fobj = open(self.json_file, "w")
+        'results_file' is a file name inside 'output_dir' the results will be
+        reported into.
+
+        'files_dir' is a dir name inside 'output_dir' any files will be
+        uploaded to.
+        """
+        output_dir = Path(output_dir)
+        self.testout_file = output_dir / self.TESTOUT
+        self.results_file = output_dir / results_file
+        self.files_dir = output_dir / files_dir
+        self.output_dir = output_dir
+        self.results_fobj = None
+        self.testout_fobj = None
+
+    def start(self):
+        if self.testout_file.exists():
+            raise FileExistsError(f"{self.testout_file} already exists")
+        self.testout_fobj = open(self.testout_file, "wb")
+
+        if self.results_file.exists():
+            raise FileExistsError(f"{self.results_file} already exists")
+        self.results_fobj = open(self.results_file, "w", newline="\n")
 
         if self.files_dir.exists():
             raise FileExistsError(f"{self.files_dir} already exists")
         self.files_dir.mkdir()
 
-        return self
+    def stop(self):
+        if self.results_fobj:
+            self.results_fobj.close()
+            self.results_fobj = None
+
+        if self.testout_fobj:
+            self.testout_fobj.close()
+            self.testout_fobj = None
+            Path(self.testout_file).unlink()
+
+    def __enter__(self):
+        try:
+            self.start()
+            return self
+        except Exception:
+            self.stop()
+            raise
 
     def __exit__(self, exc_type, exc_value, traceback):
-        if self.json_fobj:
-            self.json_fobj.close()
-            self.json_fobj = None
+        self.stop()
 
     def report(self, result_line):
         """
@@ -72,35 +74,28 @@ class Reporter:
 
         'result_line' is a dict in the format specified by RESULTS.md.
         """
-        json.dump(result_line, self.json_fobj, indent=None)
-        self.json_fobj.write("\n")
-        self.json_fobj.flush()
+        json.dump(result_line, self.results_fobj, indent=None)
+        self.results_fobj.write("\n")
+        self.results_fobj.flush()
 
-    @contextlib.contextmanager
-    def open_tmpfile(self, open_mode=os.O_WRONLY):
-        """
-        Open an anonymous (name-less) file for writing and yield its file
-        descriptor (int) as context, closing it when the context is exited.
-        """
-        flags = open_mode | os.O_TMPFILE
-        fd = os.open(self.files_dir, flags, 0o644)
-        try:
-            yield fd
-        finally:
-            os.close(fd)
-
-    def link_tmpfile_to(self, fd, file_name, result_name=None):
-        """
-        Store a file named 'file_name' in a directory relevant to 'result_name'
-        whose 'fd' (a file descriptor) was created by .open_tmpfile().
-
-        This function can be called multiple times with the same 'fd', and
-        does not close or otherwise alter the descriptor.
-
-        If 'result_name' is not given, link files to the test (name) itself.
-        """
+    def _dest_path(self, file_name, result_name=None):
         result_name = util.normalize_path(result_name) if result_name else "."
         # /path/to/files_dir / path/to/subresult / path/to/file.log
         file_path = self.files_dir / result_name / util.normalize_path(file_name)
         file_path.parent.mkdir(parents=True, exist_ok=True)
-        linkat(fd, b"", AT_FDCWD, bytes(file_path), AT_EMPTY_PATH)
+        return file_path
+
+    def open_file(self, file_name, result_name=None, mode="wb"):
+        """
+        Open a file named 'file_name' in a directory relevant to 'result_name'.
+        Returns an opened file-like object that can be used in a context manager
+        just like with regular open().
+
+        If 'result_name' (typically a subresult) is not given, open the file
+        for the test (name) itself.
+        """
+        return open(self._dest_path(file_name, result_name), mode)
+
+    def link_testout(self, file_name, result_name=None):
+        # TODO: docstring
+        os.link(self.testout_file, self._dest_path(file_name, result_name))

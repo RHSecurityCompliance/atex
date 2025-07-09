@@ -40,7 +40,7 @@ class Orchestrator:
         required=(
             # string with /test/name
             "test_name",
-            # class tempfile.TemporaryDirectory instance with 'json_file' and 'files_dir'
+            # class tempfile.TemporaryDirectory instance passed to Executor
             "tmp_dir",
         ),
     ):
@@ -151,8 +151,7 @@ class Orchestrator:
             target=info.executor.run_test,
             target_args=(
                 next_test_name,
-                tmp_dir_path / "json_file",
-                tmp_dir_path / "files_dir",
+                tmp_dir_path,
             ),
             rinfo=rinfo,
         )
@@ -167,33 +166,34 @@ class Orchestrator:
 
         def ingest_result():
             tmp_dir_path = Path(finfo.tmp_dir.name)
-            json_file = tmp_dir_path / "json_file"
-            files_dir = tmp_dir_path / "files_dir"
+            results_file = tmp_dir_path / "results"
+            files_dir = tmp_dir_path / "files"
             # in case Executor code itself threw an unrecoverable exception
             # and didn't even report the fallback 'infra' result
-            if json_file.exists() and files_dir.exists():
-                self.aggregator.ingest(self.platform, finfo.test_name, json_file, files_dir)
+            if results_file.exists() and files_dir.exists():
+                self.aggregator.ingest(self.platform, finfo.test_name, results_file, files_dir)
                 finfo.tmp_dir.cleanup()
 
         # if executor (or test) threw exception, schedule a re-run
         if finfo.exception:
+            exc_name = type(finfo.exception).__name__
+            exc_tb = "".join(traceback.format_exception(finfo.exception)).rstrip("\n")
+            msg = f"{remote_with_test} threw {exc_name} during test runtime"
             finfo.remote.release()
-            exc_str = "".join(traceback.format_exception(finfo.exception)).rstrip("\n")
-            msg = f"{remote_with_test} threw {type(finfo.exception)} during test runtime"
-            if reruns_left := self.reruns[finfo.test_name] > 0:
-                util.info(f"{msg}, re-running ({reruns_left} reruns left):\n{exc_str}")
+            if (reruns_left := self.reruns[finfo.test_name]) > 0:
+                util.info(f"{msg}, re-running ({reruns_left} reruns left):\n{exc_tb}")
                 self.reruns[finfo.test_name] -= 1
                 self.to_run.add(finfo.test_name)
             else:
-                util.info(f"{msg}, reruns exceeded, giving up:\n{exc_str}")
+                util.info(f"{msg}, reruns exceeded, giving up:\n{exc_tb}")
                 # record the final result anyway
                 ingest_result()
 
         # if the test exited as non-0, try a re-run
         elif finfo.exit_code != 0:
-            finfo.remote.release()
             msg = f"{remote_with_test} exited with non-zero: {finfo.exit_code}"
-            if reruns_left := self.reruns[finfo.test_name] > 0:
+            finfo.remote.release()
+            if (reruns_left := self.reruns[finfo.test_name]) > 0:
                 util.info(f"{msg}, re-running ({reruns_left} reruns left)")
                 self.reruns[finfo.test_name] -= 1
                 self.to_run.add(finfo.test_name)
@@ -266,13 +266,16 @@ class Orchestrator:
             self.running_setups.remove(sinfo)
 
             if treturn.exception:
-                exc_str = "".join(traceback.format_exception(treturn.exception).rstrip("\n"))
-                util.info(f"{sinfo.remote}: setup failed with exception:\n{exc_str}")
+                exc_name = type(treturn.exception).__name__
+                exc_tb = "".join(traceback.format_exception(treturn.exception)).rstrip("\n")
+                msg = f"{sinfo.remote}: setup failed with {exc_name}"
                 sinfo.remote.release()
-                if self.failed_setups_left <= 0:
-                    raise FailedSetupError("failed setups limit exceeded, broken infra?")
-                else:
+                if (reruns_left := self.failed_setups_left) > 0:
+                    util.warning(f"{msg}, re-trying ({reruns_left} setup retries left):\n{exc_tb}")
                     self.failed_setups_left -= 1
+                else:
+                    util.warning(f"{msg}, setup retries exceeded, giving up:\n{exc_tb}")
+                    raise FailedSetupError("setup retries limit exceeded, broken infra?")
             else:
                 self._run_new_test(sinfo)
 
@@ -303,23 +306,36 @@ class Orchestrator:
         while self.serve_once():
             time.sleep(1)
 
-    def __enter__(self):
+    def start(self):
         # start all provisioners
         for prov in self.provisioners:
             prov.start()
         return self
 
-    def __exit__(self, exc_type, exc_value, traceback):
+    def stop(self):
         # cancel all running tests and wait for them to clean up (up to 0.1sec)
         for rinfo in self.running_tests.values():
             rinfo.executor.cancel()
         self.test_queue.join()  # also ignore any exceptions raised
 
         # stop all provisioners, also releasing all remotes
-        with concurrent.futures.ThreadPoolExecutor(max_workers=20) as ex:
-            for provisioner in self.provisioners:
-                for func in provisioner.stop_defer():
-                    ex.submit(func)
+        if self.provisioners:
+            workers = min(len(self.provisioners), 20)
+            with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as ex:
+                for provisioner in self.provisioners:
+                    for func in provisioner.stop_defer():
+                        ex.submit(func)
+
+    def __enter__(self):
+        try:
+            self.start()
+            return self
+        except Exception:
+            self.stop()
+            raise
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.stop()
 
     @staticmethod
     def next_test(to_run, all_tests, previous):  # noqa: ARG004

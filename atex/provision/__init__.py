@@ -65,8 +65,12 @@ class Provisioner:
         return self.stop
 
     def __enter__(self):
-        self.start()
-        return self
+        try:
+            self.start()
+            return self
+        except Exception:
+            self.stop()
+            raise
 
     def __exit__(self, exc_type, exc_value, traceback):
         self.stop()

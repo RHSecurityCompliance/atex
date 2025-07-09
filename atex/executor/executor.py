@@ -1,4 +1,5 @@
 import os
+import enum
 import select
 import threading
 import contextlib
@@ -29,7 +30,8 @@ class Executor:
         with Executor(tests_data, conn) as e:
             e.upload_tests()
             e.plan_prepare()
-            e.run_test("/some/test", "results/here.json", "uploaded/files/here")
+            Path("output_here").mkdir()
+            e.run_test("/some/test", "output_here")
             e.run_test(...)
             e.plan_finish()
 
@@ -117,8 +119,12 @@ class Executor:
             self.plan_env_file = None
 
     def __enter__(self):
-        self.setup()
-        return self
+        try:
+            self.setup()
+            return self
+        except Exception:
+            self.cleanup()
+            raise
 
     def __exit__(self, exc_type, exc_value, traceback):
         self.cleanup()
@@ -190,20 +196,30 @@ class Executor:
         if scripts := self.fmf_tests.finish_scripts:
             self._run_prepare_scripts(scripts)
 
-    def run_test(self, test_name, json_file, files_dir, *, env=None):
+    class State(enum.Enum):
+        STARTING_TEST = enum.auto()
+        READING_CONTROL = enum.auto()
+        WAITING_FOR_EXIT = enum.auto()
+        RECONNECTING = enum.auto()
+
+    def run_test(self, test_name, output_dir, *, env=None):
         """
         Run one test on the remote system.
 
         'test_name' is a string with test name.
 
-        'json_file' is a destination file (string or Path) for results.
-
-        'files_dir' is a destination dir (string or Path) for uploaded files.
+        'output_dir' is a destination dir (string or Path) for results reported
+        and files uploaded by the test. Results are always stored in a line-JSON
+        format in a file named 'results', files are always uploaded to directory
+        named 'files', both inside 'output_dir'.
+        The path for 'output_dir' must already exist and be an empty directory
+        (ie. typically a tmpdir).
 
         'env' is a dict of extra environment variables to pass to the test.
 
         Returns an integer exit code of the test script.
         """
+        output_dir = Path(output_dir)
         test_data = self.fmf_tests.tests[test_name]
 
         # run a setup script, preparing wrapper + test scripts
@@ -233,9 +249,9 @@ class Executor:
             env_vars.update(env)
 
         with contextlib.ExitStack() as stack:
-            reporter = stack.enter_context(Reporter(json_file, files_dir))
-            testout_fd = stack.enter_context(reporter.open_tmpfile())
+            reporter = stack.enter_context(Reporter(output_dir, "results", "files"))
             duration = Duration(test_data.get("duration", "5m"))
+            control = testcontrol.TestControl(reporter=reporter, duration=duration)
 
             test_proc = None
             control_fd = None
@@ -249,23 +265,19 @@ class Executor:
                     test_proc.wait()
                 raise TestAbortedError(msg) from None
 
+            exception = None
+
             try:
-                # TODO: probably enum
-                state = "starting_test"
+                state = self.State.STARTING_TEST
                 while not duration.out_of_time():
                     with self.lock:
                         if self.cancelled:
                             abort("cancel requested")
 
-                    if state == "starting_test":
+                    if state == self.State.STARTING_TEST:
                         control_fd, pipe_w = os.pipe()
                         os.set_blocking(control_fd, False)
-                        control = testcontrol.TestControl(
-                            control_fd=control_fd,
-                            reporter=reporter,
-                            duration=duration,
-                            testout_fd=testout_fd,
-                        )
+                        control.reassign(control_fd)
                         # reconnect/reboot count (for compatibility)
                         env_vars["TMT_REBOOT_COUNT"] = str(reconnects)
                         env_vars["TMT_TEST_RESTART_COUNT"] = str(reconnects)
@@ -275,13 +287,13 @@ class Executor:
                         test_proc = self.conn.cmd(
                             ("env", *env_args, f"{self.work_dir}/wrapper.sh"),
                             stdout=pipe_w,
-                            stderr=testout_fd,
+                            stderr=reporter.testout_fobj.fileno(),
                             func=util.subprocess_Popen,
                         )
                         os.close(pipe_w)
-                        state = "reading_control"
+                        state = self.State.READING_CONTROL
 
-                    elif state == "reading_control":
+                    elif state == self.State.READING_CONTROL:
                         rlist, _, xlist = select.select((control_fd,), (), (control_fd,), 0.1)
                         if xlist:
                             abort(f"got exceptional condition on control_fd {control_fd}")
@@ -290,9 +302,9 @@ class Executor:
                             if control.eof:
                                 os.close(control_fd)
                                 control_fd = None
-                                state = "waiting_for_exit"
+                                state = self.State.WAITING_FOR_EXIT
 
-                    elif state == "waiting_for_exit":
+                    elif state == self.State.WAITING_FOR_EXIT:
                         # control stream is EOF and it has nothing for us to read,
                         # we're now just waiting for proc to cleanly terminate
                         try:
@@ -305,7 +317,7 @@ class Executor:
                                 self.conn.disconnect()
                                 # if reconnect was requested, do so, otherwise abort
                                 if control.reconnect:
-                                    state = "reconnecting"
+                                    state = self.State.RECONNECTING
                                     if control.reconnect != "always":
                                         control.reconnect = None
                                 else:
@@ -317,11 +329,11 @@ class Executor:
                         except subprocess.TimeoutExpired:
                             pass
 
-                    elif state == "reconnecting":
+                    elif state == self.State.RECONNECTING:
                         try:
                             self.conn.connect(block=False)
                             reconnects += 1
-                            state = "starting_test"
+                            state = self.State.STARTING_TEST
                         except BlockingIOError:
                             pass
 
@@ -331,12 +343,19 @@ class Executor:
                 else:
                     abort("test duration timeout reached")
 
-                # testing successful, do post-testing tasks
+                # testing successful
 
                 # test wrapper hasn't provided exitcode
                 if control.exit_code is None:
                     abort("exitcode not reported, wrapper bug?")
 
+                return control.exit_code
+
+            except Exception as e:
+                exception = e
+                raise
+
+            finally:
                 # partial results that were never reported
                 if control.partial_results:
                     for result in control.partial_results.values():
@@ -346,59 +365,32 @@ class Executor:
                             control.nameless_result_seen = True
                         if testout := result.get("testout"):
                             try:
-                                reporter.link_tmpfile_to(testout_fd, testout, name)
+                                reporter.link_testout(testout, name)
                             except FileExistsError:
                                 raise testcontrol.BadReportJSONError(
                                     f"file '{testout}' already exists",
                                 ) from None
                         reporter.report(result)
 
-                # test hasn't reported a result for itself, add an automatic one
-                # as specified in RESULTS.md
-                # {"status": "pass", "testout": "output.txt"}
-                if not control.nameless_result_seen:
-                    reporter.link_tmpfile_to(testout_fd, "output.txt")
+                # if an unexpected infrastructure-related exception happened
+                if exception:
+                    try:
+                        reporter.link_testout("output.txt")
+                    except FileExistsError:
+                        pass
+                    reporter.report({
+                        "status": "infra",
+                        "note": repr(exception),
+                        "testout": "output.txt",
+                    })
+
+                # if the test hasn't reported a result for itself
+                elif not control.nameless_result_seen:
+                    try:
+                        reporter.link_testout("output.txt")
+                    except FileExistsError:
+                        pass
                     reporter.report({
                         "status": "pass" if control.exit_code == 0 else "fail",
                         "testout": "output.txt",
                     })
-
-                return control.exit_code
-
-            except Exception:
-                # if the test hasn't reported a result for itself, but still
-                # managed to break something, provide at least the default log
-                # for manual investigation - otherwise test output disappears
-                if not control.nameless_result_seen:
-                    try:
-                        reporter.link_tmpfile_to(testout_fd, "output.txt")
-                        reporter.report({
-                            "status": "infra",
-                            "testout": "output.txt",
-                        })
-                    # in case outout.txt exists as a directory
-                    except FileExistsError:
-                        pass
-                raise
-
-
-#__all__ = [
-#    info.name for info in _pkgutil.iter_modules(__spec__.submodule_search_locations)
-#]
-#
-#
-#import importlib as _importlib
-#import pkgutil as _pkgutil
-#
-#
-#def __dir__():
-#    return __all__
-#
-#
-## lazily import submodules
-#def __getattr__(attr):
-#    # importing a module known to exist
-#    if attr in __all__:
-#        return _importlib.import_module(f".{attr}", __name__)
-#    else:
-#        raise AttributeError(f"module '{__name__}' has no attribute '{attr}'")

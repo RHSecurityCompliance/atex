@@ -39,8 +39,12 @@ class Connection:
     """
 
     def __enter__(self):
-        self.connect()
-        return self
+        try:
+            self.connect()
+            return self
+        except Exception:
+            self.disconnect()
+            raise
 
     def __exit__(self, exc_type, exc_value, traceback):
         self.disconnect()

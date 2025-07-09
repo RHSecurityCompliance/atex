@@ -6,6 +6,7 @@ from pathlib import Path
 
 from atex.provision.testingfarm import TestingFarmProvisioner
 from atex import fmf, orchestrator
+from atex.orchestrator import CSVAggregator, JSONAggregator
 
 
 logging.basicConfig(
@@ -16,11 +17,12 @@ logging.basicConfig(
 )
 
 
-fmf_tests = fmf.FMFTests("/home/user/gitit/tmt-experiments", "/plans/friday-demo")
+fmf_tests = fmf.FMFTests("/home/jjaburek/gitit/tmt-experiments", "/plans/friday-demo")
 
 prov = TestingFarmProvisioner("CentOS-Stream-9", arch="x86_64", max_systems=5, max_retries=1)
 
-aggr = orchestrator.CSVAggregator("/tmp/csv_file", "/tmp/storage_dir")
+#aggr = orchestrator.CSVAggregator("/tmp/csv_file", "/tmp/storage_dir")
+aggr = orchestrator.JSONAggregator("/tmp/aggr_file", "/tmp/storage_dir")
 aggr.open()
 
 Path("/tmp/storage_dir/orch_tmp").mkdir()

@@ -570,7 +570,11 @@ class Reserve:
                 self._tmpdir = None
 
     def __enter__(self):
-        return self.reserve()
+        try:
+            return self.reserve()
+        except Exception:
+            self.release()
+            raise
 
     def __exit__(self, exc_type, exc_value, traceback):
         self.release()

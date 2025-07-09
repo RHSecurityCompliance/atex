@@ -16,31 +16,37 @@
 
   - raise non-0 exit code and unexpected exceptions to util.warning
 
+- orchestrator is still calling Remote.release() directly, which may block
+  for a long time; have some worker/queue that does it in the background
+  - probably as some new BackgroundRemoteReleaser class
+    - would be .start()ed from orchestrator start
+    - orchestrator would end it from .stop()
+    - the class would have a worker function running in the thread,
+      reading from a SimpleQueue and calling .release()
+      - if it reads None, it ends
+    - the class would have some .terminate(), which would push None
+      to the queue and wait for .join()
+      - orchestrator could return that waiting-for-join function
+        as a callable in stop_defer()
 
-- come up with a more universal API for making tmpfiles in class Reporter
-  - current implementation relies on returning a 'fd' integer that can be
-    linked back to a file, which ONLY works with AT_EMPTY_PATH linkat,
-    not any alternate implementation (ie. using files)
-  - maybe wrap it in some class instance return (that could ie. store
-    file path/name) or something
-  - eventually get rid of AT_EMPTY_PATH for a regular NamedTemporaryFile
-    implementation, because unprivileged AT_EMPTY_PATH was added in 2024
-    https://lkml.org/lkml/2024/4/10/1671
+    --> actually, do it differently:
+        - make existing ThreadQueue more similar to ThreadPoolExecutor
+          by having a configurable 'max_workers' argument, default = infinity
+          (and thus start_thread() gets renamed to submit())
 
-  - actually, we don't need that "create tmpfile + link it later" for any
-    regular file upload; we need it only for testout.log
-    - ditch the open_tmpfile / link_tmpfile_to approach completely, have
-      just one function used as context manager (like open()), returning
-      file object; basically open() with automatic path
-    - handle testout.log via NamedTemporaryFile and just hardlink it to
-      any {"testout": "blabla.log"} the user gives; deleting the tmpfile
-      at the end (or hardlinking it to default output.txt + deleting it)
+        - then make a simplified version of it that doesn't need to
+          return anything, just runs functions pushed to queue
+          - and then use it for .release() with max_workers=2 or so
 
+        - (make sure to self.lock the ThreadPoolExecutor for actions that need it)
+          - and have a semaphore for tracking how many threads are active,
+            giving .submit() a clue whether to spawn a new one
+        - have threads self-shutdown themselves by .get(block=False) checking
+          whether the queue is empty - if it is, shut down the worker
 
 - contest bug?, reporting log with full path
   - :238: PASS / [report.html, scan-arf.xml.gz, /var/lib/libvirt/images/contest-osbuild.txt]
   - does it upload correctly with name: contest-osbuild.txt ?
-
 
 - priority system for contest
   - 'extra-priority' or something like that
@@ -50,7 +56,6 @@
 - per-test rerun counts ('extra-reruns')
   - root-level main.fmf could set it to 1, except RHEL-10 (because OpenGPG dnf bug) to 3
   - image-builder test could set it to 5
-
 
 - make testing farm point to an ATEX repo tag when downloading the
   reserve test, to freeze given ATEX versions in time (so they're not
@@ -67,6 +72,8 @@
 
 - notable TODOs
   - testingfarm and automatically limiting 'class Request' refreshes
+  - testingfarm provisioner scaling up/down remotes, to avoid 40 "empty"
+    remotes being used up while waiting for the last 1-3 tests to finish
   - atex/util/threads.py documentation
   - generic ConnectError-ish for all Connections
 
@@ -82,8 +89,14 @@
     systemd-based podman container (PodmanProvisioner with extra run opts)
   - reporter (part of executor)
   - executor
+    - incl. corner cases (see above)
+    - reboot
+      - partial results preserved across reboots
+      - disconnect without requested reconnect --> error
+      - etc.
   - aggregators
   - orchestrator
+    - incl. corner cases like setup failing and being retried
   - provisioners (see TODO at the end of shared.py)
     - start() and stop()
     - stop_defer()

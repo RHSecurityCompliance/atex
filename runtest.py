@@ -2,7 +2,7 @@
 
 import sys
 import logging
-from pathlib import Path
+#from pathlib import Path
 import tempfile
 #import shutil
 #import concurrent.futures
@@ -20,15 +20,16 @@ logging.basicConfig(
 fmf_tests = fmf.FMFTests(
 #    "/home/user/gitit/tmt-experiments",
 #    "/plans/friday-demo",
-    "/home/user/gitit/contest",
+    "/home/jjaburek/gitit/contest",
     "/plans/daily",
     context={"distro": "centos-stream-9", "arch": "x86_64"},
+    names=["/scanning/oscap-eval"],
 )
 
 ssh_options = {
     "User": "root",
-    "Hostname": "3.142.239.8",
-    "IdentityFile": "/tmp/tmpn97lvido/key_rsa",
+    "Hostname": "18.191.153.136",
+    "IdentityFile": "/tmp/tmpnvmpzrr_/key_rsa",
 }
 
 with connection.ssh.ManagedSSHConn(options=ssh_options) as conn:
@@ -36,11 +37,11 @@ with connection.ssh.ManagedSSHConn(options=ssh_options) as conn:
         ex.upload_tests()
         ex.plan_prepare()
         #for test_name in fmf_tests.tests:
-        for test_name in ['/scanning/oscap-eval']:
-            tmpdir = tempfile.TemporaryDirectory(dir="/tmp", delete=False)
-            files_dir = Path(tmpdir.name) / "files"
-            json_file = Path(tmpdir.name) / "json"
-            ex.run_test(test_name, json_file, files_dir)
+        for test_name in fmf_tests.tests:
+            tmpdir = tempfile.TemporaryDirectory(dir="/tmp/runtest", delete=False)
+            #files_dir = Path(tmpdir.name) / "files"
+            #json_file = Path(tmpdir.name) / "json"
+            ex.run_test(test_name, tmpdir.name)
         ex.plan_finish()
 
 

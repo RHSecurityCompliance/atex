@@ -23,13 +23,13 @@ fmf_tests = fmf.FMFTests(
     "/home/jjaburek/gitit/contest",
     "/plans/daily",
     context={"distro": "centos-stream-9", "arch": "x86_64"},
-    names=["/scanning/oscap-eval"],
+    names=["/scanning/oscap-eval", "/static-checks"],
 )
 
 ssh_options = {
     "User": "root",
-    "Hostname": "18.191.153.136",
-    "IdentityFile": "/tmp/tmpnvmpzrr_/key_rsa",
+    "Hostname": "3.142.225.15",
+    "IdentityFile": "/tmp/tmpo6j5x3g0/key_rsa",
 }
 
 with connection.ssh.ManagedSSHConn(options=ssh_options) as conn:

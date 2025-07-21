@@ -1,0 +1,376 @@
+const RESULTS_DB_FILE = "./many_results.sqlite.gz";
+const FILES_DIR = "./storage_dir";
+const OLD_RUNS_DIR = "./old_runs/";
+const MAX_SHOWN_RESULTS = 1000;
+ 
+
+let RESULTS_DB = null;
+
+// a hack to load non-ES-modules (regular .js files) dynamically
+function load_script(src) {
+    return new Promise((resolve, reject) => {
+        const script = document.createElement("script");
+        script.src = src;
+        script.onload = resolve;
+        script.onerror = reject;
+        document.head.appendChild(script);
+    });
+}
+
+let notify_clear_scheduled = null;
+function notify_info(msg) { return notify_msg(msg, "#aaffaa"); }
+function notify_error(msg) { return notify_msg(msg, "#ffaaaa"); }
+function notify_msg(msg, color=null) {
+    const notifications = document.getElementById("notifications");
+    // if clear was scheduled, but a new msg is to be added before it runs,
+    // perform the clear now
+    if (notify_clear_scheduled) {
+        clearTimeout(notify_clear_scheduled);
+        notify_clear_scheduled = null;
+        notify_clear();
+    }
+    const new_div = document.createElement("div");
+    if (color) {
+        new_div.style.backgroundColor = color;
+    }
+    new_div.textContent = msg;
+    notifications.appendChild(new_div);
+    return new_div;
+}
+function notify_clear(timeout=null) {
+    const notifications = document.getElementById("notifications");
+    if (timeout) {
+        notify_clear_scheduled = setTimeout(() => {
+            notifications.innerHTML = "";
+        }, timeout);
+    } else {
+        // in case it's scheduled by someone else
+        if (notify_clear_scheduled) {
+            clearTimeout(notify_clear_scheduled);
+            notify_clear_scheduled = null;
+        }
+        notifications.innerHTML = "";
+    }
+}
+
+async function fetch_results(path) {
+    const response = await fetch(path);
+    if (!response.ok) {
+        throw new Error(`Failed to fetch compressed results DB: HTTP ${response.status}: ${response.statusText}`);
+    }
+
+    const notify_elem = notify_info("Downloading and decompressing results DB");
+
+    let compressed_stream = null;
+    // if we know the total compressed size ahead of time,
+    // display a "progress bar" via a TransformStream sitting between the
+    // original ReadableStream from fetch() and DecompressionStream
+    const content_length = parseInt(response.headers.get("Content-Length") || "0", 10);
+    if (content_length) {  // exists and non-zero
+        let bytes_read = 0;
+        const counter_stream = new TransformStream({
+            transform(chunk, controller) {
+                bytes_read += chunk.byteLength;
+                notify_elem.textContent =
+                    `Downloading and decompressing results DB (${bytes_read}/${content_length})`;
+                controller.enqueue(chunk);
+            }
+        });
+        compressed_stream = response.body.pipeThrough(counter_stream);
+    } else {
+        compressed_stream = response.body;
+    }
+
+    const decompressed_stream = compressed_stream.pipeThrough(new DecompressionStream('gzip'));
+
+    // create a "large enough" (4GiB max, starting at 0) resizeable ArrayBuffer
+    // and gradually append to it decompressed chunks
+    const db_data = new ArrayBuffer(0, { maxByteLength: 4294967296 });
+    const reader = decompressed_stream.getReader();
+    let bytes_read = 0;
+    while (true) {
+        const { done, value: chunk } = await reader.read();
+        if (done) break;
+
+        const new_size = bytes_read + chunk.byteLength;
+        db_data.resize(new_size);
+        // a view over the newly added bytes by the .resize()
+        // (offset starting at bytes_read of chunk.byteLength size)
+        const view = new Uint8Array(db_data, bytes_read, chunk.byteLength);
+        view.set(chunk);
+
+        bytes_read = new_size;
+    }
+
+    return new Uint8Array(db_data);
+}
+
+async function fetch_into_elem(target_elem, url) {
+    const response = await fetch(url);
+    if (!response.ok) return;  // silently omit
+    target_elem.innerHTML = await response.text();
+    target_elem.style.removeProperty("display");
+}
+/*
+async function fetch_into_iframe(frame, url) {
+    const response = await fetch(url);
+    if (!response.ok) return;  // silently omit
+    frame.srcdoc = response.text();
+    // once DOM loads/renders it, resize it
+    frame.addEventListener("load", () => {
+        const doc_elem = iframe.contentWindow.document.documentElement;
+        const height = Math.max(
+            doc_elem.scrollHeight,
+            doc_elem.offsetHeight,
+            doc_elem.clientHeight,
+        );
+        frame.style.height = `${height}px`;
+    });
+}   
+*/
+async function display_old_runs(target_elem, url) {
+    const response = await fetch(url);
+    console.log(response);
+    if (!response.ok) return;  // keep hidden
+    const a = document.createElement("a");
+    a.href = response.url;  // resolve any redirects
+    a.textContent = "(Old runs here, not included in the results)";
+    target_elem.appendChild(a);
+    target_elem.style.removeProperty("display");
+}
+
+function get_url_query() {
+    const url = new URL(window.location.href);
+    return url.searchParams.get("q");
+}
+function set_url_query(query) {
+    const url = new URL(window.location.href);
+    if (query === null) {
+        url.searchParams.delete("q");
+    } else {
+        url.searchParams.set("q", query);
+    }
+    history.replaceState(null, "", url);
+}
+
+function update_results_table(where) {
+    const query = `
+        SELECT platform, status, test, sub, note, files
+        FROM results
+        WHERE ${where}
+        LIMIT ${MAX_SHOWN_RESULTS+1};
+    `;
+    //notify_info(`Running query: ${query}`);
+    const stmt = RESULTS_DB.prepare(query);
+    const tbody_frag = document.createDocumentFragment();
+
+    let rows = 0;
+    for (; rows <= MAX_SHOWN_RESULTS && stmt.step(); rows++) {
+        const row = stmt.get();
+
+        const tr = document.createElement("tr");
+        let td = null;
+
+        td = document.createElement("td");
+        td.className = "platform";
+        td.textContent = row[0];
+        tr.appendChild(td);
+
+        td = document.createElement("td");
+        td.className = "status";
+        td.textContent = row[1];
+        tr.appendChild(td);
+
+        // if test name + sub name are >80char, allow wrapping
+        const name_length = row[2].length + (row[3] ? row[3].length : 0);
+        td = document.createElement("td");
+        td.className = "test";
+        if (name_length > 80) {
+            td.style.whiteSpace = "normal";
+        }
+        td.textContent = row[2];
+        tr.appendChild(td);
+        td = document.createElement("td");
+        td.className = "sub";
+        if (name_length > 80) {
+            td.style.whiteSpace = "normal";
+        }
+        td.textContent = row[3] || "";
+        tr.appendChild(td);
+
+        td = document.createElement("td");
+        td.className = "note";
+        td.textContent = row[4] || "";
+        tr.appendChild(td);
+
+        td = document.createElement("td");
+        td.className = "files";
+        if (!row[5]) {
+            td.textContent = "";
+        } else {
+            // files_dir / some/test/name / optional/sub/test
+            const path = `${FILES_DIR}${row[2]}${row[3] ? "/"+row[3] : ""}`;
+            const files = JSON.parse(row[5]);
+            if (files.length > 0) {
+                for (const file of files) {
+                    const a = document.createElement("a");
+                    a.href = `${path}/${file}`;
+                    a.textContent = file;
+                    td.appendChild(a);
+                    td.appendChild(document.createTextNode(" "));
+                };
+                // remove last space
+                td.removeChild(td.lastChild);
+            } else {
+                td.textContent = "";
+            }
+        }
+        tr.appendChild(td);
+
+        tr.className = `results ${row[1]}`;  // results pass
+        tbody_frag.appendChild(tr);
+    }
+
+    const table = document.getElementById("results");
+    const tbody = table.tBodies[0];
+    const noresults = document.getElementById("noresults");
+    if (tbody_frag.childElementCount > 0) {
+        tbody.innerHTML = "";
+        tbody.appendChild(tbody_frag);
+        table.style.removeProperty("display");
+        noresults.style.display = "none";
+    } else {
+        noresults.style.removeProperty("display");
+        table.style.display = "none";
+        tbody.innerHTML = "";
+    }
+
+    if (rows > MAX_SHOWN_RESULTS) {
+        notify_error(`Returned >${MAX_SHOWN_RESULTS} rows, refine your filter`);
+        notify_clear(10000);
+    } else {
+        notify_info(`Returned ${rows} rows`);
+        notify_clear(3000);
+    }
+}
+
+function handle_submit_noop(ev) {
+    ev.preventDefault();
+}
+
+function handle_submit(ev) {
+    try {
+        ev.preventDefault();
+        notify_clear();
+        const text = document.getElementById("filter_query");
+        const query = text.value.replaceAll("\n", " ").trim();
+        if (!query) {
+            set_url_query(null);
+            // hide both the results table and the noresults printout
+            // (restore on-load look)
+            const table = document.getElementById("results");
+            table.style.display = "none";
+            table.tBodies[0].innerHTML = "";
+            document.getElementById("noresults").style.display = "none";
+        } else {
+            set_url_query(query);
+            update_results_table(query);
+        }
+    } catch (error) {
+        notify_error(`Caught ${error.name}: ${error.message}`);
+        notify_clear(30000);
+        throw error;
+    }
+}
+
+async function on_page_load() {
+    try {
+        const filter_form = document.getElementById("filter_form");
+        filter_form.addEventListener('submit', handle_submit_noop);
+
+        // pre-populate the query form from URL, but don't auto-submit it
+        // - this is to allow the user to continue editing the query even
+        // while the results are being downloaded; we auto-submit it later
+        const url_query = get_url_query();
+        const filter_form_query = document.getElementById("filter_query");
+        if (url_query) {
+            filter_form_query.value = url_query;
+        }
+
+        // fire off multiple concurrent downloads because while results DB
+        // might be big, decompressing it might be the bottleneck, so we can
+        // still concurrently download other things
+
+        notify_info("Fetching custom header/footer/old_runs");
+        const header_promise = fetch_into_elem(
+            document.getElementById("header"),
+            "header.html",
+        );
+        const footer_promise = fetch_into_elem(
+            document.getElementById("footer"),
+            "footer.html",
+        );
+        const old_runs_promise = display_old_runs(
+            document.getElementById("old_runs"),
+            OLD_RUNS_DIR,
+        );
+
+        const results_promise = fetch_results(RESULTS_DB_FILE);
+
+        // download SQL.JS wrapper + WASM binary in parallel
+        notify_info("Downloading SQL.JS javascript glue + WASM binary");
+        const sqljs_script_promise = load_script("./sqljs/sql-wasm.js");
+        const sqljs_wasm_promise =
+            fetch("./sqljs/sql-wasm.wasm").then(response => {
+                if (!response.ok) {
+                    throw new Error(`Failed to fetch SQL.JS WASM: HTTP ${response.status}: ${response.statusText}`);
+                }
+                return response.arrayBuffer();
+            });
+
+        await header_promise;
+        await footer_promise;
+        await old_runs_promise;
+        // header/footer/old_runs fetched, display body now
+        document.getElementById("content").style.removeProperty("display");
+
+        await sqljs_script_promise;
+        const sqljs_wasm = await sqljs_wasm_promise;
+        const sqljs = await initSqlJs({ wasmBinary: sqljs_wasm });
+
+        const results = await results_promise;
+
+        notify_info("Opening the results DB via SQL.JS");
+        const results_db = new sqljs.Database(results);
+
+        const tables = results_db.exec("SELECT COUNT(1) FROM sqlite_schema WHERE type = 'table'");
+        notify_info(`Got ${tables.length} tables`);
+
+        // export to other javascript
+        RESULTS_DB = results_db;
+
+        filter_form.removeEventListener('submit', handle_submit_noop);
+        filter_form.addEventListener('submit', handle_submit);
+
+        // if the URL-specified query was edited by the user while we were
+        // fetching results, do not auto-submit it; let the user do it when
+        // edits are done
+        if (url_query && url_query == filter_form_query.value) {
+            update_results_table(url_query);
+        }
+
+        notify_clear(1000);
+
+    } catch (error) {
+        notify_error(`Caught ${error.name}: ${error.message}`);
+        throw error;
+    }
+}
+
+// this is not strictly necessary due to us being loaded via 'defer', but it
+// allows this ES module to be considered fully loaded, even if it throws
+// an exception (ie. due to bad URL query), whereas if this executed on ES
+// module toplevel, the browser would treat it as fatal ES module load error
+document.addEventListener("DOMContentLoaded", on_page_load);
+
+// vim: sts=4 sw=4 et :

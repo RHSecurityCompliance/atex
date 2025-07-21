@@ -90,6 +90,7 @@
   - reporter (part of executor)
   - executor
     - incl. corner cases (see above)
+    - shared_dir across multiple parallel Executor instances
     - reboot
       - partial results preserved across reboots
       - disconnect without requested reconnect --> error
@@ -103,20 +104,6 @@
 
 - clarify, in docstrings for API definitions, what functions may block
   and which ones may be run in different threads
-
-
-- no output.txt (in the temporary storage) on timeout, linked only for final results:
-
-2025-06-30 19:06:33 atex: unexpected exception happened while running '/hardening/host-os/oscap/anssi_bp28_high' on TestingFarmRemote(RHEL-9.7.0-Nightly @ x86_64, 0x7f91ce81ed50):
-Traceback (most recent call last):
-  File "/root/atex/atex/util/threads.py", line 26, in _wrapper
-    ret = func(*func_args, **func_kwargs)
-  File "/root/atex/atex/executor/executor.py", line 332, in run_test
-    abort("test duration timeout reached")
-    ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/root/atex/atex/executor/executor.py", line 250, in abort
-    raise TestAbortedError(msg) from None
-atex.executor.executor.TestAbortedError: test duration timeout reached
 
 
 --------------------------

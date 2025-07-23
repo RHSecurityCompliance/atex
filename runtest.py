@@ -23,26 +23,27 @@ fmf_tests = fmf.FMFTests(
     "/home/jjaburek/gitit/contest",
     "/plans/daily",
     context={"distro": "centos-stream-9", "arch": "x86_64"},
-    names=["/scanning/oscap-eval", "/static-checks"],
+    #names=["/hardening/host-os/oscap/hipaa"],
+    names=["/scanning/oscap-eval"],
 )
 
-ssh_options = {
-    "User": "root",
-    "Hostname": "3.142.225.15",
-    "IdentityFile": "/tmp/tmpo6j5x3g0/key_rsa",
-}
+#prov = TestingFarmProvisioner("CentOS-Stream-9", arch="x86_64", max_systems=1, max_retries=1)
 
-with connection.ssh.ManagedSSHConn(options=ssh_options) as conn:
-    with executor.Executor(fmf_tests, conn) as ex:
-        ex.upload_tests()
-        ex.plan_prepare()
-        #for test_name in fmf_tests.tests:
-        for test_name in fmf_tests.tests:
-            tmpdir = tempfile.TemporaryDirectory(dir="/tmp/runtest", delete=False)
-            #files_dir = Path(tmpdir.name) / "files"
-            #json_file = Path(tmpdir.name) / "json"
-            ex.run_test(test_name, tmpdir.name)
-        ex.plan_finish()
+#with prov:
+if True:
+    ssh_options = {
+        "User": "root",
+        "Hostname": "18.222.123.94",
+        "IdentityFile": "/tmp/tmpvrzfjiqs/key_rsa",
+    }
+    with connection.ssh.ManagedSSHConn(options=ssh_options) as conn:
+        with executor.Executor(fmf_tests, conn) as ex:
+            ex.upload_tests()
+            ex.plan_prepare()
+            for test_name in fmf_tests.tests:
+                tmpdir = tempfile.TemporaryDirectory(dir="/tmp/runtest", delete=False)
+                ex.run_test(test_name, tmpdir.name)
+            ex.plan_finish()
 
 
 #shutil.rmtree("/tmp/testme")

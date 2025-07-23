@@ -267,8 +267,9 @@ class ManagedSSHConn(Connection):
         proc = self._master_proc
         if not proc:
             return
+        util.debug(f"disconnecting: {self.options}")
         proc.kill()
-        # don"t zombie forever, return EPIPE on any attempts to write to us
+        # don't zombie forever, return EPIPE on any attempts to write to us
         proc.stdout.close()
         proc.wait()
         (self._tmpdir / "control.sock").unlink(missing_ok=True)
@@ -286,6 +287,7 @@ class ManagedSSHConn(Connection):
         sock = self._tmpdir / "control.sock"
 
         if not self._master_proc:
+            util.debug(f"connecting: {self.options}")
             options = self.options.copy()
             options["SessionType"] = "none"
             options["ControlMaster"] = "yes"

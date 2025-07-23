@@ -179,7 +179,7 @@ class Orchestrator:
             exc_name = type(finfo.exception).__name__
             exc_tb = "".join(traceback.format_exception(finfo.exception)).rstrip("\n")
             msg = f"{remote_with_test} threw {exc_name} during test runtime"
-            finfo.remote.release()
+            #finfo.remote.release()
             if (reruns_left := self.reruns[finfo.test_name]) > 0:
                 util.info(f"{msg}, re-running ({reruns_left} reruns left):\n{exc_tb}")
                 self.reruns[finfo.test_name] -= 1
@@ -192,7 +192,7 @@ class Orchestrator:
         # if the test exited as non-0, try a re-run
         elif finfo.exit_code != 0:
             msg = f"{remote_with_test} exited with non-zero: {finfo.exit_code}"
-            finfo.remote.release()
+            #finfo.remote.release()
             if (reruns_left := self.reruns[finfo.test_name]) > 0:
                 util.info(f"{msg}, re-running ({reruns_left} reruns left)")
                 self.reruns[finfo.test_name] -= 1
@@ -208,8 +208,9 @@ class Orchestrator:
             ingest_result()
 
         # if destroyed, release the remote
+        # (Executor exception is always considered destructive)
         test_data = self.fmf_tests.tests[finfo.test_name]
-        if self.destructive(finfo, test_data):
+        if finfo.exception or self.destructive(finfo, test_data):
             util.debug(f"{remote_with_test} was destructive, releasing remote")
             finfo.remote.release()
 

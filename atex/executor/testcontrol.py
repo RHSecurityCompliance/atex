@@ -124,13 +124,12 @@ class TestControl:
         Assign a new control file descriptor to read test control from,
         replacing a previous one. Useful on test reconnect.
         """
-        err = "tried to assign new control fd while "
+        err = "tried to assign new control fd while"
         if self.in_progress:
             raise BadControlError(f"{err} old one is reading non-control binary data")
-        elif self.eof:
-            raise BadControlError(f"{err} old one is already EOF")
         elif self.stream and self.stream.bytes_read != 0:
             raise BadControlError(f"{err} old one is in the middle of reading a control line")
+        self.eof = False
         self.control_fd = new_fd
         self.stream = NonblockLineReader(new_fd)
 
@@ -157,7 +156,7 @@ class TestControl:
         except BufferFullError as e:
             raise BadControlError(str(e)) from None
 
-        util.debug(f"got control line: {line}")
+        util.debug(f"got control line: {line} // eof: {self.stream.eof}")
 
         if self.stream.eof:
             self.eof = True

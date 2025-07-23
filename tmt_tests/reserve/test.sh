@@ -80,6 +80,15 @@ fi
 
 # ------------------------------------------------------------------------------
 
+# on RHEL, switch to gpgcheck=1 (because Testing Farm defaults to gpgcheck=0
+# for historical reasons)
+if grep -q '^name=rhel-BaseOS$' /etc/yum.repos.d/rhel.repo 2>/dev/null; then
+    rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-*
+    sed 's/^gpgcheck=0$/gpgcheck=1/' -i /etc/yum.repos.d/rhel.repo
+fi
+
+# ------------------------------------------------------------------------------
+
 # remove useless legacy mountpoints (some have sticky bits)
 umount -f /mnt/* || true
 rmdir /mnt/*/*/* /mnt/*/* /mnt/* || true

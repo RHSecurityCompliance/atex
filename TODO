@@ -1,6 +1,14 @@
 
 - proper cleaning of tmpdirs on the host system ?
 
+- get rid of testout_fobj, replace it iwth testout_fd
+  - and os.open() in .start() / os.close() in .stop()
+  - have some reporter function to close it manually, close_testout()
+    - and call it from executor after doing Popen, to avoid opened fd hanging around
+      in the main python process when we don't need it
+  - make sure to open with O_WRONLY | O_CREAT | O_APPEND, so reconnects don't override the log
+  - verify by 'ls -l /proc/$pyproc/fd' to ensure there are no .../testout.temp fds open
+
 - test special cases; ie.
 
   - Executor running test and the remote loses connection
@@ -61,6 +69,8 @@
   reserve test, to freeze given ATEX versions in time (so they're not
   broken by future git commits)
 
+  - also parametrize reserve test via module-level constants or TestingFarmProvisioner args
+
 - make it python3.12 (RHEL-10) compatible, ideally 3.11 (RHEL-9)
 
 - in the CLI tool (for contest), block further SIGINT/SIGTERM
@@ -80,7 +90,34 @@
 - interactive mode for Executor (without redirecting stderr to file,
   and with stdin routed through)
 
+- enable gpgchck=1 on TestingFarm RHEL-based systems
+  - TODO: check RHEL-8 and 10 too, are they the same?
+  - /etc/yum.repos.d/rhel.repo
+    - search for "^name=rhel-BaseOS$" to check the file is not OS default
+    - replace all "^gpgcheck=0$' with 1
+
+- appending to a previous results.json.gz + files_dir
+  - gzip should be able to append a new gz header, and we can reuse a files_dir easily
+  - maybe append=False param for Orchestrator/Aggregator that would
+    - return error if False and one of the two exists
+    - append to them if True
+  - add test for it
+
+- testingfarm failure backoff cooldown
+  - if provisioning fails, retry getting new machines in increasing intervals;
+    ie. wait 1min, 2min, 4min, 8min, 16min, etc.
+  - maybe ditch the concept of an "infra retry" for provisioning, and just always
+    expect infinite retries based on ^^^, or use a high number like 8 (backoffs)
+    or an absolute giveup time
+
+- some interface on SIGUSR1 (?) on the state of the orchestration
+  - what tests are running / how many setups running / how many remotes / etc.
+  - how long have the running tests been running?
+  - what tests are still in to_run
+
 - more tests
+  - testcontrol (incl. reporting many results)
+    - incl. reporting after reboot
   - testingfarm API directly
     - API functions
     - class Request
@@ -105,6 +142,11 @@
 - clarify, in docstrings for API definitions, what functions may block
   and which ones may be run in different threads
 
+- demo examples
+  - parallel Executors on one system with multiple Connections
+  - Aggregator in append=True mode, re-running tests that never finished
+    (building up excludes=[] from finished results.json.gz)
+
 
 --------------------------
 
@@ -117,3 +159,49 @@ atex.executor.testcontrol.BadReportJSONError: file 'out.txt' already exists
 atex.connection.ssh.ConnectError: SSH ControlMaster failed to start on /tmp/atex-ssh-de1w7ayl with 255:
 b'kex_exchange_identification: read: Connection reset by peer\r\n'
 
+
+
+2025-07-23 02:15:47 atex: TestingFarmRemote(root@10.0.178.211:22@/tmp/tmp_86glufe/key_rsa, dd48242e-3956-4ca3-bc59-a00b1b6a1a93): '/static-checks/html-links' threw NotConnectedError during test runtime, reruns exceeded, giving up:
+atex.connection.ssh.NotConnectedError: SSH ControlMaster is not running
+
+
+   ---> IDENTIFIED: the problem is that orchestrator releases the remote on ANY non-0 exit code,
+
+                          elif finfo.exit_code != 0:
+                              msg = f"{remote_with_test} exited with non-zero: {finfo.exit_code}"
+                              finfo.remote.release()
+
+                    but then REUSES it if the test was not destructive - by default, any non-0
+                    is destructive, but custom ContestOrchestrator allows reuse on 'exit 1'
+                    as it doesn't consider regular test fail destructive
+                       ---> but the remote is already dead, connection disconnected
+   
+
+    - TODO: maybe have some destructive sanity check between tests?
+
+    - TODO: maybe check if there *was* a SSH ControlMaster running, but it exited with some error?
+
+   - it's /static-checks/html-links somehow destroying the system by successfully exiting with FAIL:
+
+      2025-07-23 02:15:46 atex: TestingFarmRemote(root@10.0.178.211:22@/tmp/tmp_86glufe/key_rsa, dd48242e-3956-4ca3-bc59-a00b1b6a1a93): '/static-checks/html-links' exited with non-zero: 2, re-running (1 reruns left)
+      2025-07-23 02:15:46 atex: starting '/static-checks/html-links' on TestingFarmRemote(root@10.0.178.211:22@/tmp/tmp_86glufe/key_rsa, dd48242e-3956-4ca3-bc59-a00b1b6a1a93)
+      2025-07-23 02:15:47 atex: TestingFarmRemote(root@10.0.178.211:22@/tmp/tmp_86glufe/key_rsa, dd48242e-3956-4ca3-bc59-a00b1b6a1a93): '/static-checks/html-links' threw NotConnectedError during test runtime, reruns exceeded, giving up:
+      Traceback (most recent call last):
+        File "/root/atex/atex/util/threads.py", line 26, in _wrapper
+          ret = func(*func_args, **func_kwargs)
+        File "/root/atex/atex/executor/executor.py", line 233, in run_test
+          self.conn.cmd(("bash",), input=setup_script, text=True, check=True)
+          ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        File "/root/atex/atex/connection/ssh.py", line 366, in cmd
+          self.assert_master()
+          ~~~~~~~~~~~~~~~~~~^^
+        File "/root/atex/atex/connection/ssh.py", line 254, in assert_master
+          raise NotConnectedError("SSH ControlMaster is not running")
+      atex.connection.ssh.NotConnectedError: SSH ControlMaster is not running
+
+      ...
+      2025-07-23 00:15:30 test.py:23: lib.results.report_plain:238: PASS http://www.avahi.org
+      2025-07-23 00:15:30 test.py:23: lib.results.report_plain:238: PASS https://chrony-project.org/
+      2025-07-23 00:15:41 test.py:21: lib.results.report_plain:238: FAIL https://www.iso.org/contents/data/standard/05/45/54534.html (HTTPSConnectionPool(host='www.iso.org', port=443): Read timed out. (read timeout=10))
+      2025-07-23 00:15:44 test.py:23: lib.results.report_plain:238: PASS https://public.cyber.mil/stigs/downloads/?_dl_facet_stigs=container-platform
+      2025-07-23 00:15:44 test.py:25: lib.results.report_plain:238: FAIL /

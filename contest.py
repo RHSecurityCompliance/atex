@@ -5,8 +5,8 @@ import shutil
 import logging
 from pathlib import Path
 
-from atex.provision.testingfarm import TestingFarmProvisioner
-from atex.provision.libvirt import LibvirtCloningProvisioner
+from atex.provisioner.testingfarm import TestingFarmProvisioner
+from atex.provisioner.libvirt import LibvirtCloningProvisioner
 from atex.connection.ssh import ManagedSSHConn
 from atex import fmf, orchestrator, util
 

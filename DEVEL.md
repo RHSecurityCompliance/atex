@@ -13,6 +13,9 @@ NEVER commit these to git, they are ONLY for the PyPI release.
 1. Point to that tag from `atex/provisioner/testingfarm/api.py`,
    `DEFAULT_RESERVE_TEST`
 1. ...
+1. `python3 -m build`
+1. `pip install -U twine`
+1. `python3 -m twine upload dist/*`
 
 ## Blocking functions
 

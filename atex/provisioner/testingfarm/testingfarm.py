@@ -49,17 +49,13 @@ class TestingFarmRemote(Remote, connection.ssh.ManagedSSHConn):
 
 
 class TestingFarmProvisioner(Provisioner):
-    # TODO: have max_systems as (min,default,max) tuple; have an algorithm that
-    #       starts at default and scales up/down as needed
+    absolute_max_remotes = 100
 
-    def __init__(self, compose, arch="x86_64", *, max_systems=1, max_retries=10, **reserve_kwargs):
+    def __init__(self, compose, arch="x86_64", *, max_retries=10, **reserve_kwargs):
         """
         'compose' is a Testing Farm compose to prepare.
 
         'arch' is an architecture associated with the compose.
-
-        'max_systems' is an int of how many systems to reserve (and keep
-        reserved) in an internal pool.
 
         'max_retries' is a maximum number of provisioning (Testing Farm) errors
         that will be reprovisioned before giving up.
@@ -67,7 +63,6 @@ class TestingFarmProvisioner(Provisioner):
         self.lock = threading.RLock()
         self.compose = compose
         self.arch = arch
-        self.max_systems = max_systems
         self.reserve_kwargs = reserve_kwargs
         self.retries = max_retries
 
@@ -157,11 +152,6 @@ class TestingFarmProvisioner(Provisioner):
         with self.lock:
             self._tmpdir = tempfile.TemporaryDirectory()
             self.ssh_key, self.ssh_pubkey = util.ssh_keygen(self._tmpdir.name)
-            # start up all initial reservations
-            for i in range(self.max_systems):
-                delay = (api.API_QUERY_DELAY / self.max_systems) * i
-                #self.queue.start_thread(target=self._schedule_one_reservation, args=(delay,))
-                self._schedule_one_reservation(delay)
 
     def stop(self):
         with self.lock:
@@ -188,14 +178,17 @@ class TestingFarmProvisioner(Provisioner):
             self._tmpdir = None
         return callables
 
-    def get_remote(self, block=True):
-        # fill .release()d remotes back up with reservations
+    def provision(self, count=1):
         with self.lock:
-            deficit = self.max_systems - len(self.remotes) - len(self.reserving)
-            for i in range(deficit):
-                delay = (api.API_QUERY_DELAY / deficit) * i
+            reservations = len(self.remotes) + len(self.reserving)
+            # clamp count to absolute_max_remotes
+            if count + reservations > self.absolute_max_remotes:
+                count = self.absolute_max_remotes - reservations
+            for i in range(count):
+                delay = (api.API_QUERY_DELAY / count) * i
                 self._schedule_one_reservation(delay)
 
+    def get_remote(self, block=True):
         while True:
             # otherwise wait on a queue of Remotes being provisioned
             try:

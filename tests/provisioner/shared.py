@@ -3,23 +3,19 @@ import tempfile
 
 from atex import util
 
-#import subprocess
-
-#import concurrent.futures
-#from atex import util
-#from atex.provision.podman import PodmanProvisioner
-
 
 def one_remote(p):
+    p.provision(1)
     assert p.get_remote()
 
 
 def one_remote_nonblock(p):
+    p.provision(1)
     # provisioning is probably too slow to make our first get_remote() call
     # return a valid remote, so it should be None
     assert p.get_remote(block=False) is None
     while p.get_remote(block=False) is None:
-        pass
+        time.sleep(0.1)
     # the above being 'not None' depleted the only available remote,
     # so next get_remote() should be forever None
     for _ in range(10):
@@ -28,43 +24,48 @@ def one_remote_nonblock(p):
 
 
 def two_remotes(p):
+    p.provision(2)
     assert p.get_remote()
     assert p.get_remote()
 
 
 def two_remotes_nonblock(p):
+    p.provision(2)
     assert p.get_remote(block=False) is None
     while p.get_remote(block=False) is None:
-        pass
+        time.sleep(0.1)
     while p.get_remote(block=False) is None:
-        pass
+        time.sleep(0.1)
     for _ in range(10):
         assert p.get_remote(block=False) is None
         time.sleep(1)
 
 
-def sharing_remote_slot(p):
-    rem = p.get_remote()
-    assert rem
-    rem.release()
-    # even with max_systems=1, this should get a new remote
-    # due to us doing .release() on the previous one
-    assert p.get_remote()
+#def sharing_remote_slot(p):
+#    rem = p.get_remote()
+#    assert rem
+#    rem.release()
+#    # even with max_systems=1, this should get a new remote
+#    # due to us doing .release() on the previous one
+#    assert p.get_remote()
+#
+#
+#def sharing_remote_slot_nonblock(p):
+#    assert p.get_remote(block=False) is None
+#    while (rem := p.get_remote(block=False)) is None:
+#        pass
+#    rem.release()
+#    while p.get_remote(block=False) is None:
+#        pass
+#    for _ in range(10):
+#        assert p.get_remote(block=False) is None
+#        time.sleep(1)
 
-
-def sharing_remote_slot_nonblock(p):
-    assert p.get_remote(block=False) is None
-    while (rem := p.get_remote(block=False)) is None:
-        pass
-    rem.release()
-    while p.get_remote(block=False) is None:
-        pass
-    for _ in range(10):
-        assert p.get_remote(block=False) is None
-        time.sleep(1)
+# TODO: replace with .provision() specific tests ^^^
 
 
 def cmd(p):
+    p.provision(1)
     rem = p.get_remote()
     out = rem.cmd(
         ("echo", "foo bar"),
@@ -74,6 +75,7 @@ def cmd(p):
 
 
 def cmd_input(p):
+    p.provision(1)
     rem = p.get_remote()
     out = rem.cmd(
         ("cat",),
@@ -85,6 +87,7 @@ def cmd_input(p):
 
 def cmd_binary(p):
     bstr = b"\x00\x01\n\x02\x03"
+    p.provision(1)
     rem = p.get_remote()
     out = rem.cmd(
         ("cat",),
@@ -101,6 +104,7 @@ def rsync(p):
         tmpf.write(bstr)
         tmpf.close()
 
+        p.provision(1)
         rem = p.get_remote()
         rem.rsync("-v", tmpf.name, "remote:foobar")
         out = rem.cmd(

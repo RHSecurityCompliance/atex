@@ -72,7 +72,7 @@ class PodmanProvisioner(Provisioner):
     #       to avoid double downloads/pulls, but also to avoid SQLite errors
     #       when creating multiple containers in parallel
 
-    def __init__(self, image, run_options=None, *, pull=True, max_systems=1):
+    def __init__(self, image, run_options=None, *, pull=True):
         """
         'image' is a string of image tag/id to create containers from.
         It can be a local identifier or an URL.
@@ -82,14 +82,11 @@ class PodmanProvisioner(Provisioner):
 
         'pull' specifies whether to attempt 'podman image pull' on the specified
         image tag/id before any container creation.
-
-        'max_systems' is a maximum number of containers running at any one time.
         """
         self.lock = threading.RLock()
         self.image = image
         self.run_options = run_options or ()
         self.pull = pull
-        self.max_systems = max_systems
 
         self.image_id = None
         self.container_id = None
@@ -99,6 +96,7 @@ class PodmanProvisioner(Provisioner):
         # created PodmanRemote instances, ready to be handed over to the user,
         # or already in use by the user
         self.remotes = []
+        self.to_create = 0
 
     @staticmethod
     def _spawn_proc(cmd):
@@ -110,15 +108,6 @@ class PodmanProvisioner(Provisioner):
         )
         os.set_blocking(proc.stdout.fileno(), False)
         return proc
-
-#    @staticmethod
-#    def _poll_proc(proc):
-#        # read from the process to un-block any kernel buffers
-#        try:
-#            out = proc.stdout.read()  # non-blocking
-#        except BlockingIOError:
-#            out = ""
-#        return (proc.poll(), out)
 
     def _make_remote(self, container):
         def release_hook(remote):
@@ -163,9 +152,12 @@ class PodmanProvisioner(Provisioner):
             worker.stdout.close()
             worker.wait()
 
-    def stop_defer(self):
-        # avoid SQLite errors by removing containers sequentially
-        return self.stop
+    # avoid SQLite errors by removing containers sequentially
+    #def stop_defer(self):
+
+    def provision(self, count=1):
+        with self.lock:
+            self.to_create += count
 
     @staticmethod
     def _nonblock_read(fobj):
@@ -176,6 +168,8 @@ class PodmanProvisioner(Provisioner):
     def _get_remote_nonblock(self):
         if self.state is None:
             raise RuntimeError("the provisioner is in an invalid state")
+        if self.to_create <= 0:
+            return None
 
         # NOTE: these are not 'elif' statements explicitly to allow a next block
         #       to follow a previous one (if the condition is met)
@@ -197,17 +191,13 @@ class PodmanProvisioner(Provisioner):
                 self.state = self.State.CREATING_CONTAINER
 
         if self.state is self.State.CREATING_CONTAINER:
-            if len(self.remotes) < self.max_systems:
-                self.worker = self._spawn_proc(
-                    (
-                        "podman", "container", "run", "--quiet", "--detach", "--pull", "never",
-                        *self.run_options, self.image_id, "sleep", "inf",
-                    ),
-                )
-                self.state = self.State.WAITING_FOR_CREATION
-            else:
-                # too many remotes requested
-                return None
+            self.worker = self._spawn_proc(
+                (
+                    "podman", "container", "run", "--quiet", "--detach", "--pull", "never",
+                    *self.run_options, self.image_id, "sleep", "inf",
+                ),
+            )
+            self.state = self.State.WAITING_FOR_CREATION
 
         if self.state is self.State.WAITING_FOR_CREATION:
             self.worker_output += self._nonblock_read(self.worker.stdout)
@@ -250,6 +240,7 @@ class PodmanProvisioner(Provisioner):
                 self.worker_output.clear()
                 self.worker = None
                 self.state = self.State.CREATING_CONTAINER
+                self.to_create -= 1
                 return remote
 
         raise AssertionError(f"reached end (invalid state {self.state}?)")
@@ -269,6 +260,5 @@ class PodmanProvisioner(Provisioner):
     def __repr__(self):
         class_name = self.__class__.__name__
         return (
-            f"{class_name}({self.image}, {len(self.remotes)}/{self.max_systems} remotes, "
-            f"{hex(id(self))})"
+            f"{class_name}({self.image}, {len(self.remotes)} remotes, {hex(id(self))})"
         )

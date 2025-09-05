@@ -1,4 +1,3 @@
-import time
 import tempfile
 import traceback
 import concurrent
@@ -6,19 +5,16 @@ import collections
 from pathlib import Path
 
 from .. import util, executor
-
-
-class OrchestratorError(Exception):
-    pass
+from . import Orchestrator, OrchestratorError
 
 
 class FailedSetupError(OrchestratorError):
     pass
 
 
-class Orchestrator:
+class AdHocOrchestrator(Orchestrator):
     """
-    A scheduler for parallel execution on multiple resources (machines/systems).
+    TODO: document function specific to this reference, ie. run_setup(), etc.
     """
 
     class SetupInfo(
@@ -229,10 +225,6 @@ class Orchestrator:
         Returns True to indicate that it should be called again by the user
         (more work to be done), False once all testing is concluded.
         """
-        util.debug(
-            f"to_run: {len(self.to_run)} tests / "
-            f"running: {len(self.running_tests)} tests, {len(self.running_setups)} setups",
-        )
         # all done
         if not self.to_run and not self.running_tests:
             return False
@@ -300,13 +292,6 @@ class Orchestrator:
 
         return True
 
-    def serve_forever(self):
-        """
-        Run the orchestration logic, blocking until all testing is concluded.
-        """
-        while self.serve_once():
-            time.sleep(1)
-
     def start(self):
         # start all provisioners
         for prov in self.provisioners:
@@ -326,17 +311,6 @@ class Orchestrator:
                 for provisioner in self.provisioners:
                     for func in provisioner.stop_defer():
                         ex.submit(func)
-
-    def __enter__(self):
-        try:
-            self.start()
-            return self
-        except Exception:
-            self.stop()
-            raise
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        self.stop()
 
     @staticmethod
     def next_test(to_run, all_tests, previous):  # noqa: ARG004

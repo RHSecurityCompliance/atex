@@ -174,6 +174,7 @@ class LibvirtCloningProvisioner(Provisioner):
         self.signature = uuid.uuid4()
         self.reserve_end = None
         self.queue = util.ThreadQueue(daemon=True)
+        self.to_reserve = 0
 
         # use two libvirt connections - one to handle reservations and cloning,
         # and another for management and cleanup;
@@ -352,7 +353,7 @@ class LibvirtCloningProvisioner(Provisioner):
             "Hostname": "127.0.0.1",
             "User": self.domain_user,
             "Port": str(port),
-            "IdentityFile": self.domain_sshkey,
+            "IdentityFile": str(Path(self.domain_sshkey).absolute()),
             "ConnectionAttempts": "1000",
             "Compression": "yes",
         }
@@ -410,8 +411,6 @@ class LibvirtCloningProvisioner(Provisioner):
             self.reserve_conn = self._open_libvirt_conn()
             self.manage_conn = self.reserve_conn  # for now
             self.reserve_end = int(time.time()) + self.reserve_time
-            # get an initial first remote
-            self.queue.start_thread(target=self._reserve_one)
 
     def stop(self):
         with self.lock:
@@ -443,11 +442,16 @@ class LibvirtCloningProvisioner(Provisioner):
             self.reserve_end = None
             # TODO: wait for threadqueue threads to join?
 
-    def get_remote(self, block=True):
-        # if the reservation thread is not running, start one
+    def provision(self, count=1):
         with self.lock:
-            if not self.queue.threads:
+            self.to_reserve += count
+
+    def get_remote(self, block=True):
+        with self.lock:
+            # if the reservation thread is not running, start one
+            if not self.queue.threads and self.to_reserve > 0:
                 self.queue.start_thread(target=self._reserve_one)
+                self.to_reserve -= 1
         try:
             return self.queue.get(block=block)
         except util.ThreadQueue.Empty:

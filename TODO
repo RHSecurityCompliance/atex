@@ -67,12 +67,6 @@
   - root-level main.fmf could set it to 1, except RHEL-10 (because OpenGPG dnf bug) to 3
   - image-builder test could set it to 5
 
-- make testing farm point to an ATEX repo tag when downloading the
-  reserve test, to freeze given ATEX versions in time (so they're not
-  broken by future git commits)
-
-  - also parametrize reserve test via module-level constants or TestingFarmProvisioner args
-
 - make it python3.12 (RHEL-10) compatible, ideally 3.11 (RHEL-9)
 
 - in the CLI tool (for contest), block further SIGINT/SIGTERM
@@ -84,19 +78,10 @@
 
 - notable TODOs
   - testingfarm and automatically limiting 'class Request' refreshes
-  - testingfarm provisioner scaling up/down remotes, to avoid 40 "empty"
-    remotes being used up while waiting for the last 1-3 tests to finish
   - atex/util/threads.py documentation
-  - generic ConnectError-ish for all Connections
 
 - interactive mode for Executor (without redirecting stderr to file,
   and with stdin routed through)
-
-- enable gpgchck=1 on TestingFarm RHEL-based systems
-  - TODO: check RHEL-8 and 10 too, are they the same?
-  - /etc/yum.repos.d/rhel.repo
-    - search for "^name=rhel-BaseOS$" to check the file is not OS default
-    - replace all "^gpgcheck=0$' with 1
 
 - appending to a previous results.json.gz + files_dir
   - gzip should be able to append a new gz header, and we can reuse a files_dir easily
@@ -133,11 +118,6 @@
   - possibly do that in one class TestingFarmAPI instance - throttle API queries
     globally to ie. 1/sec, maybe via some queue
     - or a derived RateLimitedTestingFarmAPI instance ?
-
-- some interface on SIGUSR1 (?) on the state of the orchestration
-  - what tests are running / how many setups running / how many remotes / etc.
-  - how long have the running tests been running?
-  - what tests are still in to_run
 
 - more tests
   - testcontrol (incl. reporting many results)
@@ -242,6 +222,37 @@
   - "just stop/release it in the background, I don't care about return"
   - useful when calling .stop() on many Provisioners from the main program
   - these should be daemon=False threads; to make sure they finish before exit
+
+- remove util.in_debug_mode()
+  - replace it with better util.subprocess_run()-like function, that uses Popen()
+    internally and logs every output line via util.debug() or perhaps util.extradebug()
+    so that it goes through python's logging module
+  - this is necessary to have INFO on console, with DEBUG / EXTRADEBUG in a file
+  - have orchestrator setup print everything to console, no --quiet flags, 2>&1, etc.
+    and just use logging levels to filter it out
+    - dnf in setup now always prints:
+        Importing GPG key 0xF21541EB:
+         Userid     : "Red Hat, Inc. (beta key 2) <security@redhat.com>"
+         Fingerprint: B08B 659E E86A F623 BC90 E8DB 938A 80CA F215 41EB
+         From       : /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-beta
+
+- libvirt - destroy the domain on release
+  - takes a bit extra time, but is better for "hygiene" on our vmhosts
+
+- get rid of running_setups in orchestrator - it counts setups that pushed
+  a Remote onto the queue (finished, but not collected yet)
+  - if needed, implement len() for ThreadQueue and print that out
+    (how many set up machines are ready)
+
+- add timeouts to subprocess.run() calling rsync
+  - both contest in executor.py and content in productization
+
+- check the ssh key argument for TF reserve, turn it to absolute path internally
+  (ssh needs that)
+
+- generalize Executor
+  - and rename setup()/cleanup() to start()/stop() to make it standard across all classes
+
 
 --------------------------
 

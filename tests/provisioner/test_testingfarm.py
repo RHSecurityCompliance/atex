@@ -1,11 +1,11 @@
 import os
 import pytest
 
-from atex.provision.testingfarm import TestingFarmProvisioner
+from atex.provisioner.testingfarm import TestingFarmProvisioner
 
 import testutil
 
-from tests.provision import shared
+from tests.provisioner import shared
 
 COMPOSE = None
 
@@ -48,23 +48,23 @@ def test_one_remote_nonblock():
 
 
 def test_two_remotes():
-    with TestingFarmProvisioner(COMPOSE, max_systems=2) as p:
+    with TestingFarmProvisioner(COMPOSE) as p:
         shared.two_remotes(p)
 
 
 def test_two_remotes_nonblock():
-    with TestingFarmProvisioner(COMPOSE, max_systems=2) as p:
+    with TestingFarmProvisioner(COMPOSE) as p:
         shared.two_remotes_nonblock(p)
 
 
-def test_sharing_remote_slot():
-    with TestingFarmProvisioner(COMPOSE, max_systems=1) as p:
-        shared.sharing_remote_slot(p)
-
-
-def test_sharing_remote_slot_nonblock():
-    with TestingFarmProvisioner(COMPOSE, max_systems=1) as p:
-        shared.sharing_remote_slot_nonblock(p)
+#def test_sharing_remote_slot():
+#    with TestingFarmProvisioner(COMPOSE) as p:
+#        shared.sharing_remote_slot(p)
+#
+#
+#def test_sharing_remote_slot_nonblock():
+#    with TestingFarmProvisioner(COMPOSE) as p:
+#        shared.sharing_remote_slot_nonblock(p)
 
 
 def test_cmd():

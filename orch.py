@@ -4,7 +4,7 @@ import sys
 import logging
 from pathlib import Path
 
-from atex.provision.testingfarm import TestingFarmProvisioner
+from atex.provisioner.testingfarm import TestingFarmProvisioner
 from atex import fmf, orchestrator
 from atex.orchestrator import CSVAggregator, JSONAggregator
 

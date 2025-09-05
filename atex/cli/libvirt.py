@@ -1,9 +1,10 @@
 import sys
 import re
 
-import libvirt
+from .. import util
+from ..provisioner.libvirt import locking
 
-from ..provision.libvirt import locking
+libvirt = util.import_libvirt()
 
 
 def _libvirt_open(url=None):

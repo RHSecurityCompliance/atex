@@ -2,11 +2,11 @@ import subprocess
 import pytest
 
 from atex import util
-from atex.provision.podman import PodmanProvisioner
+from atex.provisioner.podman import PodmanProvisioner
 
 import testutil
 
-from tests.provision import shared
+from tests.provisioner import shared
 
 IMAGE = "fedora"
 
@@ -47,23 +47,23 @@ def test_one_remote_nonblock():
 
 
 def test_two_remotes():
-    with PodmanProvisioner(IMAGE, pull=False, max_systems=2) as p:
+    with PodmanProvisioner(IMAGE, pull=False) as p:
         shared.two_remotes(p)
 
 
 def test_two_remotes_nonblock():
-    with PodmanProvisioner(IMAGE, pull=False, max_systems=2) as p:
+    with PodmanProvisioner(IMAGE, pull=False) as p:
         shared.two_remotes_nonblock(p)
 
 
-def test_sharing_remote_slot():
-    with PodmanProvisioner(IMAGE, pull=False, max_systems=1) as p:
-        shared.sharing_remote_slot(p)
-
-
-def test_sharing_remote_slot_nonblock():
-    with PodmanProvisioner(IMAGE, pull=False, max_systems=1) as p:
-        shared.sharing_remote_slot_nonblock(p)
+#def test_sharing_remote_slot():
+#    with PodmanProvisioner(IMAGE, pull=False, max_systems=1) as p:
+#        shared.sharing_remote_slot(p)
+#
+#
+#def test_sharing_remote_slot_nonblock():
+#    with PodmanProvisioner(IMAGE, pull=False, max_systems=1) as p:
+#        shared.sharing_remote_slot_nonblock(p)
 
 
 def test_cmd():

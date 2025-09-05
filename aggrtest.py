@@ -7,7 +7,7 @@ import shutil
 import tempfile
 import concurrent.futures
 
-#from atex.provision.testingfarm import TestingFarmProvisioner
+#from atex.provisioner.testingfarm import TestingFarmProvisioner
 
 from atex import executor, connection, fmf, orchestrator
 

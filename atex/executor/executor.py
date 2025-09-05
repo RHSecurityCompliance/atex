@@ -336,7 +336,9 @@ class Executor:
                             reconnects += 1
                             state = self.State.STARTING_TEST
                         except BlockingIOError:
-                            pass
+                            # avoid 100% CPU spinning if the connection it too slow
+                            # to come up (ie. ssh ControlMaster socket file not created)
+                            time.sleep(0.5)
                         except ConnectionError:
                             # can happen when ie. ssh is connecting over a LocalForward port,
                             # causing 'read: Connection reset by peer' instead of timeout

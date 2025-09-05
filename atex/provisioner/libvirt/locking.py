@@ -19,7 +19,9 @@ import time
 import random
 import xml.etree.ElementTree as ET
 
-import libvirt
+from ... import util
+
+libvirt = util.import_libvirt()
 
 
 def get_locks(domain, expired=False):

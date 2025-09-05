@@ -3,7 +3,7 @@ import json
 import pprint
 
 from .. import util
-from ..provision.testingfarm import api as tf
+from ..provisioner.testingfarm import api as tf
 
 
 def _get_api(args):

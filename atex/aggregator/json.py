@@ -4,8 +4,10 @@ import shutil
 import threading
 from pathlib import Path
 
+from . import Aggregator
 
-class JSONAggregator:
+
+class JSONAggregator(Aggregator):
     """
     Collects reported results as a GZIP-ed line-JSON and files (logs) from
     multiple test runs under a shared directory.
@@ -51,24 +53,7 @@ class JSONAggregator:
             self.json_gzip_fobj.close()
             self.json_gzip_fobj = None
 
-    def __enter__(self):
-        try:
-            self.open()
-            return self
-        except Exception:
-            self.close()
-            raise
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        self.close()
-
     def ingest(self, platform, test_name, results_file, files_dir):
-        """
-        Process 'results_file' (string/Path) for reported results and append
-        them to the overall aggregated line-JSON file, recursively copying over
-        the dir structure under 'files_dir' (string/Path) under the respective
-        platform and test name in the aggregated storage dir.
-        """
         platform_dir = self.storage_dir / platform
         test_dir = platform_dir / test_name.lstrip("/")
         if test_dir.exists():
@@ -92,7 +77,7 @@ class JSONAggregator:
                     platform,
                     result_line["status"],
                     test_name,
-                    result_line.get("name"),
+                    result_line.get("name"),  # subtest
                     file_names,
                     result_line.get("note"),
                 )

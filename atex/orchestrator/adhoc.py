@@ -57,7 +57,7 @@ class AdHocOrchestrator(Orchestrator):
 
     def __init__(
         self, platform, fmf_tests, provisioners, aggregator, tmp_dir, *,
-        max_reruns=2, max_failed_setups=10, env=None,
+        max_remotes=1, max_spares=0, max_reruns=2, max_failed_setups=10, env=None,
     ):
         """
         'platform' is a string with platform name.
@@ -71,6 +71,15 @@ class AdHocOrchestrator(Orchestrator):
         'tmp_dir' is a string/Path to a temporary directory, to be used for
         storing per-test results and uploaded files before being ingested
         by the aggregator. Can be safely shared by Orchestrator instances.
+
+        'max_remotes' is how many Remotes to hold reserved at any given time,
+        eg. how many tests to run in parallel. Clamped to the number of
+        to-be-run tests given as 'fmf_tests'.
+
+        'max_spares' is how many set-up Remotes to hold reserved and unused,
+        ready to replace a Remote destroyed by test. Values above 0 greatly
+        speed up test reruns as Remote reservation happens asynchronously
+        to test execution. Spares are reserved on top of 'max_remotes'.
 
         'max_reruns' is an integer of how many times to re-try running a failed
         test (which exited with non-0 or caused an Executor exception).
@@ -87,6 +96,8 @@ class AdHocOrchestrator(Orchestrator):
         self.aggregator = aggregator
         self.tmp_dir = tmp_dir
         self.failed_setups_left = max_failed_setups
+        self.max_remotes = max_remotes
+        self.max_spares = max_spares
         # indexed by test name, value being integer of how many times
         self.reruns = collections.defaultdict(lambda: max_reruns)
         self.env = env
@@ -175,7 +186,6 @@ class AdHocOrchestrator(Orchestrator):
             exc_name = type(finfo.exception).__name__
             exc_tb = "".join(traceback.format_exception(finfo.exception)).rstrip("\n")
             msg = f"{remote_with_test} threw {exc_name} during test runtime"
-            #finfo.remote.release()
             if (reruns_left := self.reruns[finfo.test_name]) > 0:
                 util.info(f"{msg}, re-running ({reruns_left} reruns left):\n{exc_tb}")
                 self.reruns[finfo.test_name] -= 1
@@ -188,7 +198,6 @@ class AdHocOrchestrator(Orchestrator):
         # if the test exited as non-0, try a re-run
         elif finfo.exit_code != 0:
             msg = f"{remote_with_test} exited with non-zero: {finfo.exit_code}"
-            #finfo.remote.release()
             if (reruns_left := self.reruns[finfo.test_name]) > 0:
                 util.info(f"{msg}, re-running ({reruns_left} reruns left)")
                 self.reruns[finfo.test_name] -= 1
@@ -203,12 +212,13 @@ class AdHocOrchestrator(Orchestrator):
             util.info(f"{remote_with_test} finished successfully")
             ingest_result()
 
-        # if destroyed, release the remote
+        # if destroyed, release the remote and request a replacement
         # (Executor exception is always considered destructive)
         test_data = self.fmf_tests.tests[finfo.test_name]
         if finfo.exception or self.destructive(finfo, test_data):
             util.debug(f"{remote_with_test} was destructive, releasing remote")
             finfo.remote.release()
+            finfo.provisioner.provision(1)
 
         # if still not destroyed, run another test on it
         # (without running plan setup, re-using already set up remote)
@@ -266,11 +276,22 @@ class AdHocOrchestrator(Orchestrator):
                 if (reruns_left := self.failed_setups_left) > 0:
                     util.warning(f"{msg}, re-trying ({reruns_left} setup retries left):\n{exc_tb}")
                     self.failed_setups_left -= 1
+                    sinfo.provisioner.provision(1)
                 else:
                     util.warning(f"{msg}, setup retries exceeded, giving up:\n{exc_tb}")
                     raise FailedSetupError("setup retries limit exceeded, broken infra?")
             else:
                 self._run_new_test(sinfo)
+
+        # release any extra Remotes being held as set-up when we know we won't
+        # use them for any tests (because to_run is empty)
+        else:
+            while self.setup_queue.qsize() > self.max_spares:
+                try:
+                    treturn = self.setup_queue.get_raw(block=False)
+                except util.ThreadQueue.Empty:
+                    break
+                treturn.sinfo.remote.release()
 
         # try to get new remotes from Provisioners - if we get some, start
         # running setup on them
@@ -296,7 +317,16 @@ class AdHocOrchestrator(Orchestrator):
         # start all provisioners
         for prov in self.provisioners:
             prov.start()
-        return self
+
+        # start up initial reservations, balanced evenly across all available
+        # provisioner instances
+        count = min(self.max_remotes, len(self.fmf_tests.tests))
+        provisioners = self.provisioners[:count]
+        for idx, prov in enumerate(provisioners):
+            if count % len(provisioners) > idx:
+                prov.provision((count // len(provisioners)) + 1)
+            else:
+                prov.provision(count // len(provisioners))
 
     def stop(self):
         # cancel all running tests and wait for them to clean up (up to 0.1sec)
@@ -305,6 +335,7 @@ class AdHocOrchestrator(Orchestrator):
         self.test_queue.join()  # also ignore any exceptions raised
 
         # stop all provisioners, also releasing all remotes
+        # TODO: don't parallelize here, remove .stop_defer() and parallelize in provisioners
         if self.provisioners:
             workers = min(len(self.provisioners), 20)
             with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as ex:

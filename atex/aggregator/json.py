@@ -39,7 +39,7 @@ class JSONAggregator(Aggregator):
         self.json_file = Path(json_file)
         self.json_gzip_fobj = None
 
-    def open(self):
+    def start(self):
         if self.json_file.exists():
             raise FileExistsError(f"{self.json_file} already exists")
         self.json_gzip_fobj = gzip.open(self.json_file, "wt", newline="\n")
@@ -48,7 +48,7 @@ class JSONAggregator(Aggregator):
             raise FileExistsError(f"{self.storage_dir} already exists")
         self.storage_dir.mkdir()
 
-    def close(self):
+    def stop(self):
         if self.json_gzip_fobj:
             self.json_gzip_fobj.close()
             self.json_gzip_fobj = None

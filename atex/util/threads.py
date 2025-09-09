@@ -97,3 +97,10 @@ class ThreadQueue:
                 except KeyError:
                     break
             thread.join()
+
+    def qsize(self):
+        """
+        Return the amount of elements .get() can retrieve before it raises
+        queue.Empty.
+        """
+        return self.queue.qsize()

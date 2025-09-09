@@ -253,7 +253,6 @@
 - generalize Executor
   - and rename setup()/cleanup() to start()/stop() to make it standard across all classes
 
-
 --------------------------
 
 atex: unexpected exception happened while running '/hardening/host-os/oscap/stig'

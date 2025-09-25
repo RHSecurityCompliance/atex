@@ -1,52 +1,84 @@
 import subprocess
 
-from .log import debug
+from .log import debug, extradebug
 
 
-def subprocess_run(cmd, *, skip_frames=0, **kwargs):
+def subprocess_run(cmd, **kwargs):
     """
     A simple wrapper for the real subprocess.run() that logs the command used.
     """
     # when logging, skip current stack frame - report the place we were called
     # from, not util.subprocess_run itself
-    debug(f"running: {cmd}", skip_frames=skip_frames+1)
+    debug(f"running: {cmd}")
     return subprocess.run(cmd, **kwargs)
 
 
-def subprocess_output(cmd, *, skip_frames=0, check=True, text=True, **kwargs):
+def subprocess_output(cmd, *, check=True, text=True, **kwargs):
     """
     A wrapper simulating subprocess.check_output() via a modern .run() API.
     """
-    debug(f"running: {cmd}", skip_frames=skip_frames+1)
+    debug(f"running: {cmd}")
     proc = subprocess.run(cmd, check=check, text=text, stdout=subprocess.PIPE, **kwargs)
     return proc.stdout.rstrip("\n") if text else proc.stdout
 
 
-def subprocess_Popen(cmd, *, skip_frames=0, **kwargs):  # noqa: N802
+def subprocess_Popen(cmd, **kwargs):  # noqa: N802
     """
     A simple wrapper for the real subprocess.Popen() that logs the command used.
     """
-    debug(f"running: {cmd}", skip_frames=skip_frames+1)
+    debug(f"running: {cmd}")
     return subprocess.Popen(cmd, **kwargs)
 
 
-def subprocess_stream(cmd, *, check=False, skip_frames=0, **kwargs):
+def subprocess_stream(cmd, *, stream="stdout", check=False, input=None, **kwargs):
     """
     Run 'cmd' via subprocess.Popen() and return an iterator over any lines
     the command outputs on stdout, in text mode.
 
+    The 'stream' is a subprocess.Popen attribute (either 'stdout' or 'stderr')
+    to read from.
+    To capture both stdout and stderr as yielded lines, use 'stream="stdout"'
+    and pass an additional 'stderr=subprocess.STDOUT'.
+
     With 'check' set to True, raise a CalledProcessError if the 'cmd' failed.
 
-    To capture both stdout and stderr as yielded lines, use subprocess.STDOUT.
+    Similarly, 'input' simulates the 'input' arg of subprocess.run().
+    Note that the input is written to stdin of the process *before* any outputs
+    are streamed, so it should be sufficiently small and/or not cause a deadlock
+    with the process waiting for outputs to be read before consuming more input.
+    Use 'stdin=subprocess.PIPE' and write to it manually if you need more.
     """
-    debug(f"running: {cmd}", skip_frames=skip_frames+1)
-    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, text=True, **kwargs)
+    debug(f"running: {cmd}")
+    proc = subprocess.Popen(
+        cmd,
+        stdout=subprocess.PIPE,
+        **({"stdin": subprocess.PIPE} if input is not None else {}),
+        text=True,
+        **kwargs,
+    )
 
     def generate_lines():
-        for line in proc.stdout:
+        if input is not None:
+            proc.stdin.write(input)
+            proc.stdin.close()
+        line_stream = getattr(proc, stream)
+        for line in line_stream:
             yield line.rstrip("\n")
         code = proc.wait()
         if code > 0 and check:
             raise subprocess.CalledProcessError(cmd=cmd, returncode=code)
 
     return (proc, generate_lines())
+
+
+def subprocess_log(cmd, **kwargs):
+    """
+    A wrapper to stream every (text) line output from the process to the
+    logging module.
+
+    Uses subprocess_stream() to gather the lines.
+    """
+    debug(f"running: {cmd}")
+    _, lines = subprocess_stream(cmd, **kwargs)
+    for line in lines:
+        extradebug(line)

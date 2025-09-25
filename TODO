@@ -103,11 +103,6 @@
     public, incl. attributes / variables
     - TODO: actually revise the codebase, applying this
 
-- detailed logging.DEBUG log of everything, for debugging
-  - to be redirected to a file, with INFO on the console
-  - maybe without pipeline output, that seems useless for debugging
-  - but with every ssh attempt, every reconnection, every provisioning query, etc.
-
 - mention in Orchestrator documentation that it is explicitly about running
   tests on **ONE** platform (string)
 
@@ -120,35 +115,6 @@
 
 - probably rename ManagedSSHConn -> ManagedSSHConnection
   - for all Conn classes
-
-- get rid of skip_frames=
-  - this would make Connection methods using func= fully subprocess-compatible,
-    ie. with func=subprocess.Popen instead of having to use util.*
-  - instead, have a list of names to skip on top of util/log.py,
-        UNWIND = [
-            "util.subprocess_run",
-            ...
-        ]
-  - mention the list is iterated multiple times until nothing matches, so that
-    two levels of wrappers can be unwound just be including both wrappers in the list
-
-- add an 'EXTRADEBUG = 5' to util/extra_debug.py and use it for
-  - pipeline.log
-  - printing domain XMLs
-  - etc.
-
-- remove util.in_debug_mode()
-  - replace it with better util.subprocess_run()-like function, that uses Popen()
-    internally and logs every output line via util.debug() or perhaps util.extradebug()
-    so that it goes through python's logging module
-  - this is necessary to have INFO on console, with DEBUG / EXTRADEBUG in a file
-  - have orchestrator setup print everything to console, no --quiet flags, 2>&1, etc.
-    and just use logging levels to filter it out
-    - dnf in setup now always prints:
-        Importing GPG key 0xF21541EB:
-         Userid     : "Red Hat, Inc. (beta key 2) <security@redhat.com>"
-         Fingerprint: B08B 659E E86A F623 BC90 E8DB 938A 80CA F215 41EB
-         From       : /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-beta
 
 - atex tf sr
   - make --state optional, have it be action='append'

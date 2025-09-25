@@ -27,12 +27,18 @@ import pkgutil
 import argparse
 import logging
 
+from .. import util
+
 
 def setup_logging(level):
+    if level <= util.EXTRADEBUG:
+        fmt = "%(asctime)s %(name)s: %(filename)s:%(lineno)s: %(funcName)s(): %(message)s"
+    else:
+        fmt = "%(asctime)s %(name)s: %(message)s"
     logging.basicConfig(
         level=level,
         stream=sys.stderr,
-        format="%(asctime)s %(name)s: %(message)s",
+        format=fmt,
         datefmt="%Y-%m-%d %H:%M:%S",
     )
 
@@ -52,6 +58,10 @@ def main():
     log_grp.add_argument(
         "--debug", "-d", action="store_const", dest="loglevel", const=logging.DEBUG,
         help="enable extra debugging (logging.DEBUG)",
+    )
+    log_grp.add_argument(
+        "--extra-debug", "-D", action="store_const", dest="loglevel", const=util.EXTRADEBUG,
+        help="enable extra debugging (atex.util.EXTRADEBUG)",
     )
     log_grp.add_argument(
         "--quiet", "-q", action="store_const", dest="loglevel", const=logging.WARNING,

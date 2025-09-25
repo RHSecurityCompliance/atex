@@ -30,13 +30,19 @@ BREAK. DO NOT USE IT (for now).
 Unless specified otherwise, any content within this repository is distributed
 under the GNU GPLv3 license, see the [COPYING.txt](COPYING.txt) file for more.
 
+## Environment variables
+
+- `ATEX_DEBUG_TEST`
+  - Set to `1` to print out detailed runner-related trace within the test output
+    stream (as if it was printed out by the test).
+
 ## Testing this project
 
 There are some limited sanity tests provided via `pytest`, although:
 
-* Some require additional variables (ie. Testing Farm) and will ERROR
+- Some require additional variables (ie. Testing Farm) and will ERROR
   without them.
-* Some take a long time (ie. Testing Farm) due to system provisioning
+- Some take a long time (ie. Testing Farm) due to system provisioning
   taking a long time, so install `pytest-xdist` and run with a large `-n`.
 
 Currently, the recommended approach is to split the execution:

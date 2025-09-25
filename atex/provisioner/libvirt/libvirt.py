@@ -4,6 +4,7 @@ import uuid
 import shlex
 import socket
 import random
+import textwrap
 import tempfile
 import threading
 import subprocess
@@ -243,8 +244,8 @@ class LibvirtCloningProvisioner(Provisioner):
                 raise
 
         # parse XML definition of the domain
-        xmldesc = acquired.XMLDesc()
-        util.debug(f"domain {acquired.name()} XML:\n{xmldesc}")  # TODO: EXTRADEBUG log level
+        xmldesc = acquired.XMLDesc().rstrip("\n")
+        util.extradebug(f"domain {acquired.name()} XML:\n{textwrap.indent(xmldesc, '    ')}")
         xml_root = ET.fromstring(xmldesc)
         nvram_vol = nvram_path = None
 

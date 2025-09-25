@@ -156,7 +156,7 @@ class TestControl:
         except BufferFullError as e:
             raise BadControlError(str(e)) from None
 
-        util.debug(f"got control line: {line} // eof: {self.stream.eof}")
+        util.debug(f"control line: {line} // eof: {self.stream.eof}")
 
         if self.stream.eof:
             self.eof = True

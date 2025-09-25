@@ -140,10 +140,11 @@ class Executor:
         __init__() inside 'fmf_tests', to the remote host.
         """
         self.conn.rsync(
-            "-rv" if util.in_debug_mode() else "-rq",
+            "-r",
             "--delete", "--exclude=.git/",
             f"{self.fmf_tests.root}/",
             f"remote:{self.tests_dir}",
+            func=util.subprocess_log,
         )
 
     def _run_prepare_scripts(self, scripts):
@@ -158,11 +159,10 @@ class Executor:
         for script in scripts:
             self.conn.cmd(
                 ("env", *env_args, "bash"),
-                input=script,
-                text=True,
-                check=True,
-                stdout=None if util.in_debug_mode() else subprocess.DEVNULL,
+                func=util.subprocess_log,
                 stderr=subprocess.STDOUT,
+                input=script,
+                check=True,
             )
 
     def plan_prepare(self):
@@ -180,9 +180,9 @@ class Executor:
                     "dnf", "-y", "--setopt=install_weak_deps=False",
                     "install", *self.fmf_tests.prepare_pkgs,
                 ),
-                check=True,
-                stdout=None if util.in_debug_mode() else subprocess.DEVNULL,
+                func=util.subprocess_log,
                 stderr=subprocess.STDOUT,
+                check=True,
             )
 
         # run 'prepare' scripts from the plan

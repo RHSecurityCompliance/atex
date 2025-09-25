@@ -182,7 +182,6 @@ class StatelessSSHConn(Connection):
             unified_options["RemoteCommand"] = _shell_cmd(command, sudo=self.sudo)
         return func(
             _options_to_ssh(unified_options, password=self.password),
-            skip_frames=1,
             **func_args,
         )
 
@@ -197,7 +196,6 @@ class StatelessSSHConn(Connection):
                 password=self.password,
                 sudo=self.sudo,
             ),
-            skip_frames=1,
             check=True,
             stdin=subprocess.DEVNULL,
             **func_args,
@@ -351,7 +349,6 @@ class ManagedSSHConn(Connection):
         action = "forward" if not cancel else "cancel"
         util.subprocess_run(
             _options_to_ssh(options, extra_cli_flags=("-O", action)),
-            skip_frames=1,
             check=True,
         )
 
@@ -365,7 +362,6 @@ class ManagedSSHConn(Connection):
         unified_options["ControlPath"] = self._tmpdir / "control.sock"
         return func(
             _options_to_ssh(unified_options),
-            skip_frames=1,
             **func_args,
         )
 
@@ -381,7 +377,6 @@ class ManagedSSHConn(Connection):
                 options=unified_options,
                 sudo=self.sudo,
             ),
-            skip_frames=1,
             check=True,
             stdin=subprocess.DEVNULL,
             **func_args,

@@ -1,4 +1,6 @@
-import time
+import importlib as _importlib
+import pkgutil as _pkgutil
+import time as _time
 
 
 class OrchestratorError(Exception):
@@ -28,7 +30,7 @@ class Orchestrator:
         Run the orchestration logic, blocking until all testing is concluded.
         """
         while self.serve_once():
-            time.sleep(1)
+            _time.sleep(1)
 
     def start(self):
         """
@@ -53,3 +55,22 @@ class Orchestrator:
 
     def __exit__(self, exc_type, exc_value, traceback):
         self.stop()
+
+
+_submodules = [
+    info.name for info in _pkgutil.iter_modules(__spec__.submodule_search_locations)
+]
+
+__all__ = [*_submodules, Orchestrator.__name__]  # noqa: PLE0604
+
+
+def __dir__():
+    return __all__
+
+
+# lazily import submodules
+def __getattr__(attr):
+    if attr in _submodules:
+        return _importlib.import_module(f".{attr}", __name__)
+    else:
+        raise AttributeError(f"module '{__name__}' has no attribute '{attr}'")

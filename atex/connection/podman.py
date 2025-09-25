@@ -42,7 +42,6 @@ class PodmanConn(Connection):
     def cmd(self, command, *, func=util.subprocess_run, **func_args):
         return func(
             ("podman", "container", "exec", "-i", self.container, *command),
-            skip_frames=1,
             **func_args,
         )
 
@@ -56,7 +55,6 @@ class PodmanConn(Connection):
                 "-e", f"/bin/bash -c 'exec podman container exec -i {self.container} \"$@\"'",
                 *args,
             ),
-            skip_frames=1,
             check=True,
             stdin=subprocess.DEVNULL,
             **func_args,

@@ -8,13 +8,18 @@ from pathlib import Path
 from atex.provisioner.testingfarm import TestingFarmProvisioner
 from atex.provisioner.libvirt import LibvirtCloningProvisioner
 from atex.connection.ssh import ManagedSSHConn
-from atex import fmf, orchestrator, util
+from atex import fmf, orchestrator, aggregator, util
 
+level = util.EXTRADEBUG
 
+if level <= util.EXTRADEBUG:
+    fmt = "%(asctime)s %(name)s: %(filename)s:%(lineno)s: %(funcName)s(): %(message)s"
+else:
+    fmt = "%(asctime)s %(name)s: %(message)s"
 logging.basicConfig(
-    level=logging.INFO,
+    level=level,
     stream=sys.stderr,
-    format="%(asctime)s %(name)s: %(message)s",
+    format=fmt,
     datefmt="%Y-%m-%d %H:%M:%S",
 )
 
@@ -32,16 +37,17 @@ def calculate_guest_tag(tags):
     return name
 
 
-class ContestOrchestrator(orchestrator.Orchestrator):
+class ContestOrchestrator(orchestrator.adhoc.AdHocOrchestrator):
     @classmethod
     def run_setup(cls, sinfo):
         super().run_setup(sinfo)
         # upload pre-built content
         sinfo.remote.rsync(
-            "-rv" if util.in_debug_mode() else "-rq",
+            "-r",
             "--exclude=.git/",
             "/home/user/gitit/scap-content/",
             "remote:/root/upstream-content",
+            func=util.subprocess_log,
         )
 
     @classmethod
@@ -49,7 +55,7 @@ class ContestOrchestrator(orchestrator.Orchestrator):
         # fresh remote, prefer running destructive tests (which likely need
         # clean OS) to get them out of the way and prevent them from running
         # on a tainted OS later
-        if isinstance(previous, orchestrator.Orchestrator.SetupInfo):
+        if isinstance(previous, orchestrator.adhoc.AdHocOrchestrator.SetupInfo):
             for next_name in to_run:
                 next_tags = all_tests[next_name].get("tag", ())
                 if "destructive" in next_tags:
@@ -58,7 +64,7 @@ class ContestOrchestrator(orchestrator.Orchestrator):
         # previous test was run and finished non-destructively,
         # try to find a next test with the same Contest lib.virt guest tags
         # as the previous one, allowing snapshot reuse by Contest
-        elif isinstance(previous, orchestrator.Orchestrator.FinishedInfo):
+        elif isinstance(previous, orchestrator.adhoc.AdHocOrchestrator.FinishedInfo):
             finished_tags = all_tests[previous.test_name].get("tag", ())
             # if Guest tag is None, don't bother searching
             if finished_guest_tag := calculate_guest_tag(finished_tags):
@@ -118,8 +124,8 @@ Path("/tmp/json_file").unlink(missing_ok=True)
 if Path("/tmp/storage_dir").exists():
     shutil.rmtree("/tmp/storage_dir")
 
-aggr = orchestrator.JSONAggregator("/tmp/json_file", "/tmp/storage_dir")
-aggr.open()
+aggr = aggregator.json.JSONAggregator("/tmp/json_file", "/tmp/storage_dir")
+aggr.start()
 
 Path("/tmp/storage_dir/orch_tmp").mkdir()
 

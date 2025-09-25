@@ -531,14 +531,17 @@ class Reserve:
             with self.lock:
                 self.request = Request(api=self.api)
                 self.request.submit(spec)
-            util.debug(f"submitted request:\n{textwrap.indent(str(self.request), '    ')}")
+            util.debug(f"submitted request {self.request.id}")
+            util.extradebug(
+                f"request {self.request.id}:\n{textwrap.indent(str(self.request), '    ')}",
+            )
 
             # wait for user/host to ssh to
             ssh_user = ssh_host = None
             for line in PipelineLogStreamer(self.request):
                 # the '\033[0m' is to reset colors sometimes left in a bad
                 # state by pipeline.log
-                util.debug(f"pipeline: {line}\033[0m")
+                util.extradebug(f"{line}\033[0m")
                 # find hidden login details
                 m = re.search(
                     # host address can be an IP address or a hostname

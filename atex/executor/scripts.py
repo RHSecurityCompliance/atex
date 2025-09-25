@@ -1,6 +1,8 @@
+import os
 import collections
-import yaml
 from pathlib import Path
+
+import yaml
 
 from .. import util, fmf
 
@@ -50,7 +52,7 @@ def test_wrapper(*, test, tests_dir, test_exec):
     #       doing it here avoids unnecessary traffic (reading stdin) via ssh,
     #       even if it is fed from subprocess.DEVNULL on the runner
 
-    if util.in_debug_mode():
+    if os.environ.get("ATEX_DEBUG_TEST") == "1":
         out += "set -x\n"
 
     # use a subshell to limit the scope of the CWD change
@@ -122,7 +124,7 @@ def test_setup(*, test, wrapper_exec, test_exec, test_yaml, **kwargs):
     """
     out = "#!/bin/bash\n"
 
-    if util.in_debug_mode():
+    if os.environ.get("ATEX_DEBUG_TEST") == "1":
         out += "set -xe\n"
     else:
         out += "exec 1>/dev/null\n"

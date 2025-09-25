@@ -184,8 +184,9 @@ class TestingFarmProvisioner(Provisioner):
             # clamp count to absolute_max_remotes
             if count + reservations > self.absolute_max_remotes:
                 count = self.absolute_max_remotes - reservations
+            # spread out the request submissions
             for i in range(count):
-                delay = (api.API_QUERY_DELAY / count) * i
+                delay = (api.Request.api_query_limit / count) * i
                 self._schedule_one_reservation(delay)
 
     def get_remote(self, block=True):

@@ -59,6 +59,7 @@
     - stop_defer()
   - testingfarm simple sanity reserve for centos stream 8 9 10
     - to catch distro-specific bugs
+  - testingfarm honoring absolute_max_remotes (modify it on class level + try)
   - test special cases; ie.
     - Executor running test and the remote loses connection
       (ie. iptables -I INPUT 1 -j DROP)
@@ -123,3 +124,22 @@
   - both contest in executor.py and content in productization
   - might be hard with subprocess_log / subprocess_stream using Popen
     without timeout=
+
+- print just repr(e) in Orchestrator when receiving TestAbortedError:
+
+2025-09-29 23:20:58 atex: LibvirtCloningRemote(deimos.tpb.lab.eng.brq.redhat.com, scap-d1, 10.1.qcow2): '/hardening/ansible/uefi/cis' threw TestAbortedError during test runtime, re-running (1 reruns left):
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.13/site-packages/atex/util/threads.py", line 24, in _wrapper
+    ret = func(*func_args, **func_kwargs)
+  File "/usr/local/lib/python3.13/site-packages/atex/executor/executor.py", line 324, in run_test
+    abort(
+    ~~~~~^
+        f"test wrapper unexpectedly exited with {code} and "
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        "reconnect was not sent via test control",
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/usr/local/lib/python3.13/site-packages/atex/executor/executor.py", line 266, in abort
+    raise TestAbortedError(msg) from None
+atex.executor.executor.TestAbortedError: test wrapper unexpectedly exited with 255 and reconnect was not sent via test control

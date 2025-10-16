@@ -26,9 +26,9 @@ class Executor:
     and uploaded files by those tests.
 
         tests_repo = "path/to/cloned/tests"
-        tests_data = atex.fmf.FMFTests(tests_repo, "/plans/default")
+        fmf_tests = atex.fmf.FMFTests(tests_repo, "/plans/default")
 
-        with Executor(tests_data, conn) as e:
+        with Executor(fmf_tests, conn) as e:
             e.upload_tests()
             e.plan_prepare()
             Path("output_here").mkdir()
@@ -42,12 +42,12 @@ class Executor:
 
         conn.cmd(["mkdir", "-p", "/shared"])
 
-        with Executor(tests_data, conn, state_dir="/shared") as e:
+        with Executor(fmf_tests, conn, state_dir="/shared") as e:
             e.upload_tests()
             e.plan_prepare()
 
         # in parallel (ie. threading or multiprocessing)
-        with Executor(tests_data, unique_conn, state_dir="/shared") as e:
+        with Executor(fmf_tests, unique_conn, state_dir="/shared") as e:
             e.run_test(...)
     """
 

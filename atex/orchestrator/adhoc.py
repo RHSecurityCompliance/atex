@@ -51,6 +51,10 @@ class AdHocOrchestrator(Orchestrator):
             # exception class instance if running the test failed
             # (None if no exception happened (exit_code is defined))
             "exception",
+            # Path of a 'results' JSON file with test-reported results
+            "results",
+            # Path of a 'files' directory with test-uploaded files
+            "files",
         ),
     ):
         pass
@@ -168,13 +172,15 @@ class AdHocOrchestrator(Orchestrator):
         remote_with_test = f"{finfo.remote}: '{finfo.test_name}'"
 
         def ingest_result():
-            tmp_dir_path = Path(finfo.tmp_dir.name)
-            results_file = tmp_dir_path / "results"
-            files_dir = tmp_dir_path / "files"
             # in case Executor code itself threw an unrecoverable exception
             # and didn't even report the fallback 'infra' result
-            if results_file.exists() and files_dir.exists():
-                self.aggregator.ingest(self.platform, finfo.test_name, results_file, files_dir)
+            if finfo.results.exists() and finfo.files.exists():
+                self.aggregator.ingest(
+                    self.platform,
+                    finfo.test_name,
+                    finfo.results,
+                    finfo.files,
+                )
                 finfo.tmp_dir.cleanup()
 
         # if executor (or test) threw exception, schedule a re-run
@@ -246,10 +252,13 @@ class AdHocOrchestrator(Orchestrator):
             rinfo = treturn.rinfo
             del self.running_tests[rinfo.test_name]
 
+            tmp_dir_path = Path(rinfo.tmp_dir.name)
             finfo = self.FinishedInfo(
                 **rinfo,
                 exit_code=treturn.returned,
                 exception=treturn.exception,
+                results=tmp_dir_path / "results",
+                files=tmp_dir_path / "files",
             )
             self._process_finished_test(finfo)
 

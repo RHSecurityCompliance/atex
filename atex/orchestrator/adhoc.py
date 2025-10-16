@@ -1,5 +1,4 @@
 import tempfile
-import traceback
 import concurrent
 import collections
 from pathlib import Path
@@ -114,21 +113,6 @@ class AdHocOrchestrator(Orchestrator):
         # thread queue for remotes being set up (uploading tests, etc.)
         self.setup_queue = util.ThreadQueue(daemon=True)
 
-    @staticmethod
-    def run_setup(sinfo):
-        """
-        Set up a newly acquired class Remote instance for test execution.
-
-        'sinfo' is a SetupInfo instance with the (fully connected) remote.
-        """
-        sinfo.executor.start()
-        sinfo.executor.upload_tests()
-        sinfo.executor.plan_prepare()
-        # NOTE: we never run executor.plan_finish() or even executor.stop()
-        #       anywhere - instead, we assume the remote (and its connection)
-        #       was invalidated by the test, so we just rely on remote.release()
-        #       destroying the system
-
     def _run_new_test(self, info):
         """
         'info' can be either
@@ -169,54 +153,50 @@ class AdHocOrchestrator(Orchestrator):
         """
         'finfo' is a FinishedInfo instance.
         """
-        remote_with_test = f"{finfo.remote}: '{finfo.test_name}'"
+        test_data = self.fmf_tests.tests[finfo.test_name]
 
         def ingest_result():
             # in case Executor code itself threw an unrecoverable exception
             # and didn't even report the fallback 'infra' result
-            if finfo.results.exists() and finfo.files.exists():
+            if finfo.results is not None and finfo.files is not None:
                 self.aggregator.ingest(
                     self.platform,
                     finfo.test_name,
                     finfo.results,
                     finfo.files,
                 )
+                # ingesting destroyed these
+                finfo.results = None
+                finfo.files = None
+                # also delete the tmpdir housing these
                 finfo.tmp_dir.cleanup()
+                finfo.tmp_dir = None
 
-        # if executor (or test) threw exception, schedule a re-run
-        if finfo.exception:
-            exc_name = type(finfo.exception).__name__
-            exc_tb = "".join(traceback.format_exception(finfo.exception)).rstrip("\n")
-            msg = f"{remote_with_test} threw {exc_name} during test runtime"
-            if (reruns_left := self.reruns[finfo.test_name]) > 0:
-                util.info(f"{msg}, re-running ({reruns_left} reruns left):\n{exc_tb}")
-                self.reruns[finfo.test_name] -= 1
-                self.to_run.add(finfo.test_name)
-            else:
-                util.info(f"{msg}, reruns exceeded, giving up:\n{exc_tb}")
-                # record the final result anyway
-                ingest_result()
+        # TODO: somehow move logging from was_successful and should_be_rerun here,
+        #       probably print just some generic info from those functions that doesn't
+        #       imply any outcome, ie.
+        #           {remote_with_test} threw {exception}
+        #           {remote_with_test} exited with {code}
+        #           {remote_with_test} has {N} reruns left
+        #           {remote_with_test} has 0 reruns left
+        #       and then log the decision separately, here below, such as
+        #           {remote_with_test} failed, re-running
+        #           {remote_with_test} completed, ingesting result
+        #           {remote_with_test} was destructive, releasing remote
+        #           {remote_with_test} ...., running next test
+        #       That allows the user to override the functions, while keeping critical
+        #       flow reliably logged here.
 
-        # if the test exited as non-0, try a re-run
-        elif finfo.exit_code != 0:
-            msg = f"{remote_with_test} exited with non-zero: {finfo.exit_code}"
-            if (reruns_left := self.reruns[finfo.test_name]) > 0:
-                util.info(f"{msg}, re-running ({reruns_left} reruns left)")
-                self.reruns[finfo.test_name] -= 1
-                self.to_run.add(finfo.test_name)
-            else:
-                util.info(f"{msg}, reruns exceeded, giving up")
-                # record the final result anyway
-                ingest_result()
+        remote_with_test = f"{finfo.remote}: '{finfo.test_name}'"
 
-        # test finished successfully - ingest its results
+        if not self.was_successful(finfo, test_data) and self.should_be_rerun(finfo, test_data):
+            # re-run the test
+            self.to_run.add(finfo.test_name)
         else:
-            util.info(f"{remote_with_test} finished successfully")
             ingest_result()
 
         # if destroyed, release the remote and request a replacement
         # (Executor exception is always considered destructive)
-        test_data = self.fmf_tests.tests[finfo.test_name]
         if finfo.exception or self.destructive(finfo, test_data):
             util.debug(f"{remote_with_test} was destructive, releasing remote")
             finfo.remote.release()
@@ -253,12 +233,15 @@ class AdHocOrchestrator(Orchestrator):
             del self.running_tests[rinfo.test_name]
 
             tmp_dir_path = Path(rinfo.tmp_dir.name)
+            results_path = tmp_dir_path / "results"
+            files_path = tmp_dir_path / "files"
+
             finfo = self.FinishedInfo(
                 **rinfo,
                 exit_code=treturn.returned,
                 exception=treturn.exception,
-                results=tmp_dir_path / "results",
-                files=tmp_dir_path / "files",
+                results=results_path if results_path.exists() else None,
+                files=files_path if files_path.exists() else None,
             )
             self._process_finished_test(finfo)
 
@@ -273,16 +256,14 @@ class AdHocOrchestrator(Orchestrator):
             sinfo = treturn.sinfo
 
             if treturn.exception:
-                exc_name = type(treturn.exception).__name__
-                exc_tb = "".join(traceback.format_exception(treturn.exception)).rstrip("\n")
-                msg = f"{sinfo.remote}: setup failed with {exc_name}"
+                msg = f"{sinfo.remote}: setup failed with {repr(treturn.exception)}"
                 sinfo.remote.release()
                 if (reruns_left := self.failed_setups_left) > 0:
-                    util.warning(f"{msg}, re-trying ({reruns_left} setup retries left):\n{exc_tb}")
+                    util.warning(f"{msg}, re-trying ({reruns_left} setup retries left)")
                     self.failed_setups_left -= 1
                     sinfo.provisioner.provision(1)
                 else:
-                    util.warning(f"{msg}, setup retries exceeded, giving up:\n{exc_tb}")
+                    util.warning(f"{msg}, setup retries exceeded, giving up")
                     raise FailedSetupError("setup retries limit exceeded, broken infra?")
             else:
                 self._run_new_test(sinfo)
@@ -347,6 +328,21 @@ class AdHocOrchestrator(Orchestrator):
                         ex.submit(func)
 
     @staticmethod
+    def run_setup(sinfo):
+        """
+        Set up a newly acquired class Remote instance for test execution.
+
+        'sinfo' is a SetupInfo instance with the (fully connected) remote.
+        """
+        sinfo.executor.start()
+        sinfo.executor.upload_tests()
+        sinfo.executor.plan_prepare()
+        # NOTE: we never run executor.plan_finish() or even executor.stop()
+        #       anywhere - instead, we assume the remote (and its connection)
+        #       was invalidated by the test, so we just rely on remote.release()
+        #       destroying the system
+
+    @staticmethod
     def next_test(to_run, all_tests, previous):  # noqa: ARG004
         """
         Return a test name (string) to be executed next.
@@ -389,5 +385,55 @@ class AdHocOrchestrator(Orchestrator):
             return True
         # otherwise we good
         return False
-        # TODO: override with additional 'extra-contest: destructive: True' fmf metadata
-        # destructive = test_data.get("extra-contest", {}).get("destructive", False)
+
+    @staticmethod
+    def was_successful(info, test_data):  # noqa: ARG004
+        """
+        Return a boolean result whether a finished test was successful.
+        Returning False might cause it to be re-run (per should_be_rerun()).
+
+        'info' is Orchestrator.FinishedInfo namedtuple of the test.
+
+        'test_data' is a dict of fully resolved fmf test metadata of that test.
+        """
+        remote_with_test = f"{info.remote}: '{info.test_name}'"
+
+        # executor (or test) threw exception
+        if info.exception:
+            util.info(f"{remote_with_test} threw {repr(info.exception)} during test runtime")
+            return False
+
+        # the test exited as non-0
+        if info.exit_code != 0:
+            util.info(f"{remote_with_test} exited with non-zero: {info.exit_code}")
+            return False
+
+        # otherwise we good
+        return True
+
+    # TODO: @staticmethod and remove ARG002
+    #@staticmethod
+    def should_be_rerun(self, info, test_data):  # noqa: ARG004, ARG002
+        """
+        Return a boolean result whether a finished test failed in a way
+        that another execution attempt might succeed, due to race conditions
+        in the test or other non-deterministic factors.
+
+        'info' is Orchestrator.FinishedInfo namedtuple of the test.
+
+        'test_data' is a dict of fully resolved fmf test metadata of that test.
+        """
+        remote_with_test = f"{info.remote}: '{info.test_name}'"
+
+        # TODO: remove self.reruns and the whole X-reruns logic from AdHocOrchestrator,
+        #       leave it up to the user to wrap should_be_rerun() with an external dict
+        #       of tests, counting reruns for each
+        #        - allows the user to adjust counts per-test (ie. test_data metadata)
+        #        - allows this template to be @staticmethod
+        if (reruns_left := self.reruns[info.test_name]) > 0:
+            util.info(f"{remote_with_test}: re-running ({reruns_left} reruns left)")
+            self.reruns[info.test_name] -= 1
+            return True
+        else:
+            util.info(f"{remote_with_test}: reruns exceeded, giving up")
+            return False

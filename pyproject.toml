@@ -114,6 +114,7 @@ ignore = [
 indent-style = "space"
 quote-style = "double"
 
-[tool.ruff.lint.pycodestyle]
+#[tool.ruff.lint.pycodestyle]
 # keep docstrings within "standard" width
-max-doc-length = 80
+# - disabled because it also applies to # comments :(
+#max-doc-length = 80

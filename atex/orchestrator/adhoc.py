@@ -155,23 +155,6 @@ class AdHocOrchestrator(Orchestrator):
         """
         test_data = self.fmf_tests.tests[finfo.test_name]
 
-        def ingest_result():
-            # in case Executor code itself threw an unrecoverable exception
-            # and didn't even report the fallback 'infra' result
-            if finfo.results is not None and finfo.files is not None:
-                self.aggregator.ingest(
-                    self.platform,
-                    finfo.test_name,
-                    finfo.results,
-                    finfo.files,
-                )
-                # ingesting destroyed these
-                finfo.results = None
-                finfo.files = None
-                # also delete the tmpdir housing these
-                finfo.tmp_dir.cleanup()
-                finfo.tmp_dir = None
-
         # TODO: somehow move logging from was_successful and should_be_rerun here,
         #       probably print just some generic info from those functions that doesn't
         #       imply any outcome, ie.
@@ -193,7 +176,26 @@ class AdHocOrchestrator(Orchestrator):
             # re-run the test
             self.to_run.add(finfo.test_name)
         else:
-            ingest_result()
+            # ingest the result
+            #
+            # a condition just in case Executor code itself threw an exception
+            # and didn't even report the fallback 'infra' result
+            if finfo.results is not None and finfo.files is not None:
+                self.aggregator.ingest(
+                    self.platform,
+                    finfo.test_name,
+                    finfo.results,
+                    finfo.files,
+                )
+                # also delete the tmpdir housing these
+                finfo.tmp_dir.cleanup()
+                # ingesting destroyed these
+                finfo = self.FinishedInfo._from(
+                    finfo,
+                    results=None,
+                    files=None,
+                    tmp_dir=None,
+                )
 
         # if destroyed, release the remote and request a replacement
         # (Executor exception is always considered destructive)

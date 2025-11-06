@@ -33,6 +33,9 @@ from .. import util
 def setup_logging(level):
     if level <= util.EXTRADEBUG:
         fmt = "%(asctime)s %(name)s: %(filename)s:%(lineno)s: %(funcName)s(): %(message)s"
+        # also print urllib3 headers
+        import http.client  # noqa: PLC0415
+        http.client.HTTPConnection.debuglevel = 5
     else:
         fmt = "%(asctime)s %(name)s: %(message)s"
     logging.basicConfig(

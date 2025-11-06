@@ -2,6 +2,7 @@ import sys
 import json
 import pprint
 import collections
+from datetime import datetime, timedelta, UTC
 
 from .. import util
 from ..provisioner.testingfarm import api as tf
@@ -92,29 +93,52 @@ def stats(args):
             elif "tmt" in req["test"] and req["test"]["tmt"]:
                 repos[req["test"]["tmt"]["url"]] += 1
 
+        top_tokens = sorted(tokens, key=lambda x: tokens[x], reverse=True)[:10]
+        top_repos = sorted(repos, key=lambda x: repos[x], reverse=True)[:10]
+        if not top_tokens or not top_repos:
+            return
+        digits = max(len(str(tokens[top_tokens[0]])), len(str(repos[top_repos[0]])))
+
         print("Top 10 token IDs:")
-        for token_id in sorted(tokens, key=lambda x: tokens[x], reverse=True)[:10]:
+        for token_id in top_tokens:
             count = tokens[token_id]
-            print(f"{count:>5}  {token_id}")
+            print(f"{count:>{digits}}  {token_id}")
 
         print("Top 10 repo URLs:")
-        for repo_url in sorted(repos, key=lambda x: repos[x], reverse=True)[:10]:
+        for repo_url in top_repos:
             count = repos[repo_url]
-            print(f"{count:>5}  {repo_url}")
+            print(f"{count:>{digits}}  {repo_url}")
 
-    def chain_without_none(*iterables):
-        for itr in iterables:
-            if itr is None:
-                continue
-            for item in itr:
-                if item is not None:
-                    yield item
+    def request_search_results():
+        for state in args.states.split(","):
+            result = api.search_requests(
+                state=state,
+                ranch=args.ranch,
+                mine=False,
+            )
+            if result:
+                yield from result
 
-    queued_and_running = chain_without_none(
-        api.search_requests(state="queued", ranch=args.ranch, mine=False),
-        api.search_requests(state="running", ranch=args.ranch, mine=False),
-    )
-    top_users_repos(queued_and_running)
+    def multiday_request_search_results():
+        now = datetime.now(UTC)
+        for day in range(0,args.days):
+            before = now - timedelta(days=day)
+            after = now - timedelta(days=day+1)
+            for state in args.states.split(","):
+                result = api.search_requests(
+                    state=state,
+                    created_before=before.replace(microsecond=0).isoformat(),
+                    created_after=after.replace(microsecond=0).isoformat(),
+                    ranch=args.ranch,
+                    mine=False,
+                )
+                if result:
+                    yield from result
+
+    if args.days is not None:
+        top_users_repos(multiday_request_search_results())
+    else:
+        top_users_repos(request_search_results())
 
 
 def reserve(args):
@@ -239,7 +263,9 @@ def parse_args(parser):
         "stats",
         help="print out TF usage statistics",
     )
+    cmd.add_argument("--days", type=int, help="query last N days instead of all TF requests")
     cmd.add_argument("ranch", help="Testing Farm ranch name")
+    cmd.add_argument("states", help="comma-separated TF request states")
 
     cmd = cmds.add_parser(
         "reserve",

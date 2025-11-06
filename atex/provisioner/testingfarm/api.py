@@ -85,12 +85,13 @@ class TestingFarmAPI:
         self.api_url = url
         self.api_token = token or os.environ.get("TESTING_FARM_API_TOKEN")
 
-    def _query(self, method, path, *args, headers=None, **kwargs):
+    def _query(self, method, path, *args, headers=None, auth=True, **kwargs):
         url = f"{self.api_url}{path}"
-        if headers is not None:
-            headers["Authorization"] = f"Bearer {self.api_token}"
-        else:
-            headers = {"Authorization": f"Bearer {self.api_token}"}
+        if self.api_token and auth:
+            if headers is not None:
+                headers["Authorization"] = f"Bearer {self.api_token}"
+            else:
+                headers = {"Authorization": f"Bearer {self.api_token}"}
 
         reply = _http.request(method, url, *args, headers=headers, preload_content=False, **kwargs)
 
@@ -177,7 +178,7 @@ class TestingFarmAPI:
             fields["token_id"] = self.whoami()["token"]["id"]
             fields["user_id"] = self.whoami()["user"]["id"]
 
-        return self._query("GET", "/requests", fields=fields)
+        return self._query("GET", "/requests", fields=fields, auth=mine)
 
     def get_request(self, request_id):
         """

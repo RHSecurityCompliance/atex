@@ -154,29 +154,24 @@ class TestingFarmProvisioner(Provisioner):
             self.ssh_key, self.ssh_pubkey = util.ssh_keygen(self._tmpdir.name)
 
     def stop(self):
+        release_funcs = []
+
         with self.lock:
-            # abort reservations in progress
-            while self.reserving:
-                # testingfarm api.Reserve instances
-                self.reserving.pop().release()
-            # cancel/release all Remotes ever created by us
-            while self.remotes:
-                # TestingFarmRemote instances
-                self.remotes.pop().release()
+            release_funcs += (f.release for f in self.reserving)
+            self.reserving = []
+            release_funcs += (r.release for r in self.remotes)
+            self.remotes = []  # just in case of a later .start()
+
+        # parallelize at most 10 TF API release (DELETE) calls
+        workers = min(len(release_funcs), 10)
+        with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as ex:
+            for func in release_funcs:
+                ex.submit(func)
+
+        with self.lock:
             # explicitly remove the tmpdir rather than relying on destructor
             self._tmpdir.cleanup()
             self._tmpdir = None
-
-    def stop_defer(self):
-        callables = []
-        with self.lock:
-            callables += (f.release for f in self.reserving)
-            self.reserving = []
-            callables += (r.release for r in self.remotes)
-            self.remotes = []  # just in case
-            callables.append(self._tmpdir.cleanup)
-            self._tmpdir = None
-        return callables
 
     def provision(self, count=1):
         with self.lock:

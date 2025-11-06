@@ -116,11 +116,3 @@ def rsync(p):
 
 
 # TODO: .start() and .stop() manually
-
-# TODO: .stop_defer() via
-#try:
-#    p.start()
-#finally:
-#    with concurrent.futures.ThreadPoolExecutor(max_workers=20) as ex:
-#        for f in p.stop_defer(p):
-#            ex.submit(f)

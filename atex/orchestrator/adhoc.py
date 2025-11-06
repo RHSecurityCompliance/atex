@@ -345,13 +345,12 @@ class AdHocOrchestrator(Orchestrator):
         self.test_queue.join()  # also ignore any exceptions raised
 
         # stop all provisioners, also releasing all remotes
-        # TODO: don't parallelize here, remove .stop_defer() and parallelize in provisioners
+        # - parallelize up to 10 provisioners at a time
         if self.provisioners:
-            workers = min(len(self.provisioners), 20)
+            workers = min(len(self.provisioners), 10)
             with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as ex:
                 for provisioner in self.provisioners:
-                    for func in provisioner.stop_defer():
-                        ex.submit(func)
+                    ex.submit(provisioner.stop)
 
     @staticmethod
     def run_setup(sinfo):

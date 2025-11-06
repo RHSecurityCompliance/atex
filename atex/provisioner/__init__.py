@@ -56,10 +56,6 @@ class Provisioner:
     that .get_remote() will ever return a Remote. Ie. the caller can call
     .provision(count=math.inf) to receive as many remotes as the Provisioner
     can possibly supply.
-
-    TODO: remove .defer_stop() (or stop_defer) and mention this below:
-    Note that .stop() or .defer_stop() may be called from a different
-    thread, asynchronously to any other functions.
     """
 
     def provision(self, count=1):
@@ -92,18 +88,6 @@ class Provisioner:
         calling .release() on all Remote instances that were created.
         """
         raise NotImplementedError(f"'stop' not implemented for {self.__class__.__name__}")
-
-    def stop_defer(self):
-        """
-        Enable an external caller to stop the Provisioner instance,
-        deferring resource deallocation to the caller.
-
-        Return an iterable of argument-free thread-safe callables that can be
-        called, possibly in parallel, to free up resources.
-        Ie. a list of 200 .release() functions, to be called in a thread pool
-        by the user, speeding up cleanup.
-        """
-        return (self.stop,)
 
     def __enter__(self):
         try:

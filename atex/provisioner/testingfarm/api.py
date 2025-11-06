@@ -259,13 +259,21 @@ class Request:
     def assert_alive(self):
         if not self.alive():
             state = self.data["state"]
-            raise GoneAwayError(f"request {self.data['id']} not alive anymore, entered: {state}")
+            raise GoneAwayError(f"request {self.id} not alive anymore, entered: {state}")
 
     def wait_for_state(self, state):
-        self.assert_alive()
-        while self.data["state"] != state:
-            time.sleep(1)
-            self.assert_alive()
+        """
+        'state' is a str or a tuple of states to wait for.
+        """
+        watched = (state,) if isinstance(state, str) else state
+        while True:
+            self._refresh()
+            if self.data["state"] in watched:
+                break
+            # if the request ended in one of END_STATES and the above condition
+            # did not catch it, the wait will never end
+            if self.data["state"] in END_STATES:
+                raise GoneAwayError(f"request {self.id} ended with {self.data['state']}")
 
     def __repr__(self):
         return f"Request(id={self.id})"

@@ -1,6 +1,7 @@
 import sys
 import json
 import pprint
+import collections
 
 from .. import util
 from ..provisioner.testingfarm import api as tf
@@ -76,6 +77,44 @@ def search_requests(args):
             envs_str = ", ".join(envs)
 
             print(f"{created} {req_id} : {envs_str}")
+
+
+def stats(args):
+    api = _get_api(args)
+
+    def top_users_repos(requests):
+        tokens = collections.defaultdict(int)
+        repos = collections.defaultdict(int)
+        for req in requests:
+            tokens[req["token_id"]] += 1
+            if "fmf" in req["test"] and req["test"]["fmf"]:
+                repos[req["test"]["fmf"]["url"]] += 1
+            elif "tmt" in req["test"] and req["test"]["tmt"]:
+                repos[req["test"]["tmt"]["url"]] += 1
+
+        print("Top 10 token IDs:")
+        for token_id in sorted(tokens, key=lambda x: tokens[x], reverse=True)[:10]:
+            count = tokens[token_id]
+            print(f"{count:>5}  {token_id}")
+
+        print("Top 10 repo URLs:")
+        for repo_url in sorted(repos, key=lambda x: repos[x], reverse=True)[:10]:
+            count = repos[repo_url]
+            print(f"{count:>5}  {repo_url}")
+
+    def chain_without_none(*iterables):
+        for itr in iterables:
+            if itr is None:
+                continue
+            for item in itr:
+                if item is not None:
+                    yield item
+
+    queued_and_running = chain_without_none(
+        api.search_requests(state="queued", ranch=args.ranch, mine=False),
+        api.search_requests(state="running", ranch=args.ranch, mine=False),
+    )
+    top_users_repos(queued_and_running)
 
 
 def reserve(args):
@@ -197,6 +236,12 @@ def parse_args(parser):
     cmd.add_argument("--json", help="full details, one request per line", action="store_true")
 
     cmd = cmds.add_parser(
+        "stats",
+        help="print out TF usage statistics",
+    )
+    cmd.add_argument("ranch", help="Testing Farm ranch name")
+
+    cmd = cmds.add_parser(
         "reserve",
         help="reserve a system and ssh into it",
     )
@@ -231,6 +276,8 @@ def main(args):
         cancel(args)
     elif args._cmd in ("search-requests", "sr"):
         search_requests(args)
+    elif args._cmd == "stats":
+        stats(args)
     elif args._cmd == "reserve":
         reserve(args)
     elif args._cmd in ("watch-pipeline", "wp"):

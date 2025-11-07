@@ -1,6 +1,7 @@
 import time
 import tempfile
 import threading
+import concurrent
 
 from ... import connection, util
 from .. import Provisioner, Remote
@@ -163,10 +164,11 @@ class TestingFarmProvisioner(Provisioner):
             self.remotes = []  # just in case of a later .start()
 
         # parallelize at most 10 TF API release (DELETE) calls
-        workers = min(len(release_funcs), 10)
-        with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as ex:
-            for func in release_funcs:
-                ex.submit(func)
+        if release_funcs:
+            workers = min(len(release_funcs), 10)
+            with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as ex:
+                for func in release_funcs:
+                    ex.submit(func)
 
         with self.lock:
             # explicitly remove the tmpdir rather than relying on destructor

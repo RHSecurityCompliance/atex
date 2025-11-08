@@ -215,6 +215,14 @@ class AdHocOrchestrator(Orchestrator):
             util.debug(f"{remote_with_test} was non-destructive, running next test")
             self._run_new_test(finfo)
 
+        # no more tests to run, release the remote
+        else:
+            util.debug(f"{finfo.remote} no longer useful, releasing it")
+            self.release_queue.start_thread(
+                finfo.remote.release,
+                remote=finfo.remote,
+            )
+
     def serve_once(self):
         """
         Run the orchestration logic, processing any outstanding requests

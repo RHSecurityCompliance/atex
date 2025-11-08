@@ -1,7 +1,7 @@
 import time
 import tempfile
 import threading
-import concurrent
+import concurrent.futures
 
 from ... import connection, util
 from .. import Provisioner, Remote

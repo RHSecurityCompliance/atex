@@ -34,10 +34,10 @@ _http = urllib3.PoolManager(
     maxsize=10,
     block=True,
     retries=urllib3.Retry(
-        total=10,
+        total=24,
         # account for API restarts / short outages
-        backoff_factor=60,
-        backoff_max=600,
+        backoff_factor=10,
+        backoff_max=3600,
         # retry on API server errors too, not just connection issues
         status=10,
         status_forcelist={403,404,408,429,500,502,503,504},

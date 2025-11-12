@@ -140,6 +140,7 @@ class AdHocOrchestrator(Orchestrator):
         )
 
         tmp_dir_path = Path(rinfo.tmp_dir.name)
+        tmp_dir_path.chmod(0o755)
         self.test_queue.start_thread(
             target=info.executor.run_test,
             target_args=(

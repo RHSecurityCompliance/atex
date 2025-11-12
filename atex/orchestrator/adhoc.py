@@ -125,7 +125,7 @@ class AdHocOrchestrator(Orchestrator):
         next_test_name = self.next_test(self.to_run, self.fmf_tests.tests, info)
         assert next_test_name in self.to_run, "next_test() returned valid test name"
 
-        util.info(f"starting '{next_test_name}' on {info.remote}")
+        util.info(f"{info.remote}: starting '{next_test_name}'")
 
         self.to_run.remove(next_test_name)
 
@@ -177,6 +177,7 @@ class AdHocOrchestrator(Orchestrator):
 
         if not self.was_successful(finfo, test_data) and self.should_be_rerun(finfo, test_data):
             # re-run the test
+            util.info(f"{remote_with_test} failed, re-running")
             self.to_run.add(finfo.test_name)
         else:
             # ingest the result
@@ -184,6 +185,7 @@ class AdHocOrchestrator(Orchestrator):
             # a condition just in case Executor code itself threw an exception
             # and didn't even report the fallback 'infra' result
             if finfo.results is not None and finfo.files is not None:
+                util.info(f"{remote_with_test} completed, ingesting result")
                 self.aggregator.ingest(
                     self.platform,
                     finfo.test_name,
@@ -467,10 +469,10 @@ class AdHocOrchestrator(Orchestrator):
         #       of tests, counting reruns for each
         #        - allows the user to adjust counts per-test (ie. test_data metadata)
         #        - allows this template to be @staticmethod
-        if (reruns_left := self.reruns[info.test_name]) > 0:
-            util.info(f"{remote_with_test}: re-running ({reruns_left} reruns left)")
+        reruns_left = self.reruns[info.test_name]
+        util.info(f"{remote_with_test}: {reruns_left} reruns left")
+        if reruns_left > 0:
             self.reruns[info.test_name] -= 1
             return True
         else:
-            util.info(f"{remote_with_test}: reruns exceeded, giving up")
             return False

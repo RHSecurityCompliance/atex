@@ -130,6 +130,7 @@ class TestingFarmProvisioner(Provisioner):
         # instantiate a class Reserve from the Testing Farm api module
         # (which typically provides context manager, but we use its .reserve()
         #  and .release() functions directly)
+        util.info(f"{repr(self)}: reserving new remote")
         tf_reserve = api.Reserve(
             compose=self.compose,
             arch=self.arch,

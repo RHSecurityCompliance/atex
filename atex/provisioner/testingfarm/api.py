@@ -438,7 +438,6 @@ class Reserve:
         'api' is a TestingFarmAPI instance - if unspecified, a sensible default
         will be used.
         """
-        util.info(f"will reserve compose:{compose} on arch:{arch} for {timeout}min")
         spec = {
             "test": {
                 "fmf": reserve_test or DEFAULT_RESERVE_TEST,

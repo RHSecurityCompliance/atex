@@ -208,6 +208,8 @@ class AdHocOrchestrator(Orchestrator):
                 finfo.remote.release,
                 remote=finfo.remote,
             )
+            # TODO: should this be conditioned by 'self.to_run:' ? to not uselessly fall
+            #       into setup spares and get immediately released after setup?
             finfo.provisioner.provision(1)
 
         # if still not destroyed, run another test on it
@@ -295,6 +297,7 @@ class AdHocOrchestrator(Orchestrator):
                     treturn = self.setup_queue.get_raw(block=False)
                 except util.ThreadQueue.Empty:
                     break
+                util.debug(f"releasing extraneous set-up {treturn.sinfo.remote}")
                 self.release_queue.start_thread(
                     treturn.sinfo.remote.release,
                     remote=treturn.sinfo.remote,

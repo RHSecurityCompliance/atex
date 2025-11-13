@@ -45,7 +45,7 @@ class ContestOrchestrator(AdHocOrchestrator):
         # fresh remote, prefer running destructive tests (which likely need
         # clean OS) to get them out of the way and prevent them from running
         # on a tainted OS later
-        if isinstance(previous, AdHocOrchestrator.SetupInfo):
+        if type(previous) is AdHocOrchestrator.SetupInfo:
             for next_name in to_run:
                 next_tags = all_tests[next_name].get("tag", ())
                 util.debug(f"considering next_test for destructivity: {next_name}")
@@ -56,7 +56,7 @@ class ContestOrchestrator(AdHocOrchestrator):
         # previous test was run and finished non-destructively,
         # try to find a next test with the same Contest lib.virt guest tags
         # as the previous one, allowing snapshot reuse by Contest
-        elif isinstance(previous, AdHocOrchestrator.FinishedInfo):
+        elif type(previous) is AdHocOrchestrator.FinishedInfo:
             finished_tags = all_tests[previous.test_name].get("tag", ())
             util.debug(f"previous finished test on {previous.remote}: {previous.test_name}")
             # if Guest tag is None, don't bother searching

@@ -260,7 +260,19 @@ class LibvirtCloningProvisioner(Provisioner):
             # by libvirt natively (because treating nvram as a storage pool
             # is a user hack)
             for p in conn.listAllStoragePools():
-                p.refresh()
+                # retry a few times to work around a libvirt race condition
+                for _ in range(10):
+                    try:
+                        p.refresh()
+                    except libvirt.libvirtError as e:
+                        if "domain is not running" in str(e):
+                            break
+                        elif "has asynchronous jobs running" in str(e):
+                            continue
+                        else:
+                            raise
+                    else:
+                        break
             try:
                 nvram_vol = conn.storageVolLookupByPath(nvram_path)
             except libvirt.libvirtError as e:

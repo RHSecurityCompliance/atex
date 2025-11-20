@@ -153,7 +153,7 @@ class Executor:
             **self.env,
             "TMT_PLAN_ENVIRONMENT_FILE": self.plan_env_file,
         }
-        env_args = (f"{k}={v}" for k, v in env.items())
+        env_args = tuple(f"{k}={v}" for k, v in env.items())
         # run the scripts
         for script in scripts:
             self.conn.cmd(

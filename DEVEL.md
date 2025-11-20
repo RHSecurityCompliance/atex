@@ -109,4 +109,6 @@ Also note that `.reserve()` and `.abort()` could be also called by a context
 manager as `__enter__` and `__exit__`, ie. by a non-threaded caller (running
 everything in the main thread).
 
+## Upcoming API breakages
 
+- rename `FMFTests` argument `plan_name` to `plan`

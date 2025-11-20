@@ -157,7 +157,7 @@ class Executor:
         # run the scripts
         for script in scripts:
             self.conn.cmd(
-                ("env", *env_args, "bash"),
+                ("env", "-C", self.tests_dir, *env_args, "bash"),
                 func=util.subprocess_log,
                 stderr=subprocess.STDOUT,
                 input=script,

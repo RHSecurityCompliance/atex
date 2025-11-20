@@ -56,17 +56,17 @@ def prepare(args):
     result = make_fmftests(args)
     print("--- fmf root ---")
     print(str(result.root))
-    print("--- prepare packages ---")
+    print("\n--- prepare packages ---")
     print("\n".join(result.prepare_pkgs))
-    print("--- plan environment ---")
-    print("\n".join("{k}={v}" for k,v in result.plan_env))
+    print("\n--- plan environment ---")
+    print("\n".join(f"{k}={v}" for k,v in result.plan_env.items()))
     for script in result.prepare_scripts:
-        print("--- prepare script ---")
-        print(script)
+        print("\n--- prepare script ---")
+        print(script.rstrip("\n"))
         print("----------------------")
     for script in result.finish_scripts:
-        print("--- finish script ---")
-        print(script)
+        print("\n--- finish script ---")
+        print(script.rstrip("\n"))
         print("----------------------")
 
 

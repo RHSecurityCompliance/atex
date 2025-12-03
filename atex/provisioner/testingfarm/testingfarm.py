@@ -50,7 +50,12 @@ class TestingFarmRemote(Remote, connection.ssh.ManagedSSHConnection):
 
 
 class TestingFarmProvisioner(Provisioner):
+    # maximum number of TF requests the user can .provision(),
+    # as a last safety measure against Orchestrator(remotes=math.inf)
     absolute_max_remotes = 100
+    # number of parallel threads running HTTP DELETE calls to cancel
+    # TF requests on .stop() or Context Manager exit
+    stop_release_workers = 10
 
     def __init__(self, compose, arch="x86_64", *, max_retries=10, **reserve_kwargs):
         """
@@ -164,9 +169,9 @@ class TestingFarmProvisioner(Provisioner):
             release_funcs += (r.release for r in self.remotes)
             self.remotes = []  # just in case of a later .start()
 
-        # parallelize at most 10 TF API release (DELETE) calls
+        # parallelize at most stop_release_workers TF API release (DELETE) calls
         if release_funcs:
-            workers = min(len(release_funcs), 10)
+            workers = min(len(release_funcs), self.stop_release_workers)
             with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as ex:
                 for func in release_funcs:
                     ex.submit(func)

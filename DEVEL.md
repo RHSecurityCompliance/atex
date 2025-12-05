@@ -4,6 +4,19 @@
 
 TODO - coding style
 
+## Executor and test results
+
+TODO: mention that tests output their own JSON + uploaded files
+to some temporary dir, which is then ingested by an Aggregator
+to (potentially) a very different JSON format - the JSON here
+is literally just a format, not a specific kind of data - like
+"INI" doesn't always mean "Midnight Commander config", but a generic
+format useful for many things
+
+TODO: also, test -> results+files --> Aggregator --> more files
+where results+files can have many different keys/values, but
+Aggregators typically only look for a few specific ones (ie. 'note')
+
 ## Release workflow
 
 NEVER commit these to git, they are ONLY for the PyPI release.

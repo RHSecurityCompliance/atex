@@ -7,12 +7,14 @@ class Aggregator:
     TODO: generic description, not JSON-specific
     """
 
-    def ingest(self, platform, test_name, results_file, files_dir):
+    def ingest(self, platform, test_name, test_results, test_files):
         """
-        Process 'results_file' (string/Path) for reported results and append
-        them to the overall aggregated line-JSON file, recursively copying over
-        the dir structure under 'files_dir' (string/Path) under the respective
-        platform and test name in the aggregated storage dir.
+        Process 'test_results' (string/Path) for as results reported by a test
+        ran by Executor, along with 'test_files' as files uploaded by that test,
+        aggregating them under 'platform' (string) as 'test_name' (string).
+
+        This is DESTRUCTIVE, the input results/files are consumed in the
+        process.
         """
         raise NotImplementedError(f"'ingest' not implemented for {self.__class__.__name__}")
 

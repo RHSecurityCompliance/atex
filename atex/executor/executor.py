@@ -387,7 +387,7 @@ class Executor:
                         pass
                     reporter.report({
                         "status": "infra",
-                        "note": repr(exception),
+                        "note": f"{type(exception).__name__}({exception})",
                         "testout": "output.txt",
                     })
 

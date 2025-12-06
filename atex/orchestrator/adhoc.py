@@ -289,7 +289,8 @@ class AdHocOrchestrator(Orchestrator):
             sinfo = treturn.sinfo
 
             if treturn.exception:
-                msg = f"{sinfo.remote}: setup failed with {repr(treturn.exception)}"
+                exc_str = f"{type(treturn.exception).__name__}({treturn.exception})"
+                msg = f"{sinfo.remote}: setup failed with {exc_str}"
                 self.release_queue.start_thread(
                     sinfo.remote.release,
                     remote=sinfo.remote,
@@ -344,7 +345,8 @@ class AdHocOrchestrator(Orchestrator):
             pass
         else:
             if treturn.exception:
-                util.warning(f"{treturn.remote} release failed: {repr(treturn.exception)}")
+                exc_str = f"{type(treturn.exception).__name__}({treturn.exception})"
+                util.warning(f"{treturn.remote} release failed: {exc_str}")
             else:
                 util.debug(f"{treturn.remote} release completed")
 
@@ -355,7 +357,8 @@ class AdHocOrchestrator(Orchestrator):
             pass
         else:
             if treturn.exception:
-                util.warning(f"'{treturn.test_name}' ingesting failed: {repr(treturn.exception)}")
+                exc_str = f"{type(treturn.exception).__name__}({treturn.exception})"
+                util.warning(f"'{treturn.test_name}' ingesting failed: {exc_str}")
             else:
                 util.debug(f"'{treturn.test_name}' ingesting completed")
 
@@ -464,7 +467,8 @@ class AdHocOrchestrator(Orchestrator):
 
         # executor (or test) threw exception
         if info.exception:
-            util.info(f"{remote_with_test} threw {repr(info.exception)} during test runtime")
+            exc_str = f"{type(info.exception).__name__}({info.exception})"
+            util.info(f"{remote_with_test} threw {exc_str} during test runtime")
             return False
 
         # the test exited as non-0

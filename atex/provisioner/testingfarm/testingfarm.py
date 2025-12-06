@@ -201,10 +201,11 @@ class TestingFarmProvisioner(Provisioner):
                 # always non-blocking
                 return None
             except (api.TestingFarmError, connection.ssh.SSHError) as e:
+                exc_str = f"{type(e).__name__}({e})"
                 with self.lock:
                     if self.retries > 0:
                         util.warning(
-                            f"caught while reserving a TF system: {repr(e)}, "
+                            f"caught while reserving a TF system: {exc_str}, "
                             f"retrying ({self.retries} left)",
                         )
                         self.retries -= 1
@@ -215,7 +216,7 @@ class TestingFarmProvisioner(Provisioner):
                             return None
                     else:
                         util.warning(
-                            f"caught while reserving a TF system: {repr(e)}, "
+                            f"caught while reserving a TF system: {exc_str}, "
                             "exhausted all retries, giving up",
                         )
                         raise

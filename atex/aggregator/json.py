@@ -208,7 +208,7 @@ class CompressedJSONAggregator(JSONAggregator):
                 # skip dirs, symlinks, device files, etc.
                 if not src_path.is_file(follow_symlinks=False) or file_name in self.exclude:
                     _verbatim_move(src_path, dst_path)
-                    return
+                    continue
 
                 if self.suffix:
                     dst_path = dst_path.with_name(f"{dst_path.name}{self.suffix}")

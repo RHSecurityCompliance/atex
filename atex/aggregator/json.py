@@ -200,26 +200,34 @@ class CompressedJSONAggregator(JSONAggregator):
             super()._move_test_files(test_files, target_dir)
             return
 
+        util.info(f"compressing {test_files} into {target_dir}")
         for root, _, files in test_files.walk(top_down=False):
+            util.info(f"walk: root:{root}, files:{files}")
             for file_name in files:
                 src_path = root / file_name
                 dst_path = target_dir / src_path.relative_to(test_files)
+                util.info(f"walk: will {src_path} --> {dst_path}")
 
                 # skip dirs, symlinks, device files, etc.
                 if not src_path.is_file(follow_symlinks=False) or file_name in self.exclude:
+                    util.info(f"walk: verbatim move {src_path} --> {dst_path}")
                     _verbatim_move(src_path, dst_path)
                     continue
 
                 if self.suffix:
                     dst_path = dst_path.with_name(f"{dst_path.name}{self.suffix}")
+                    util.info(f"walk: adjusted dst_path to: {dst_path}")
 
+                util.info(f"walk: mkdir {dst_path.parent}")
                 dst_path.parent.mkdir(parents=True, exist_ok=True)
 
                 with open(src_path, "rb") as plain_fobj:
                     with gzip.open(dst_path, "wb", compresslevel=self.level) as gzip_fobj:
                         shutil.copyfileobj(plain_fobj, gzip_fobj, 1048576)
 
+                util.info(f"walk: unlink {src_path}")
                 src_path.unlink()
 
             # we're walking bottom-up, so the local root should be empty now
+            util.info(f"walk: rmdir {root}")
             root.rmdir()

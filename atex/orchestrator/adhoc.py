@@ -114,6 +114,8 @@ class AdHocOrchestrator(Orchestrator):
         self.setup_queue = util.ThreadQueue(daemon=True)
         # thread queue for remotes being released
         self.release_queue = util.ThreadQueue(daemon=True)
+        # thread queue for results being ingested
+        self.ingest_queue = util.ThreadQueue(daemon=False)
 
     def _run_new_test(self, info):
         """
@@ -186,15 +188,26 @@ class AdHocOrchestrator(Orchestrator):
             # and didn't even report the fallback 'infra' result
             if finfo.results is not None and finfo.files is not None:
                 util.info(f"{remote_with_test} completed, ingesting result")
-                self.aggregator.ingest(
-                    self.platform,
-                    finfo.test_name,
-                    finfo.results,
-                    finfo.files,
+
+                def ingest_and_cleanup(ingest, args, cleanup):
+                    ingest(*args)
+                    # also delete the tmpdir housing these
+                    cleanup()
+
+                self.ingest_queue.start_thread(
+                    ingest_and_cleanup,
+                    target_args=(
+                        # ingest func itself
+                        self.aggregator.ingest,
+                        # args for ingest
+                        (self.platform, finfo.test_name, finfo.results, finfo.files),
+                        # cleanup func itself
+                        finfo.tmp_dir.cleanup,
+                    ),
+                    test_name=finfo.test_name,
                 )
-                # also delete the tmpdir housing these
-                finfo.tmp_dir.cleanup()
-                # ingesting destroyed these
+
+                # ingesting destroys these
                 finfo = self.FinishedInfo._from(
                     finfo,
                     results=None,
@@ -333,7 +346,18 @@ class AdHocOrchestrator(Orchestrator):
             if treturn.exception:
                 util.warning(f"{treturn.remote} release failed: {repr(treturn.exception)}")
             else:
-                util.debug(f"{treturn.remote}: completed .release()")
+                util.debug(f"{treturn.remote} release completed")
+
+        # gather returns from Aggregator.ingest() calls - check for exceptions
+        try:
+            treturn = self.ingest_queue.get_raw(block=False)
+        except util.ThreadQueue.Empty:
+            pass
+        else:
+            if treturn.exception:
+                util.warning(f"'{treturn.test_name}' ingesting failed: {repr(treturn.exception)}")
+            else:
+                util.debug(f"'{treturn.test_name}' ingesting completed")
 
         return True
 

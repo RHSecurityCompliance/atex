@@ -208,6 +208,9 @@ class CompressedJSONAggregator(JSONAggregator):
                 dst_path = target_dir / src_path.relative_to(test_files)
                 util.info(f"walk: will {src_path} --> {dst_path}")
 
+                util.info(f"walk: mkdir {dst_path.parent}")
+                dst_path.parent.mkdir(parents=True, exist_ok=True)
+
                 # skip dirs, symlinks, device files, etc.
                 if not src_path.is_file(follow_symlinks=False) or file_name in self.exclude:
                     util.info(f"walk: verbatim move {src_path} --> {dst_path}")
@@ -217,9 +220,6 @@ class CompressedJSONAggregator(JSONAggregator):
                 if self.suffix:
                     dst_path = dst_path.with_name(f"{dst_path.name}{self.suffix}")
                     util.info(f"walk: adjusted dst_path to: {dst_path}")
-
-                util.info(f"walk: mkdir {dst_path.parent}")
-                dst_path.parent.mkdir(parents=True, exist_ok=True)
 
                 with open(src_path, "rb") as plain_fobj:
                     with gzip.open(dst_path, "wb", compresslevel=self.level) as gzip_fobj:

@@ -251,7 +251,7 @@ class AdHocOrchestrator(Orchestrator):
         (more work to be done), False once all testing is concluded.
         """
         # all done
-        if not self.to_run and not self.running_tests and self.release_queue.qsize() == 0:
+        if not self.to_run and not self.running_tests:
             return False
 
         # process all finished tests, potentially reusing remotes for executing
@@ -339,28 +339,30 @@ class AdHocOrchestrator(Orchestrator):
         # gather returns from Remote.release() functions - check for exceptions
         # thrown, re-report them as warnings as they are not typically critical
         # for operation
-        try:
-            treturn = self.release_queue.get_raw(block=False)
-        except util.ThreadQueue.Empty:
-            pass
-        else:
-            if treturn.exception:
-                exc_str = f"{type(treturn.exception).__name__}({treturn.exception})"
-                util.warning(f"{treturn.remote} release failed: {exc_str}")
+        while True:
+            try:
+                treturn = self.release_queue.get_raw(block=False)
+            except util.ThreadQueue.Empty:
+                break
             else:
-                util.debug(f"{treturn.remote} release completed")
+                if treturn.exception:
+                    exc_str = f"{type(treturn.exception).__name__}({treturn.exception})"
+                    util.warning(f"{treturn.remote} release failed: {exc_str}")
+                else:
+                    util.debug(f"{treturn.remote} release completed")
 
         # gather returns from Aggregator.ingest() calls - check for exceptions
-        try:
-            treturn = self.ingest_queue.get_raw(block=False)
-        except util.ThreadQueue.Empty:
-            pass
-        else:
-            if treturn.exception:
-                exc_str = f"{type(treturn.exception).__name__}({treturn.exception})"
-                util.warning(f"'{treturn.test_name}' ingesting failed: {exc_str}")
+        while True:
+            try:
+                treturn = self.ingest_queue.get_raw(block=False)
+            except util.ThreadQueue.Empty:
+                break
             else:
-                util.debug(f"'{treturn.test_name}' ingesting completed")
+                if treturn.exception:
+                    exc_str = f"{type(treturn.exception).__name__}({treturn.exception})"
+                    util.warning(f"'{treturn.test_name}' ingesting failed: {exc_str}")
+                else:
+                    util.debug(f"'{treturn.test_name}' ingesting completed")
 
         return True
 
@@ -384,7 +386,21 @@ class AdHocOrchestrator(Orchestrator):
         for rinfo in self.running_tests.values():
             rinfo.executor.cancel()
         self.test_queue.join()    # also ignore any exceptions raised
-        self.ingest_queue.join()  # same
+
+        # wait for all running ingestions to finish, print exceptions
+        # (we would rather stop provisioners further below than raise here)
+        while True:
+            try:
+                treturn = self.ingest_queue.get_raw(block=False)
+            except util.ThreadQueue.Empty:
+                break
+            else:
+                if treturn.exception:
+                    exc_str = f"{type(treturn.exception).__name__}({treturn.exception})"
+                    util.warning(f"'{treturn.test_name}' ingesting failed: {exc_str}")
+                else:
+                    util.debug(f"'{treturn.test_name}' ingesting completed")
+        self.ingest_queue.join()
 
         # stop all provisioners, also releasing all remotes
         # - parallelize up to 10 provisioners at a time

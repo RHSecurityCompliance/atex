@@ -36,7 +36,7 @@ class Aggregator:
             self.start()
             return self
         except Exception:
-            self.close()
+            self.stop()
             raise
 
     def __exit__(self, exc_type, exc_value, traceback):

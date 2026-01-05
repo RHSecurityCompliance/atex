@@ -42,6 +42,7 @@ def test_envfile(provisioner, tmp_dir):
     output = (tmp_dir / "files" / "output.txt").read_text()
     assert "\nVAR_FROM_TEST=foo bar\n" in output
 
+
 def test_envfile_shared(provisioner, tmp_dir):
     fmf_tests = FMFTests("fmf_tree", plan_name="/env/plan")
     provisioner.provision(1)

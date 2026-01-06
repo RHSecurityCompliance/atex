@@ -24,27 +24,28 @@ jobs:
     environment:
       name: SelfTests
     steps:
-#      - name: Checkout
-#        uses: actions/checkout@v4
-#      - name: Install package deps
-#        run: |
-#            sudo apt-get install -y python3-pytest podman
       - uses: actions/checkout@v4
       - run: sudo apt-get install -y python3-pytest podman
       - run: pip install .
       - name: Run tests
         run: |
             pytest -s tests/provisioner/test_podman.py
+  executor:
+    runs-on: ubuntu-latest
+    environment:
+      name: SelfTests
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get install -y python3-pytest
+      - run: pip install .
+      - name: Run tests
+        run: |
+            pytest -s tests/executor
   fmf:
     runs-on: ubuntu-latest
     environment:
       name: SelfTests
     steps:
-#      - name: Checkout
-#        uses: actions/checkout@v4
-#      - name: Install package deps
-#        run: |
-#            sudo apt-get install -y python3-pytest
       - uses: actions/checkout@v4
       - run: sudo apt-get install -y python3-pytest
       - run: pip install .

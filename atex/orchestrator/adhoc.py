@@ -93,6 +93,9 @@ class AdHocOrchestrator(Orchestrator):
 
         'env' is a dict of extra environment variables to pass to Executor.
         """
+        if not fmf_tests.tests:
+            raise ValueError("'fmf_tests' has no tests (bad discover params?)")
+
         self.platform = platform
         self.fmf_tests = fmf_tests
         self.provisioners = tuple(provisioners)

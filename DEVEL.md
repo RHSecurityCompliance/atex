@@ -21,11 +21,14 @@ Aggregators typically only look for a few specific ones (ie. 'note')
 
 NEVER commit these to git, they are ONLY for the PyPI release.
 
+1. Tag a new version in this repo and push the tag
 1. Increase `version = ` in `pyproject.toml`
 1. Tag a new version in the `atex-reserve` repo, push the tag
 1. Point to that tag from `atex/provisioner/testingfarm/api.py`,
    `DEFAULT_RESERVE_TEST`
 1. ...
+1. `git status --ignored` to check what would be cleaned
+1. `git clean -fdx`
 1. `python3 -m build`
 1. `pip install -U twine`
 1. `python3 -m twine upload dist/*`

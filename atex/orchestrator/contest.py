@@ -83,8 +83,8 @@ class ContestOrchestrator(AdHocOrchestrator):
         # fallback to the default next_test()
         return super().next_test(to_run, all_tests, previous)
 
-    @classmethod
-    def destructive(cls, info, test_data):
+    @staticmethod
+    def destructive(info, test_data):
         # if Executor ended with an exception (ie. duration exceeded),
         # consider the test destructive
         if info.exception:

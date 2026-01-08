@@ -1,5 +1,4 @@
 import tempfile
-import collections
 import concurrent.futures
 from pathlib import Path
 
@@ -60,7 +59,7 @@ class AdHocOrchestrator(Orchestrator):
 
     def __init__(
         self, platform, fmf_tests, provisioners, aggregator, tmp_dir, *,
-        max_remotes=1, max_spares=0, max_reruns=2, max_failed_setups=10, env=None,
+        max_remotes=1, max_spares=0, max_failed_setups=10, env=None,
     ):
         """
         'platform' is a string with platform name.
@@ -84,9 +83,6 @@ class AdHocOrchestrator(Orchestrator):
         speed up test reruns as Remote reservation happens asynchronously
         to test execution. Spares are reserved on top of 'max_remotes'.
 
-        'max_reruns' is an integer of how many times to re-try running a failed
-        test (which exited with non-0 or caused an Executor exception).
-
         'max_failed_setups' is an integer of how many times an Executor's
         plan setup (uploading tests, running prepare scripts, etc.) may fail
         before FailedSetupError is raised.
@@ -104,8 +100,6 @@ class AdHocOrchestrator(Orchestrator):
         self.failed_setups_left = max_failed_setups
         self.max_remotes = max_remotes
         self.max_spares = max_spares
-        # indexed by test name, value being integer of how many times
-        self.reruns = collections.defaultdict(lambda: max_reruns)
         self.env = env
         # tests still waiting to be run
         self.to_run = set(fmf_tests.tests)
@@ -162,22 +156,6 @@ class AdHocOrchestrator(Orchestrator):
         'finfo' is a FinishedInfo instance.
         """
         test_data = self.fmf_tests.tests[finfo.test_name]
-
-        # TODO: somehow move logging from was_successful and should_be_rerun here,
-        #       probably print just some generic info from those functions that doesn't
-        #       imply any outcome, ie.
-        #           {remote_with_test} threw {exception}
-        #           {remote_with_test} exited with {code}
-        #           {remote_with_test} has {N} reruns left
-        #           {remote_with_test} has 0 reruns left
-        #       and then log the decision separately, here below, such as
-        #           {remote_with_test} failed, re-running
-        #           {remote_with_test} completed, ingesting result
-        #           {remote_with_test} was destructive, releasing remote
-        #           {remote_with_test} ...., running next test
-        #       That allows the user to override the functions, while keeping critical
-        #       flow reliably logged here.
-
         remote_with_test = f"{finfo.remote}: '{finfo.test_name}'"
 
         if not self.was_successful(finfo, test_data) and self.should_be_rerun(finfo, test_data):
@@ -298,8 +276,8 @@ class AdHocOrchestrator(Orchestrator):
                     sinfo.remote.release,
                     remote=sinfo.remote,
                 )
-                if (reruns_left := self.failed_setups_left) > 0:
-                    util.warning(f"{msg}, re-trying ({reruns_left} setup retries left)")
+                if (retries_left := self.failed_setups_left) > 0:
+                    util.warning(f"{msg}, re-trying ({retries_left} setup retries left)")
                     self.failed_setups_left -= 1
                     sinfo.provisioner.provision(1)
                 else:
@@ -483,24 +461,20 @@ class AdHocOrchestrator(Orchestrator):
         'test_data' is a dict of fully resolved fmf test metadata of that test.
         """
         remote_with_test = f"{info.remote}: '{info.test_name}'"
-
         # executor (or test) threw exception
         if info.exception:
             exc_str = f"{type(info.exception).__name__}({info.exception})"
             util.info(f"{remote_with_test} threw {exc_str} during test runtime")
             return False
-
         # the test exited as non-0
         if info.exit_code != 0:
             util.info(f"{remote_with_test} exited with non-zero: {info.exit_code}")
             return False
-
         # otherwise we good
         return True
 
-    # TODO: @staticmethod and remove ARG002
-    #@staticmethod
-    def should_be_rerun(self, info, test_data):  # noqa: ARG004, ARG002
+    @staticmethod
+    def should_be_rerun(info, test_data):  # noqa: ARG004
         """
         Return a boolean result whether a finished test failed in a way
         that another execution attempt might succeed, due to race conditions
@@ -510,17 +484,5 @@ class AdHocOrchestrator(Orchestrator):
 
         'test_data' is a dict of fully resolved fmf test metadata of that test.
         """
-        remote_with_test = f"{info.remote}: '{info.test_name}'"
-
-        # TODO: remove self.reruns and the whole X-reruns logic from AdHocOrchestrator,
-        #       leave it up to the user to wrap should_be_rerun() with an external dict
-        #       of tests, counting reruns for each
-        #        - allows the user to adjust counts per-test (ie. test_data metadata)
-        #        - allows this template to be @staticmethod
-        reruns_left = self.reruns[info.test_name]
-        util.info(f"{remote_with_test}: {reruns_left} reruns left")
-        if reruns_left > 0:
-            self.reruns[info.test_name] -= 1
-            return True
-        else:
-            return False
+        # never rerun by default
+        return False

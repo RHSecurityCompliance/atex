@@ -1,3 +1,5 @@
+import collections
+
 from .. import util
 from .adhoc import AdHocOrchestrator
 
@@ -26,9 +28,18 @@ class ContestOrchestrator(AdHocOrchestrator):
     """
     content_dir_on_remote = "/root/upstream-content"
 
-    def __init__(self, *args, content_dir, **kwargs):
-        self.content_dir = content_dir
+    def __init__(self, *args, content_dir, max_reruns=1, **kwargs):
+        """
+        'content_dir' is a filesystem path to ComplianceAsCode/content local
+        directory, to be uploaded to the tested systems.
+
+        'max_reruns' is an integer of how many times to re-try running a failed
+        test (which exited with non-0 or caused an Executor exception).
+        """
         super().__init__(*args, **kwargs)
+        self.content_dir = content_dir
+        # indexed by test name, value being integer of how many times
+        self.reruns = collections.defaultdict(lambda: max_reruns)
 
     def run_setup(self, sinfo):
         super().run_setup(sinfo)
@@ -92,3 +103,14 @@ class ContestOrchestrator(AdHocOrchestrator):
             return True
 
         return False
+
+    def should_be_rerun(self, info, test_data):  # noqa: ARG004, ARG002
+        remote_with_test = f"{info.remote}: '{info.test_name}'"
+
+        reruns_left = self.reruns[info.test_name]
+        util.info(f"{remote_with_test}: {reruns_left} reruns left")
+        if reruns_left > 0:
+            self.reruns[info.test_name] -= 1
+            return True
+        else:
+            return False

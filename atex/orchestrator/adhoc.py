@@ -196,24 +196,22 @@ class AdHocOrchestrator(Orchestrator):
                     tmp_dir=None,
                 )
 
-        # if destroyed, release the remote and request a replacement
-        # (Executor exception is always considered destructive)
-        if finfo.exception or self.destructive(finfo, test_data):
-            util.debug(f"{remote_with_test} was destructive, releasing remote")
-            self.release_queue.start_thread(
-                finfo.remote.release,
-                remote=finfo.remote,
-            )
-            # TODO: should this be conditioned by 'self.to_run:' ? to not uselessly fall
-            #       into setup spares and get immediately released after setup?
-            finfo.provisioner.provision(1)
-
-        # if still not destroyed, run another test on it
-        # (without running plan setup, re-using already set up remote)
-        elif self.to_run:
-            util.debug(f"{remote_with_test} was non-destructive, running next test")
-            self._run_new_test(finfo)
-
+        # if there are more tests to run
+        if self.to_run:
+            # if the test was destructive
+            # (Executor exception is always considered destructive)
+            if finfo.exception or self.destructive(finfo, test_data):
+                util.debug(f"{remote_with_test} was destructive, getting a new Remote")
+                self.release_queue.start_thread(
+                    finfo.remote.release,
+                    remote=finfo.remote,
+                )
+                finfo.provisioner.provision(1)
+            # if still not destroyed, run another test on it
+            # (without running plan setup, re-using already set up remote)
+            else:
+                util.debug(f"{remote_with_test} was non-destructive, running next test")
+                self._run_new_test(finfo)
         # no more tests to run, release the remote
         else:
             util.debug(f"{finfo.remote} no longer useful, releasing it")
@@ -285,20 +283,6 @@ class AdHocOrchestrator(Orchestrator):
                     raise FailedSetupError("setup retries limit exceeded, broken infra?")
             else:
                 self._run_new_test(sinfo)
-
-        # release any extra Remotes being held as set-up when we know we won't
-        # use them for any tests (because to_run is empty)
-        else:
-            while self.setup_queue.qsize() > self.max_spares:
-                try:
-                    treturn = self.setup_queue.get_raw(block=False)
-                except util.ThreadQueue.Empty:
-                    break
-                util.debug(f"releasing extraneous set-up {treturn.sinfo.remote}")
-                self.release_queue.start_thread(
-                    treturn.sinfo.remote.release,
-                    remote=treturn.sinfo.remote,
-                )
 
         # try to get new remotes from Provisioners - if we get some, start
         # running setup on them

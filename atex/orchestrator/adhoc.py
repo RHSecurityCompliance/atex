@@ -292,7 +292,22 @@ class AdHocOrchestrator(Orchestrator):
             else:
                 self._run_new_test(sinfo)
 
-        # try to get new remotes from Provisioners - if we get some, start
+        # release any extra Remotes being held as set-up when we know we won't
+        # use them for any tests (because to_run is empty)
+        else:
+            while self.setup_queue.qsize() > self.max_spares:
+                try:
+                    treturn = self.setup_queue.get_raw(block=False)
+                except util.ThreadQueue.Empty:
+                    break
+                util.debug(f"releasing extraneous set-up {treturn.sinfo.remote}")
+                self.release_queue.start_thread(
+                    treturn.sinfo.remote.release,
+                    remote=treturn.sinfo.remote,
+                )
+                self.remotes_requested -= 1
+
+        # try to get new Remotes from Provisioners - if we get some, start
         # running setup on them
         for provisioner in self.provisioners:
             while (remote := provisioner.get_remote(block=False)) is not None:

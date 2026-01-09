@@ -103,6 +103,8 @@ class AdHocOrchestrator(Orchestrator):
         self.env = env
         # tests still waiting to be run
         self.to_run = set(fmf_tests.tests)
+        # number of Remotes being provisioned + set up (not running tests)
+        self.remotes_requested = 0
         # running tests as a dict, indexed by test name, with RunningInfo values
         self.running_tests = {}
         # thread queue for actively running tests
@@ -196,29 +198,33 @@ class AdHocOrchestrator(Orchestrator):
                     tmp_dir=None,
                 )
 
-        # if there are more tests to run
-        if self.to_run:
-            # if the test was destructive
-            # (Executor exception is always considered destructive)
-            if finfo.exception or self.destructive(finfo, test_data):
-                util.debug(f"{remote_with_test} was destructive, getting a new Remote")
-                self.release_queue.start_thread(
-                    finfo.remote.release,
-                    remote=finfo.remote,
-                )
-                finfo.provisioner.provision(1)
-            # if still not destroyed, run another test on it
-            # (without running plan setup, re-using already set up remote)
-            else:
-                util.debug(f"{remote_with_test} was non-destructive, running next test")
-                self._run_new_test(finfo)
-        # no more tests to run, release the remote
-        else:
+        # if there are still tests to be run and the last test was not
+        # destructive, just run a new test on it
+        if self.to_run and not (finfo.exception or self.destructive(finfo, test_data)):
+            util.debug(f"{remote_with_test} was non-destructive, running next test")
+            self._run_new_test(finfo)
+            return
+
+        # we are not running a new test right now, serve_once() might run it
+        # some time later, just decide what to do with the current remote
+
+        if self.remotes_requested >= len(self.to_run):
+            # we have enough remotes in the pipe to run every test,
+            # we don't need a new one - just release the current one
             util.debug(f"{finfo.remote} no longer useful, releasing it")
             self.release_queue.start_thread(
                 finfo.remote.release,
                 remote=finfo.remote,
             )
+        else:
+            # we need more remotes and the last test was destructive,
+            # get a new one and let serve_once() run a test later
+            util.debug(f"{remote_with_test} was destructive, getting a new Remote")
+            self.release_queue.start_thread(
+                finfo.remote.release,
+                remote=finfo.remote,
+            )
+            finfo.provisioner.provision(1)
 
     def serve_once(self):
         """
@@ -265,6 +271,7 @@ class AdHocOrchestrator(Orchestrator):
             except util.ThreadQueue.Empty:
                 break
 
+            self.remotes_requested -= 1
             sinfo = treturn.sinfo
 
             if treturn.exception:
@@ -278,6 +285,7 @@ class AdHocOrchestrator(Orchestrator):
                     util.warning(f"{msg}, re-trying ({retries_left} setup retries left)")
                     self.failed_setups_left -= 1
                     sinfo.provisioner.provision(1)
+                    self.remotes_requested += 1
                 else:
                     util.warning(f"{msg}, setup retries exceeded, giving up")
                     raise FailedSetupError("setup retries limit exceeded, broken infra?")
@@ -336,9 +344,12 @@ class AdHocOrchestrator(Orchestrator):
         for prov in self.provisioners:
             prov.start()
 
+        # just the base remotes, no spares
+        self.remotes_requested = min(self.max_remotes, len(self.fmf_tests.tests))
+
         # start up initial reservations, balanced evenly across all available
         # provisioner instances
-        count = min(self.max_remotes, len(self.fmf_tests.tests)) + self.max_spares
+        count = self.remotes_requested + self.max_spares
         provisioners = self.provisioners[:count]
         for idx, prov in enumerate(provisioners):
             if count % len(provisioners) > idx:

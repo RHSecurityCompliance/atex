@@ -90,6 +90,7 @@ ignore = [
     "PLW2901",  # redefined-loop-name
     "RUF010",   # explicit-f-string-type-conversion
     "RUF012",   # mutable-class-default
+    "RUF067",   # non-empty-init-module
     "SIM103",   # needless-bool
     "SIM105",   # suppressible-exception
     "SIM115",   # open-file-with-context-handler

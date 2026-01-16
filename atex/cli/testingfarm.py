@@ -32,7 +32,8 @@ def composes(args):
     comps = api.composes(ranch=args.ranch)
     comps_list = comps["composes"]
     for comp in comps_list:
-        print(comp["name"])
+        if comp["type"] == "compose":
+            print(comp["name"])
 
 
 def get_request(args):

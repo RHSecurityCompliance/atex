@@ -14,7 +14,7 @@ from ... import util
 import json
 import urllib3
 
-DEFAULT_API_URL = "https://api.testing-farm.io/v0.1"
+DEFAULT_API_URL = "https://api.testing-farm.io"
 
 DEFAULT_RESERVE_TEST = {
     "url": "https://github.com/RHSecurityCompliance/atex-reserve",
@@ -85,8 +85,8 @@ class TestingFarmAPI:
         self.api_url = url
         self.api_token = token or os.environ.get("TESTING_FARM_API_TOKEN")
 
-    def _query(self, method, path, *args, headers=None, auth=True, **kwargs):
-        url = f"{self.api_url}{path}"
+    def _query(self, method, path, *args, headers=None, auth=True, version="v0.1", **kwargs):
+        url = f"{self.api_url}/{version}{path}"
         if self.api_token and auth:
             if headers is not None:
                 headers["Authorization"] = f"Bearer {self.api_token}"
@@ -137,7 +137,7 @@ class TestingFarmAPI:
             if not self.api_token:
                 raise ValueError("composes() requires an auth token to identify ranch")
             ranch = self.whoami()["token"]["ranch"]
-        return self._query("GET", f"/composes/{ranch}")
+        return self._query("GET", f"/composes/{ranch}", version="v0.2")
 
     def search_requests(
         self, *, state, ranch=None,

@@ -292,15 +292,17 @@ class TestControl:
 
         # either store partial result + return,
         # or load previous partial result and merge into it
-        partial = result.get("partial", False)
-        if partial:
-            # do not store the 'partial' key in the result
+        partial = result.get("partial")
+        if partial is not None:
+            # do not store the 'partial' key in the result, even if False
             del result["partial"]
-            # note that nameless result will get None as dict key,
-            # which is perfectly fine
-            self._merge(self.partial_results[name], result)
-            # partial = do nothing
-            return
+            # if it exists and is True
+            if partial:
+                # note that nameless result will get None as dict key,
+                # which is perfectly fine
+                self._merge(self.partial_results[name], result)
+                # partial = do nothing
+                return
 
         # if previously-stored partial result exist, merge the current one
         # into it, but then use the merged result

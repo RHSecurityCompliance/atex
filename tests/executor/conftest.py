@@ -15,13 +15,15 @@ from tests.provisioner.test_podman import IMAGE
 def provisioner():
     pulled = pull_image(IMAGE)
     custom_image = build_container_with_deps(pulled)
-    with PodmanProvisioner(custom_image) as prov:
-        yield prov
-    subprocess.run(
-        ("podman", "image", "rm", "-f", custom_image),
-        check=True,
-        stdout=subprocess.DEVNULL,
-    )
+    try:
+        with PodmanProvisioner(custom_image) as prov:
+            yield prov
+    finally:
+        subprocess.run(
+            ("podman", "image", "rm", "-f", custom_image),
+            check=True,
+            stdout=subprocess.DEVNULL,
+        )
 
 
 @pytest.fixture(scope="function", autouse=True)

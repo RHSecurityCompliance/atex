@@ -86,7 +86,8 @@ def test_wrapper(*, test, tests_dir, test_exec):
     out += ")\n"
 
     # write test exitcode to test control stream
-    out += "echo exitcode $? >&$orig_stdout\n"
+    if os.environ.get("ATEX_DEBUG_NO_EXITCODE") != "1":
+        out += "echo exitcode $? >&$orig_stdout\n"
 
     # always exit the wrapper with 0 if test execution was normal
     out += "exit 0\n"

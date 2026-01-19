@@ -1,0 +1,26 @@
+function fatal {
+    printf 'error: %s\n' "$*" >&2
+    exit 1
+}
+
+function report {
+    local what=$1
+    echo "result ${#what}" >&$ATEX_TEST_CONTROL
+    printf '%s' "$what" >&$ATEX_TEST_CONTROL
+}
+
+function sizeof {
+    stat -c %s "$1"
+}
+
+function write {
+    printf "$1" >&$ATEX_TEST_CONTROL
+}
+
+function upload {
+    cat "$1" >&$ATEX_TEST_CONTROL
+}
+
+[[ $ATEX_TEST_CONTROL ]] || fatal "ATEX_TEST_CONTROL not in env"
+
+# vim: filetype=bash

@@ -1,0 +1,358 @@
+/plan:
+    execute:
+        how: tmt
+
+# -----------------------------------------------------------------------------
+
+/test_noresult_pass:
+    test: |
+        echo "passing the script"
+        exit 0
+
+/test_noresult_fail:
+    test: |
+        echo "failing the script" >&2
+        exit 1
+
+# -----------------------------------------------------------------------------
+
+/test_trivial:
+    test: |
+        . functions
+        report '{"status": "pass"}'
+
+/test_trivial_multiline:
+    test: |
+        . functions
+        report '{
+            "status": "pass"
+        }'
+
+/test_trivial_repeated:
+    test: |
+        . functions
+        report '{"status": "pass"}'
+        report '{"status": "fail"}'
+
+/test_trivial_exit_mismatch:
+    test: |
+        . functions
+        report '{"status": "pass"}'
+        exit 1
+
+# -----------------------------------------------------------------------------
+
+/test_subresult:
+    test: |
+        . functions
+        report '{"status": "fail", "name": "subresult"}'
+        report '{"status": "pass"}'
+
+/test_subresult_nested:
+    test: |
+        . functions
+        report '{"status": "fail", "name": "sub/res/ult"}'
+        report '{"status": "pass"}'
+
+/test_subresult_no_status:
+    test: |
+        . functions
+        report '{"name": "subresult"}'
+
+# -----------------------------------------------------------------------------
+
+/test_files:
+    test: |
+        . functions
+        report '{"status": "pass", "files": [{"name": "some_file", "length": 5}]}'
+        write '\x00\x10\x20\x30\x40'
+
+/test_files_upload:
+    test: |
+        . functions
+        len=$(sizeof randfile)
+        report '{"status": "pass", "files": [{"name": "rand_file", "length": '$len'}] }'
+        upload randfile
+
+/test_files_subpath:
+    test: |
+        . functions
+        report '{"status": "pass", "files": [{"name": "some/file", "length": 5}] }'
+        write '\x00\x10\x20\x30\x40'
+
+/test_files_multiple:
+    test: |
+        . functions
+        report '{
+            "status": "pass",
+            "files": [
+                {"name": "first_file", "length": 2},
+                {"name": "second_file", "length": 3}
+            ]
+        }'
+        # there should be no difference between one write like this
+        # and two separate writes
+        write '\x00\x10\x20\x30\x40'
+
+/test_files_multiple_results:
+    test: |
+        . functions
+        report '{"status": "fail", "files": [{"name": "first_file", "length": 2}] }'
+        write '\x00\x10'
+        report '{"status": "pass", "files": [{"name": "second_file", "length": 3}] }'
+        write '\x20\x30\x40'
+
+/test_files_append:
+    test: |
+        . functions
+        report '{
+            "status": "pass",
+            "files": [
+                {"name": "one_file", "length": 2},
+                {"name": "one_file", "length": 3}
+            ]
+        }'
+        write '\x00\x10\x20\x30\x40'
+
+/test_files_subresult:
+    test: |
+        . functions
+        report '{
+            "status": "pass",
+            "name": "sub/res/ult",
+            "files": [{"name": "some_file", "length": 5}]
+        }'
+        write '\x00\x10\x20\x30\x40'
+
+# -----------------------------------------------------------------------------
+
+/test_custom_keys:
+    test: |
+        . functions
+        report '{
+            "status": "pass",
+            "custom_string": "some string",
+            "custom_number": 123,
+            "custom_list": [1, 2, 3],
+            "custom_object": {
+                "some key": "some value"
+            }
+        }'
+
+# -----------------------------------------------------------------------------
+
+/test_partial:
+    test: |
+        . functions
+        report '{"status": "fail", "partial": true}'
+        report '{"status": "pass"}'
+
+/test_partial_false:
+    test: |
+        . functions
+        report '{"status": "fail", "partial": true}'
+        report '{"status": "pass", "partial": false}'
+
+/test_partial_abrupt:
+    test: |
+        . functions
+        report '{"status": "fail", "partial": true}'
+
+/test_partial_merging:
+    test: |
+        . functions
+        report '{"status": "fail", "partial": true, "attr1": "value1"}'
+        report '{"status": "error", "partial": true, "attr2": "value2"}'
+        report '{"status": "pass"}'
+
+/test_partial_deleting:
+    test: |
+        . functions
+        report '{"status": "fail", "partial": true, "attr1": "value1"}'
+        report '{"status": "pass", "attr1": null}'
+
+/test_partial_overwriting:
+    test: |
+        . functions
+        report '{
+            "status": "fail",
+            "custom_string": "first string",
+            "custom_number": 123,
+            "custom_list": [1, 2, 3],
+            "custom_object": {
+                "first key": "first value"
+            },
+            "partial": true
+        }'
+        report '{
+            "status": "pass",
+            "custom_string": "second string",
+            "custom_number": 456,
+            "custom_list": [4, 5, 6],
+            "custom_object": {
+                "second key": "second value"
+            }
+        }'
+
+/test_partial_subresults:
+    test: |
+        . functions
+        report '{"status": "fail", "name": "sub1", "partial": true}'
+        report '{"status": "error", "name": "sub2", "partial": true}'
+        report '{"status": "pass", "name": "sub1"}'
+        report '{"status": "pass"}'
+
+/test_partial_files:
+    test: |
+        . functions
+        report '{
+            "status": "fail",
+            "partial": true,
+            "files": [{"name": "first_file", "length": 2}]
+        }'
+        write '\x00\x10'
+        report '{
+            "status": "pass",
+            "files": [{"name": "second_file", "length": 3}]
+        }'
+        write '\x20\x30\x40'
+
+/test_partial_files_append:
+    test: |
+        . functions
+        report '{
+            "status": "fail",
+            "partial": true,
+            "files": [{"name": "one_file", "length": 2}]
+        }'
+        write '\x00\x10'
+        report '{
+            "status": "pass",
+            "files": [{"name": "one_file", "length": 3}]
+        }'
+        write '\x20\x30\x40'
+
+# -----------------------------------------------------------------------------
+
+/test_testout:
+    test: |
+        . functions
+        echo first line
+        report '{"status": "pass", "testout": "here.txt"}'
+        echo second line
+
+/test_testout_fallback:
+    test: |
+        . functions
+        echo some line
+
+/test_testout_partial:
+    test: |
+        . functions
+        echo some line
+        report '{"status": "fail", "testout": "here.txt", "partial": true}'
+        report '{"status": "pass", "testout": "there.txt"}'
+
+/test_testout_multiple:
+    test: |
+        . functions
+        echo some line
+        report '{"status": "fail", "testout": "here.txt"}'
+        report '{"status": "pass", "testout": "there.txt"}'
+
+# -----------------------------------------------------------------------------
+
+/test_bad_json:
+    test: |
+        . functions
+        report '{"key_without_value": '
+
+/test_empty_json:
+    test: |
+        . functions
+        report '{}'
+
+/test_no_status:
+    test: |
+        . functions
+        report '{"attr1": "value1"}'
+
+/test_empty_files:
+    test: |
+        . functions
+        report '{"status": "pass", "files": []}'
+
+/test_no_file_data:
+    test: |
+        . functions
+        report '{"status": "pass", "files": [{"name": "some_file", "length": 2}]}'
+        # EOF follows
+
+/test_some_file_data:
+    test: |
+        . functions
+        report '{"status": "pass", "files": [{"name": "some_file", "length": 3}]}'
+        write '\x00\x10'
+        # EOF follows
+
+/test_empty_testout:
+    test: |
+        . functions
+        report '{"status": "pass", "testout": ""}'
+
+# -----------------------------------------------------------------------------
+
+/test_badtype_status:
+    test: |
+        . functions
+        report '{"status": 123}'
+
+/test_badtype_name:
+    test: |
+        . functions
+        report '{"status": "pass", "name": 123}'
+
+/test_badtype_files:
+    test: |
+        . functions
+        report '{"status": "pass", "files": 123}'
+
+/test_badtype_files_item:
+    test: |
+        . functions
+        report '{"status": "pass", "files": [123]}'
+
+/test_badtype_files_item_empty:
+    test: |
+        . functions
+        report '{"status": "pass", "files": [{}]}'
+
+/test_badtype_files_item_noname:
+    test: |
+        . functions
+        report '{"status": "pass", "files": [{"length": 1}]}'
+
+/test_badtype_files_item_nolength:
+    test: |
+        . functions
+        report '{"status": "pass", "files": [{"name": "foo"}]}'
+
+/test_badtype_files_item_name:
+    test: |
+        . functions
+        report '{"status": "pass", "files": [{"name": 123, "length": 1}]}'
+
+/test_badtype_files_item_length:
+    test: |
+        . functions
+        report '{"status": "pass", "files": [{"name": "foo", "length": "123"}]}'
+
+/test_badtype_partial:
+    test: |
+        . functions
+        report '{"status": "pass", "partial": 123}'
+
+/test_badtype_testout:
+    test: |
+        . functions
+        report '{"status": "pass", "testout": 123}'

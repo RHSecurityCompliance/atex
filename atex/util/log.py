@@ -30,7 +30,7 @@ skip_levels = {
 
 def _log_msg(logger_func, *args, stacklevel=1, **kwargs):
     # inspect.stack() is MUCH slower
-    caller = inspect.currentframe().f_back.f_back
+    caller = inspect.currentframe().f_back.f_back  # TODO: sys._getframe(2)
     extra_levels = 2  # skip this func and the debug/info/warning parent
     while caller.f_back:
         code = caller.f_code

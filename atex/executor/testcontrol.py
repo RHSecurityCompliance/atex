@@ -267,28 +267,31 @@ class TestControl:
             except ValueError as e:
                 raise BadReportJSONError(f"file entry {file_name} length: {str(e)}") from None
 
+            fd = self.reporter.open_fd(file_name, os.O_WRONLY | os.O_CREAT, name)
             try:
-                with self.reporter.open_file(file_name, name) as f:
-                    fd = f.fileno()
-                    while file_length > 0:
+                # Linux can't do splice(2) on O_APPEND fds, so we open it above
+                # as O_WRONLY and just seek to the end, simulating append
+                os.lseek(fd, 0, os.SEEK_END)
+
+                while file_length > 0:
+                    try:
+                        # try a more universal sendfile first, fall back to splice
                         try:
-                            # try a more universal sendfile first, fall back to splice
-                            try:
-                                written = os.sendfile(fd, self.control_fd, None, file_length)
-                            except OSError as e:
-                                if e.errno == 22:  # EINVAL
-                                    written = os.splice(self.control_fd, fd, file_length)
-                                else:
-                                    raise
-                        except BlockingIOError:
-                            yield
-                            continue
-                        if written == 0:
-                            raise BadControlError("EOF when reading data")
-                        file_length -= written
+                            written = os.sendfile(fd, self.control_fd, None, file_length)
+                        except OSError as e:
+                            if e.errno == 22:  # EINVAL
+                                written = os.splice(self.control_fd, fd, file_length)
+                            else:
+                                raise
+                    except BlockingIOError:
                         yield
-            except FileExistsError:
-                raise BadReportJSONError(f"file '{file_name}' already exists") from None
+                        continue
+                    if written == 0:
+                        raise BadControlError("EOF when reading data")
+                    file_length -= written
+                    yield
+            finally:
+                os.close(fd)
 
         # either store partial result + return,
         # or load previous partial result and merge into it

@@ -85,16 +85,15 @@ class Reporter:
         file_path.parent.mkdir(parents=True, exist_ok=True)
         return file_path
 
-    def open_file(self, file_name, result_name=None, mode="wb"):
+    def open_fd(self, file_name, mode, result_name=None):
         """
         Open a file named 'file_name' in a directory relevant to 'result_name'.
-        Returns an opened file-like object that can be used in a context manager
-        just like with regular open().
+        Returns an opened file descriptor that can be closed with os.close().
 
         If 'result_name' (typically a subtest) is not given, open the file
         for the test (name) itself.
         """
-        return open(self._dest_path(file_name, result_name), mode)
+        return os.open(self._dest_path(file_name, result_name), mode)
 
     def link_testout(self, file_name, result_name=None):
         # TODO: docstring

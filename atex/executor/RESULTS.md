@@ -101,8 +101,8 @@ A file name may contain zero or more `/`, but it must not start with `/`.
 A sanity check will cause an error (discarding the result) if you specify
 multiple identical file names within one result.  
 However, this does not extend across results - a second result with the same
-`name` specifying the same `files` `name` results in undefined behavior
-(the file may be overwritten by us, result discarded, or error triggered).
+`name` specifying the same `files` `name` causes `length` bytes to be
+**appended** to the existing file.
 
 ### Full binary stream example
 
@@ -231,11 +231,13 @@ of them. (Probably not super useful, though.)
   to on-disk files with the names specified, they are not held back until
   the full result is assembled from partial reports.
   - This can cause issues if two partial results for the same `name` specify
-    the same file name - an error will be triggered, because that file already
-    exists.
+    the same file name - both will write (append, one after another) to the same
+    file on disk.
   - This abnormality is a result of efficiency; it is not feasible to keep
     file contents for partial results in memory, or as open file descriptors
     for temporary files.
+  - OTOH this can be used as a feature with a test uploading logs gradually,
+    with an unfinished/`error` status, only switching to `pass` at the very end.
 
 ### Custom result keys
 

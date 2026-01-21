@@ -8,16 +8,9 @@ import subprocess
 from pathlib import Path
 
 from .. import util, fmf
-from . import testcontrol, scripts
+from . import TestSetupError, TestAbortedError, testcontrol, scripts
 from .duration import Duration
 from .reporter import Reporter
-
-
-class TestAbortedError(Exception):
-    """
-    Raised when an infrastructure-related issue happened while running a test.
-    """
-    pass
 
 
 class Executor:
@@ -222,16 +215,6 @@ class Executor:
         output_dir = Path(output_dir)
         test_data = self.fmf_tests.tests[test_name]
 
-        # run a setup script, preparing wrapper + test scripts
-        setup_script = scripts.test_setup(
-            test=scripts.Test(test_name, test_data, self.fmf_tests.test_dirs[test_name]),
-            tests_dir=self.tests_dir,
-            wrapper_exec=f"{self.work_dir}/wrapper.sh",
-            test_exec=f"{self.work_dir}/test.sh",
-            test_yaml=f"{self.work_dir}/metadata.yaml",
-        )
-        self.conn.cmd(("bash",), input=setup_script, text=True, check=True)
-
         # start with fmf-plan-defined environment
         env_vars = {
             **self.fmf_tests.plan_env,
@@ -252,6 +235,28 @@ class Executor:
             reporter = stack.enter_context(Reporter(output_dir, "results", "files"))
             duration = Duration(test_data.get("duration", "5m"))
             control = testcontrol.TestControl(reporter=reporter, duration=duration)
+
+            # run a setup script, preparing wrapper + test scripts
+            setup_script = scripts.test_setup(
+                test=scripts.Test(test_name, test_data, self.fmf_tests.test_dirs[test_name]),
+                tests_dir=self.tests_dir,
+                wrapper_exec=f"{self.work_dir}/wrapper.sh",
+                test_exec=f"{self.work_dir}/test.sh",
+                test_yaml=f"{self.work_dir}/metadata.yaml",
+            )
+            setup_proc = self.conn.cmd(
+                ("bash",),
+                input=setup_script,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+            )
+            if setup_proc.returncode != 0:
+                reporter.report({
+                    "status": "infra",
+                    "note": f"TestSetupError({setup_proc.stdout})",
+                })
+                raise TestSetupError(setup_proc.stdout)
 
             test_proc = None
             control_fd = None

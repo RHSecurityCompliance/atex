@@ -1,2 +1,23 @@
-from . import testcontrol  # noqa: F401
-from .executor import Executor  # noqa: F401
+class ExecutorError(Exception):
+    """
+    Raised by class Executor.
+    """
+    pass
+
+
+class TestSetupError(ExecutorError):
+    """
+    Raised when the preparation for test execution (ie. pkg install) fails.
+    """
+    pass
+
+
+class TestAbortedError(ExecutorError):
+    """
+    Raised when an infrastructure-related issue happened while running a test.
+    """
+    pass
+
+
+from . import testcontrol  # noqa: F401, E402
+from .executor import Executor  # noqa: F401, E402

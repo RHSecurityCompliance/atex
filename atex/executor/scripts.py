@@ -95,17 +95,6 @@ def test_wrapper(*, test, tests_dir, test_exec):
     return out
 
 
-def _install_packages(pkgs, extra_opts=None):
-    pkgs_str = " ".join(pkgs)
-    extra_opts = extra_opts or ()
-    dnf = ["dnf", "-y", "--setopt=install_weak_deps=False", "install", *extra_opts]
-    dnf_str = " ".join(dnf)
-    return util.dedent(fr"""
-        not_installed=$(rpm -q --qf '' {pkgs_str} | sed -nr 's/^package ([^ ]+) is not installed$/\1/p')
-        [[ $not_installed ]] && {dnf_str} $not_installed
-    """)  # noqa: E501
-
-
 def test_setup(*, test, wrapper_exec, test_exec, test_yaml, **kwargs):
     """
     Generate a bash script that should prepare the remote end for test
@@ -134,9 +123,19 @@ def test_setup(*, test, wrapper_exec, test_exec, test_yaml, **kwargs):
     # install test dependencies
     # - only strings (package names) in require/recommend are supported
     if require := list(fmf.test_pkg_requires(test.data, "require")):
-        out += _install_packages(require) + "\n"
+        pkgs_str = " ".join(require)
+        out += util.dedent(fr"""
+            not_installed=$(rpm -q --qf '' {pkgs_str} | sed -nr 's/^package ([^ ]+) is not installed$/\1/p')
+            [[ $not_installed ]] && dnf -y --setopt=install_weak_deps=False install $not_installed
+        """) + "\n"  # noqa: E501
     if recommend := list(fmf.test_pkg_requires(test.data, "recommend")):
-        out += _install_packages(recommend, ("--skip-broken",)) + "\n"
+        pkgs_str = " ".join(recommend)
+        out += util.dedent(fr"""
+            have_dnf5=$(command -v dnf5) || true
+            skip_bad="--skip-broken${{have_dnf5:+ --skip-unavailable}}"
+            not_installed=$(rpm -q --qf '' {pkgs_str} | sed -nr 's/^package ([^ ]+) is not installed$/\1/p')
+            [[ $not_installed ]] && dnf -y --setopt=install_weak_deps=False install $skip_bad $not_installed
+        """) + "\n"  # noqa: E501
 
     # write out test data
     out += f"cat > '{test_yaml}' <<'ATEX_SETUP_EOF'\n"

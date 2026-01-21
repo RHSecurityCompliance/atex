@@ -445,6 +445,7 @@ def test_no_file_data(provisioner, tmp_dir):
     os.environ["ATEX_DEBUG_NO_EXITCODE"] = "1"
     try:
         run_fmf_test(provisioner, tmp_dir, read_results=False)
+        raise AssertionError("BadControlError should have triggered")
     except BadControlError as e:
         if str(e) != "EOF when reading data":
             raise
@@ -457,6 +458,7 @@ def test_some_file_data(provisioner, tmp_dir):
     os.environ["ATEX_DEBUG_NO_EXITCODE"] = "1"
     try:
         run_fmf_test(provisioner, tmp_dir, read_results=False)
+        raise AssertionError("BadControlError should have triggered")
     except BadControlError as e:
         if str(e) != "EOF when reading data":
             raise
@@ -468,6 +470,7 @@ def test_empty_testout(provisioner, tmp_dir):
     """Empty string for a testout:file name."""
     try:
         run_fmf_test(provisioner, tmp_dir, read_results=False)
+        raise AssertionError("BadReportJSONError should have triggered")
     except BadReportJSONError as e:
         if str(e) != "'testout' specified, but empty":
             raise

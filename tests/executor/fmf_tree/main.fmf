@@ -21,3 +21,22 @@
             script: cat file_in_fmfdir > /tmp/file_contents
     /test_cwd:
         test: cat file_in_fmfdir
+
+/pkgs:
+    /plan:
+        execute:
+            how: tmt
+        prepare:
+            how: install
+            package: bsd-games
+    /test_prepare:
+        test: rpm -q bsd-games
+    /test_require:
+        require: rogue
+        test: rpm -q rogue
+    /test_require_fail:
+        require: [rogue, nonexistent_pkg]
+        test: rpm -q rogue
+    /test_recommend:
+        recommend: [rogue, nonexistent_pkg]
+        test: rpm -q rogue

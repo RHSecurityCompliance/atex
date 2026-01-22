@@ -570,7 +570,8 @@ class Reserve:
             #  installs our ssh pubkey into authorized_keys)
             ssh_attempt_cmd = (
                 "ssh", "-q", "-i", ssh_key.absolute(), "-oConnectionAttempts=60",
-               "-oStrictHostKeyChecking=no", "-oUserKnownHostsFile=/dev/null",
+                "-oStrictHostKeyChecking=no", "-oUserKnownHostsFile=/dev/null",
+                "-oBatchMode=yes",
                 f"{ssh_user}@{ssh_host}", "exit 123",
             )
             while True:

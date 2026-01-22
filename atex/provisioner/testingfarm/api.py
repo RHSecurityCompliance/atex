@@ -2,6 +2,7 @@ import os
 import re
 import time
 import tempfile
+import datetime
 import textwrap
 import threading
 import subprocess
@@ -179,6 +180,52 @@ class TestingFarmAPI:
             fields["user_id"] = self.whoami()["user"]["id"]
 
         return self._query("GET", "/requests", fields=fields, auth=mine)
+
+    def search_requests_paged(self, *args, page=43200, **kwargs):
+        """
+        An unofficial wrapper for search_requests() that can search a large
+        interval incrementally (in "pages") and yield batches of results.
+
+        Needs 'created_after', with 'created_before' defaulting to now().
+
+        'page' specifies the time interval of one page, in seconds.
+
+        'args' and 'kwargs' are passed to search_requests().
+        """
+        assert "created_after" in kwargs, "at least 'created_after' is needed for paging"
+
+        def from_iso8601(date):
+            dt = datetime.datetime.fromisoformat(date)
+            # if no TZ is specified, treat it as UTC, not localtime
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=datetime.UTC)
+            # convert to UTC
+            else:
+                dt = dt.astimezone(datetime.UTC)
+            return dt
+
+        after = from_iso8601(kwargs["created_after"])
+        if kwargs.get("created_before"):
+            before = from_iso8601(kwargs["created_before"])
+        else:
+            before = datetime.datetime.now(datetime.UTC)
+
+        # scale down page size to fit between after/before
+        page = min(page, (before - after).total_seconds())
+
+        start = after
+        while start < before:
+            end = start + datetime.timedelta(seconds=page)
+            # clamp to real 'before'
+            end = min(end, before)
+            new_kwargs = kwargs | {
+                "created_after": start.isoformat(),
+                "created_before": end.isoformat(),
+            }
+            found = self.search_requests(*args, **new_kwargs)
+            if found is not None:
+                yield from found
+            start = end
 
     def get_request(self, request_id):
         """

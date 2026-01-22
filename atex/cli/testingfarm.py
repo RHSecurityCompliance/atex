@@ -2,7 +2,6 @@ import sys
 import json
 import pprint
 import collections
-from datetime import datetime, timedelta, UTC
 
 from .. import util
 from ..provisioner.testingfarm import api as tf
@@ -49,36 +48,63 @@ def cancel(args):
 
 def search_requests(args):
     api = _get_api(args)
-    reply = api.search_requests(
-        state=args.state,
-        mine=not args.all,
-        user_id=args.user_id,
-        token_id=args.token_id,
-        ranch=args.ranch,
-        created_before=args.before,
-        created_after=args.after,
-    )
-    if not reply:
-        return
+
+    func_kwargs = {
+        "mine": not args.all,
+        "user_id": args.user_id,
+        "token_id": args.token_id,
+        "ranch": args.ranch,
+        "created_before": args.before,
+        "created_after": args.after,
+    }
+
+    if args.page is not None:
+        reply = api.search_requests_paged(
+            state=args.state,
+            page=args.page,
+            **func_kwargs,
+        )
+        if not reply:
+            return
+    else:
+        reply = api.search_requests(
+            state=args.state,
+            **func_kwargs,
+        )
+        if not reply:
+            return
+        reply = sorted(reply, key=lambda x: x["created"])
 
     if args.json:
-        for req in sorted(reply, key=lambda x: x["created"]):
+        for req in reply:
             print(json.dumps(req))
-    else:
-        for req in sorted(reply, key=lambda x: x["created"]):
-            req_id = req["id"]
-            created = req["created"].partition(".")[0]
+        return
 
-            envs = []
-            for env in req["environments_requested"]:
-                if "os" in env and env["os"] and "compose" in env["os"]:
-                    compose = env["os"]["compose"]
-                    arch = env["arch"]
-                    if compose and arch:
-                        envs.append(f"{compose}@{arch}")
-            envs_str = ", ".join(envs)
+    for req in reply:
+        req_id = req["id"]
+        created = req["created"].partition(".")[0]
 
-            print(f"{created} {req_id} : {envs_str}")
+        if "fmf" in req["test"] and req["test"]["fmf"]:
+            test = req["test"]["fmf"]["url"]
+        elif "tmt" in req["test"] and req["test"]["tmt"]:
+            test = req["test"]["tmf"]["url"]
+        else:
+            test = ""
+
+        envs = []
+        for env in req["environments_requested"]:
+            if "os" in env and env["os"] and "compose" in env["os"]:
+                compose = env["os"]["compose"]
+                arch = env["arch"]
+                if compose and arch:
+                    envs.append(f"{compose}@{arch}")
+
+        print(f"{created} {req_id}", end="")
+        if test:
+            print(f" | test:{test}", end="")
+        if envs:
+            print(f" | envs:[{', '.join(envs)}]", end="")
+        print()
 
 
 def stats(args):
@@ -111,35 +137,29 @@ def stats(args):
             print(f"{count:>{digits}}  {repo_url}")
 
     def request_search_results():
-        for state in args.states.split(","):
-            result = api.search_requests(
-                state=state,
-                ranch=args.ranch,
-                mine=False,
-            )
-            if result:
-                yield from result
-
-    def multiday_request_search_results():
-        now = datetime.now(UTC)
-        for day in range(0,args.days):
-            before = now - timedelta(days=day)
-            after = now - timedelta(days=day+1)
+        if args.before is not None or args.after is not None:
             for state in args.states.split(","):
-                result = api.search_requests(
+                reply = api.search_requests_paged(
                     state=state,
-                    created_before=before.replace(microsecond=0).isoformat(),
-                    created_after=after.replace(microsecond=0).isoformat(),
-                    ranch=args.ranch,
+                    page=args.page,
                     mine=False,
+                    ranch=args.ranch,
+                    created_before=args.before,
+                    created_after=args.after,
                 )
-                if result:
-                    yield from result
+                if reply:
+                    yield from reply
+        else:
+            for state in args.states.split(","):
+                reply = api.search_requests(
+                    state=state,
+                    mine=False,
+                    ranch=args.ranch,
+                )
+                if reply:
+                    yield from reply
 
-    if args.days is not None:
-        top_users_repos(multiday_request_search_results())
-    else:
-        top_users_repos(request_search_results())
+    top_users_repos(request_search_results())
 
 
 def reserve(args):
@@ -259,12 +279,15 @@ def parse_args(parser):
     cmd.add_argument("--before", help="only requests created before ISO8601")
     cmd.add_argument("--after", help="only requests created after ISO8601")
     cmd.add_argument("--json", help="full details, one request per line", action="store_true")
+    cmd.add_argument("--page", help="do paged search, page interval in secs", type=int)
 
     cmd = cmds.add_parser(
         "stats",
         help="print out TF usage statistics",
     )
-    cmd.add_argument("--days", type=int, help="query last N days instead of all TF requests")
+    cmd.add_argument("--before", help="only requests created before ISO8601")
+    cmd.add_argument("--after", help="only requests created after ISO8601")
+    cmd.add_argument("--page", help="do paged search, page interval in secs", type=int)
     cmd.add_argument("ranch", help="Testing Farm ranch name")
     cmd.add_argument("states", help="comma-separated TF request states")
 

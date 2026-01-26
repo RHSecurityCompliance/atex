@@ -36,6 +36,7 @@ DEFAULT_OPTIONS = {
     "TCPKeepAlive": "no",
     "EscapeChar": "none",
     "ExitOnForwardFailure": "yes",
+    "RequestTTY": "no",
 }
 
 

@@ -125,6 +125,30 @@ Also note that `.reserve()` and `.abort()` could be also called by a context
 manager as `__enter__` and `__exit__`, ie. by a non-threaded caller (running
 everything in the main thread).
 
+## SSH with -T (`RequestTTY`) problems
+
+We don't allow pseudo-tty allocation via SSH, Podman or any other `Connection`
+because **it can bypass stdout/stderr redirect** done by the test wrapper,
+messing up the control channel (`TEST_CONTROL.md`).
+
+Normally, we redirect `stdout` of the `Connection` to be the control channel,
+leaving `stdin` / `stderr` to be used by the test. However a clever test can
+(even accidentally by launching a tty emulator) regain access to the original
+`stdout`, often closing it when the tty emulation ends, causing `Executor` to
+either report EOF, or straight out lose the session with ie.
+
+```
+TestAbortedError(test wrapper unexpectedly exited with 255 and reconnect was not sent via test control)
+```
+
+To avoid this, we always treat the `ATEX<->SUT` connection as sacred, TTY-less,
+to guarantee that a `dup()` of `stdout` (to a higher `fd` number), followed by
+`dup2(2, 1)` can never be reversed accidentally.
+
+(A malicious test could write bogus data to `ATEX_TEST_CONTROL` anyway, that's
+beside the point.)
+
+
 ## Upcoming API breakages
 
 - rename `FMFTests` argument `plan_name` to `plan`

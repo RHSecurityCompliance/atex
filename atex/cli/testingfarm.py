@@ -137,15 +137,20 @@ def stats(args):
             print(f"{count:>{digits}}  {repo_url}")
 
     def request_search_results():
-        if args.before is not None or args.after is not None:
+        func_kwargs = {}
+        if args.before is not None:
+            func_kwargs["created_before"] = args.before
+        if args.after is not None:
+            func_kwargs["created_after"] = args.after
+
+        if args.page is not None:
             for state in args.states.split(","):
                 reply = api.search_requests_paged(
                     state=state,
                     page=args.page,
                     mine=False,
                     ranch=args.ranch,
-                    created_before=args.before,
-                    created_after=args.after,
+                    **func_kwargs,
                 )
                 if reply:
                     yield from reply
@@ -155,6 +160,7 @@ def stats(args):
                     state=state,
                     mine=False,
                     ranch=args.ranch,
+                    **func_kwargs,
                 )
                 if reply:
                     yield from reply

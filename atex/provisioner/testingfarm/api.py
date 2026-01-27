@@ -436,7 +436,7 @@ class Reserve:
     def __init__(
         self, *, compose, arch="x86_64", pool=None, hardware=None, kickstart=None,
         timeout=60, ssh_key=None, source_host=None,
-        reserve_test=None, variables=None, secrets=None,
+        reserve_test=None, variables=None, secrets=None, tags=None,
         api=None,
     ):
         """
@@ -482,6 +482,10 @@ class Reserve:
         exported for the reserve test - variables are visible via TF API,
         secrets are not (but can still be extracted from pipeline log).
 
+        'tags' is a dict of custom key/values to be submitted in TF Request as
+        environments->settings->provisioning->tags, useful for storing custom
+        metadata to be queried later.
+
         'api' is a TestingFarmAPI instance - if unspecified, a sensible default
         will be used.
         """
@@ -521,6 +525,8 @@ class Reserve:
         if variables:
             spec_env["variables"] = variables
         spec_env["secrets"] = secrets.copy() if secrets else {}  # we need it for ssh pubkey
+        if tags:
+            spec_env["settings"]["provisioning"]["tags"] |= tags
 
         self._spec = spec
         self._ssh_key = Path(ssh_key) if ssh_key else None

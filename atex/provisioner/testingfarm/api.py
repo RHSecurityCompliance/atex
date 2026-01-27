@@ -537,7 +537,7 @@ class Reserve:
         try:
             r = _http.request("GET", "https://ifconfig.me", headers=curl_agent)
             if r.status != 200:
-                raise ConnectionError()
+                raise ConnectionError
         except (ConnectionError, urllib3.exceptions.RequestError):
             r = _http.request("GET", "https://ifconfig.co", headers=curl_agent)
         return r.data.decode().strip()

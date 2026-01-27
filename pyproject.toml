@@ -61,7 +61,9 @@ select = [
     "COM",  # flake8-commas
     "C4",   # flake8-comprehensions
     "EXE",  # flake8-executable
+    "PIE",  # flake8-pie
     "Q",    # flake8-quotes
+    "RSE",  # flake8-raise
     "SIM",  # flake8-simplify
     "ARG",  # flake8-unused-arguments
     "PTH",  # flake8-use-pathlib
@@ -111,6 +113,8 @@ ignore = [
 
     # buggy in ruff, inconsistent across ruff versions
     "RUF100",   # unused-noqa
+    # buggy, triggers on valid code
+    "PIE790",   # unnecessary-placeholder
 ]
 
 [tool.ruff.format]

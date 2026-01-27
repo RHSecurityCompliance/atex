@@ -93,4 +93,4 @@ def main():
     try:
         mains[args._module](args)
     except KeyboardInterrupt:
-        raise SystemExit() from None
+        raise SystemExit from None

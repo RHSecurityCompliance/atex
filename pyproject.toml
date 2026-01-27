@@ -67,6 +67,7 @@ select = [
     "PTH",  # flake8-use-pathlib
     "PL",   # Pylint
     "RUF",  # Ruff-specific rules
+    "FURB", # refurb
 ]
 ignore = [
     "PTH123",   # builtin-open
@@ -94,6 +95,7 @@ ignore = [
     "SIM103",   # needless-bool
     "SIM105",   # suppressible-exception
     "SIM115",   # open-file-with-context-handler
+    "FURB118",  # reimplemented-operator
 
     # rules from preview
     "E115",     # no-indented-block-comment

@@ -280,22 +280,26 @@ class Executor:
                             abort("cancel requested")
 
                     if state == self.State.STARTING_TEST:
-                        control_fd, pipe_w = os.pipe()
-                        os.set_blocking(control_fd, False)
-                        control.reassign(control_fd)
                         # reconnect/reboot count (for compatibility)
                         env_vars["TMT_REBOOT_COUNT"] = str(reconnects)
                         env_vars["TMT_TEST_RESTART_COUNT"] = str(reconnects)
-                        # run the test in the background, letting it log output directly to
-                        # an opened file (we don't handle it, cmd client sends it to kernel)
                         env_args = (f"{k}={v}" for k, v in env_vars.items())
-                        test_proc = self.conn.cmd(
-                            ("env", *env_args, f"{self.work_dir}/wrapper.sh"),
-                            stdout=pipe_w,
-                            stderr=reporter.testout_fobj.fileno(),
-                            func=util.subprocess_Popen,
-                        )
-                        os.close(pipe_w)
+                        try:
+                            # open a pipe for test control
+                            control_fd, pipe_w = os.pipe()
+                            os.set_blocking(control_fd, False)
+                            control.reassign(control_fd)
+                            # run the test in the background, letting it log output directly to
+                            # an opened file (we don't handle it, cmd client sends it to kernel)
+                            with reporter.open_testout() as testout_fd:
+                                test_proc = self.conn.cmd(
+                                    ("env", *env_args, f"{self.work_dir}/wrapper.sh"),
+                                    stdout=pipe_w,
+                                    stderr=testout_fd,
+                                    func=util.subprocess_Popen,
+                                )
+                        finally:
+                            os.close(pipe_w)
                         state = self.State.READING_CONTROL
 
                     elif state == self.State.READING_CONTROL:

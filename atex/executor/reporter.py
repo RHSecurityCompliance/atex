@@ -1,5 +1,6 @@
 import os
 import json
+import contextlib
 from pathlib import Path
 
 from .. import util
@@ -26,22 +27,20 @@ class Reporter:
         'files_dir' is a dir name inside 'output_dir' any files will be
         uploaded to.
         """
-        output_dir = Path(output_dir)
-        self.testout_file = output_dir / self.TESTOUT
-        self.results_file = output_dir / results_file
-        self.files_dir = output_dir / files_dir
-        self.output_dir = output_dir
+        self.output_dir = Path(output_dir)
+        self.results_file = self.output_dir / results_file
         self.results_fobj = None
-        self.testout_fobj = None
+        self.files_dir = self.output_dir / files_dir
+        self.testout_file = self.output_dir / self.TESTOUT
 
     def start(self):
-        if self.testout_file.exists():
-            raise FileExistsError(f"{self.testout_file} already exists")
-        self.testout_fobj = open(self.testout_file, "wb")
-
         if self.results_file.exists():
             raise FileExistsError(f"{self.results_file} already exists")
         self.results_fobj = open(self.results_file, "w", newline="\n")
+
+        if self.testout_file.exists():
+            raise FileExistsError(f"{self.testout_file} already exists")
+        self.testout_file.touch()
 
         if self.files_dir.exists():
             raise FileExistsError(f"{self.files_dir} already exists")
@@ -51,11 +50,7 @@ class Reporter:
         if self.results_fobj:
             self.results_fobj.close()
             self.results_fobj = None
-
-        if self.testout_fobj:
-            self.testout_fobj.close()
-            self.testout_fobj = None
-            Path(self.testout_file).unlink()
+        self.testout_file.unlink(missing_ok=True)
 
     def __enter__(self):
         try:
@@ -85,15 +80,32 @@ class Reporter:
         file_path.parent.mkdir(parents=True, exist_ok=True)
         return file_path
 
-    def open_fd(self, file_name, mode, result_name=None):
+    @contextlib.contextmanager
+    def open_file(self, file_name, mode, result_name=None):
         """
         Open a file named 'file_name' in a directory relevant to 'result_name'.
-        Returns an opened file descriptor that can be closed with os.close().
+        Yields an opened file descriptor (as integer) as a Context Manager.
 
         If 'result_name' (typically a subtest) is not given, open the file
         for the test (name) itself.
         """
-        return os.open(self._dest_path(file_name, result_name), mode)
+        fd = os.open(self._dest_path(file_name, result_name), mode)
+        try:
+            yield fd
+        finally:
+            os.close(fd)
+
+    @contextlib.contextmanager
+    def open_testout(self):
+        """
+        Open a file named after self.TESTOUT inside self.output_dir.
+        Yields an opened file descriptor (as integer) as a Context Manager.
+        """
+        fd = os.open(self.testout_file, os.O_WRONLY | os.O_CREAT | os.O_APPEND)
+        try:
+            yield fd
+        finally:
+            os.close(fd)
 
     def link_testout(self, file_name, result_name=None):
         # TODO: docstring

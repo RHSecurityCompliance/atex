@@ -79,16 +79,16 @@ def test_trivial_exit_mismatch(provisioner, tmp_dir):
 
 
 # -----------------------------------------------------------------------------
-def test_subresult(provisioner, tmp_dir):
-    """Basic subresult reporting."""
+def test_subtest(provisioner, tmp_dir):
+    """Basic subtest reporting."""
     results = run_fmf_test(provisioner, tmp_dir)
     assert results.count("\n") == 2
     first, second = results.rstrip("\n").split("\n")
-    assert json.loads(first) == {"status": "fail", "name": "subresult"}
+    assert json.loads(first) == {"status": "fail", "name": "subtest"}
     assert json.loads(second) == {"status": "pass"}
 
 
-def test_subresult_nested(provisioner, tmp_dir):
+def test_subtest_nested(provisioner, tmp_dir):
     """Subresult using sub/dir/s."""
     results = run_fmf_test(provisioner, tmp_dir)
     assert results.count("\n") == 2
@@ -97,14 +97,14 @@ def test_subresult_nested(provisioner, tmp_dir):
     assert json.loads(second) == {"status": "pass"}
 
 
-def test_subresult_no_status(provisioner, tmp_dir):
-    """Status-less subresults are also valid."""
+def test_subtest_no_status(provisioner, tmp_dir):
+    """Status-less subtests are also valid."""
     results = run_fmf_test(provisioner, tmp_dir)
     # 2 because we didn't provide a result for the test itself,
     # so a fallback result is used
     assert results.count("\n") == 2
     first, second = results.rstrip("\n").split("\n")
-    assert json.loads(first) == {"name": "subresult"}
+    assert json.loads(first) == {"name": "subtest"}
     assert json.loads(second) == {"status": "pass", "testout": "output.txt"}
 
 
@@ -197,8 +197,8 @@ def test_files_append(provisioner, tmp_dir):
     assert output == b"\x00\x10\x20\x30\x40"
 
 
-def test_files_subresult(provisioner, tmp_dir):
-    """Transfer to a subdirectory (caused by a subresult)."""
+def test_files_subtest(provisioner, tmp_dir):
+    """Transfer to a subdirectory (caused by a subtest)."""
     results = run_fmf_test(provisioner, tmp_dir)
     # 2 because we didn't provide a result for the test itself,
     # so a fallback result is used
@@ -295,8 +295,8 @@ def test_partial_overwriting(provisioner, tmp_dir):
     }
 
 
-def test_partial_subresults(provisioner, tmp_dir):
-    """Applying partial:True to a subresult."""
+def test_partial_subtests(provisioner, tmp_dir):
+    """Applying partial:True to a subtest."""
     results = run_fmf_test(provisioner, tmp_dir)
     assert results.count("\n") == 3
     first, second, third = results.rstrip("\n").split("\n")

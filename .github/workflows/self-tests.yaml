@@ -52,3 +52,12 @@ jobs:
       - name: Run tests
         run: |
             pytest -s tests/fmf
+  extra-greps:
+    runs-on: ubuntu-latest
+    environment:
+      name: SelfTests
+    steps:
+      - uses: actions/checkout@v4
+      - name: Ensure subtests are not named "subresults"
+        run: |
+            ! grep -r subresult *

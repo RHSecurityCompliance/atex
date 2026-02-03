@@ -42,22 +42,22 @@
 
 # -----------------------------------------------------------------------------
 
-/test_subresult:
+/test_subtest:
     test: |
         . functions
-        report '{"status": "fail", "name": "subresult"}'
+        report '{"status": "fail", "name": "subtest"}'
         report '{"status": "pass"}'
 
-/test_subresult_nested:
+/test_subtest_nested:
     test: |
         . functions
         report '{"status": "fail", "name": "sub/res/ult"}'
         report '{"status": "pass"}'
 
-/test_subresult_no_status:
+/test_subtest_no_status:
     test: |
         . functions
-        report '{"name": "subresult"}'
+        report '{"name": "subtest"}'
 
 # -----------------------------------------------------------------------------
 
@@ -114,7 +114,7 @@
         }'
         write '\x00\x10\x20\x30\x40'
 
-/test_files_subresult:
+/test_files_subtest:
     test: |
         . functions
         report '{
@@ -194,7 +194,7 @@
             }
         }'
 
-/test_partial_subresults:
+/test_partial_subtests:
     test: |
         . functions
         report '{"status": "fail", "name": "sub1", "partial": true}'

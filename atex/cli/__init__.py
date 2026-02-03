@@ -27,21 +27,16 @@ import pkgutil
 import argparse
 import logging
 
-from .. import util
-
 
 def setup_logging(level):
-    if level <= util.EXTRADEBUG:
-        fmt = "%(asctime)s %(name)s: %(filename)s:%(lineno)s: %(funcName)s(): %(message)s"
-        # also print urllib3 headers
+    # also print urllib3 headers
+    if level <= logging.DEBUG:
         import http.client  # noqa: PLC0415
         http.client.HTTPConnection.debuglevel = 5
-    else:
-        fmt = "%(asctime)s %(name)s: %(message)s"
     logging.basicConfig(
         level=level,
         stream=sys.stderr,
-        format=fmt,
+        format="%(asctime)s %(name)s: %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S",
     )
 
@@ -59,16 +54,16 @@ def main():
 
     log_grp = parser.add_mutually_exclusive_group()
     log_grp.add_argument(
-        "--debug", "-d", action="store_const", dest="loglevel", const=logging.DEBUG,
-        help="enable extra debugging (logging.DEBUG)",
+        "--debug", "-d", action="append", dest="debug_loggers", metavar="LOGGER", default=[],
+        help="set logging.DEBUG for a given logger name",
     )
     log_grp.add_argument(
-        "--extra-debug", "-D", action="store_const", dest="loglevel", const=util.EXTRADEBUG,
-        help="enable extra debugging (atex.util.EXTRADEBUG)",
+        "--debug-all", "-D", action="store_const", dest="loglevel", const=logging.DEBUG,
+        help="set logging.DEBUG globally",
     )
     log_grp.add_argument(
         "--quiet", "-q", action="store_const", dest="loglevel", const=logging.WARNING,
-        help="be quiet during normal operation (logging.WARNING)",
+        help="set logging.WARNING globally (suppress INFO)",
     )
     parser.set_defaults(loglevel=logging.INFO)
 
@@ -89,6 +84,9 @@ def main():
     args = parser.parse_args()
 
     setup_logging(args.loglevel)
+    # per-logger overrides
+    for logger in args.debug_loggers:
+        logging.getLogger(logger).setLevel(logging.DEBUG)
 
     try:
         mains[args._module](args)

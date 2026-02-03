@@ -1,0 +1,43 @@
+name: Deploy documentation to GH Pages
+
+on:
+  push:
+    #branches: [main]
+    branches: [devel]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Generate docs
+        run: |
+            # required to import libvirt provisioner
+            sudo apt-get install python3-libvirt
+
+            # also install '.' to get all dependencies from pip
+            python3 -m pip install pdoc .
+
+            # generate HTML pages inside docs/
+            pdoc -n --no-include-undocumented -d markdown -o docs \
+                ./atex !atex.cli
+
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: docs
+
+      - uses: actions/deploy-pages@v4

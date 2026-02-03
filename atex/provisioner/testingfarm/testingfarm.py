@@ -20,12 +20,13 @@ class TestingFarmRemote(Remote, connection.ssh.ManagedSSHConnection):
 
     def __init__(self, request_id, ssh_options, *, release_hook):
         """
-        'request_id' is a string with Testing Farm request UUID (for printouts).
+        - `request_id` is a string with Testing Farm request UUID
+          (for printouts).
 
-        'ssh_options' are a dict, passed to ManagedSSHConnection __init__().
+        - `ssh_options` are a dict, passed to ManagedSSHConnection `__init__()`.
 
-        'release_hook' is a callable called on .release() in addition
-        to disconnecting the connection.
+        - `release_hook` is a callable called on `.release()` in addition
+          to disconnecting the connection.
         """
         # NOTE: self.lock inherited from ManagedSSHConnection
         super().__init__(options=ssh_options)
@@ -62,12 +63,12 @@ class TestingFarmProvisioner(Provisioner):
 
     def __init__(self, compose, arch="x86_64", *, max_retries=10, **reserve_kwargs):
         """
-        'compose' is a Testing Farm compose to prepare.
+        - `compose` is a Testing Farm compose to prepare.
 
-        'arch' is an architecture associated with the compose.
+        - `arch`' is an architecture associated with the compose.
 
-        'max_retries' is a maximum number of provisioning (Testing Farm) errors
-        that will be reprovisioned before giving up.
+        - `max_retries` is a maximum number of provisioning (Testing Farm) errors
+          that will be reprovisioned before giving up.
         """
         self.lock = threading.RLock()
         self.compose = compose

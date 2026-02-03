@@ -24,7 +24,7 @@ def calculate_guest_tag(tags):
 class ContestOrchestrator(AdHocOrchestrator):
     """
     Orchestrator for the Contest test suite:
-        https://github.com/RHSecurityCompliance/contest
+    https://github.com/RHSecurityCompliance/contest
 
     Includes SCAP content upload via rsync and other Contest-specific
     optimizations (around VM snapshots and scheduling).
@@ -33,11 +33,12 @@ class ContestOrchestrator(AdHocOrchestrator):
 
     def __init__(self, *args, content_dir, max_reruns=1, **kwargs):
         """
-        'content_dir' is a filesystem path to ComplianceAsCode/content local
-        directory, to be uploaded to the tested systems.
+        - `content_dir` is a filesystem path to ComplianceAsCode/content local
+          directory, to be uploaded to the tested systems.
 
-        'max_reruns' is an integer of how many times to re-try running a failed
-        test (which exited with non-0 or caused an Executor exception).
+        - `max_reruns` is an integer of how many times to re-try running
+          a failed test (which exited with non-0 or caused an Executor
+          exception).
         """
         super().__init__(*args, **kwargs)
         self.content_dir = content_dir

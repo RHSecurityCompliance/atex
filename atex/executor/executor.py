@@ -46,16 +46,18 @@ class Executor:
 
     def __init__(self, fmf_tests, connection, *, env=None, state_dir=None):
         """
-        'fmf_tests' is a class FMFTests instance with (discovered) tests.
+        - `fmf_tests` is a class FMFTests instance with (discovered) tests.
 
-        'connection' is a class Connection instance, already fully connected.
+        - `connection` is a class Connection instance, already fully connected.
 
-        'env' is a dict of extra environment variables to pass to the
-        plan prepare/finish scripts and to all tests.
+        - `env` is a dict of extra environment variables to pass to the
+          plan prepare/finish scripts and to all tests.
 
-        'state_dir' is a string or Path specifying path on the remote system for
-        storing additional data, such as tests, execution wrappers, temporary
-        plan-exported variables, etc. If left as None, a tmpdir is used.
+        - `state_dir` is a string or Path specifying path on the remote system
+          for storing additional data, such as tests, execution wrappers,
+          temporary plan-exported variables, etc.
+
+          If left as `None`, a tmpdir is used.
         """
         self.lock = threading.RLock()
         self.fmf_tests = fmf_tests
@@ -130,7 +132,7 @@ class Executor:
     def upload_tests(self):
         """
         Upload a directory of all tests, the location of which was provided to
-        __init__() inside 'fmf_tests', to the remote host.
+        `__init__()` inside `fmf_tests`, to the remote host.
         """
         self.conn.rsync(
             "-r", "--delete", "--exclude=.git/",
@@ -199,16 +201,19 @@ class Executor:
         """
         Run one test on the remote system.
 
-        'test_name' is a string with test name.
+        - `test_name` is a string with test name.
 
-        'output_dir' is a destination dir (string or Path) for results reported
-        and files uploaded by the test. Results are always stored in a line-JSON
-        format in a file named 'results', files are always uploaded to directory
-        named 'files', both inside 'output_dir'.
-        The path for 'output_dir' must already exist and be an empty directory
-        (ie. typically a tmpdir).
+        - `output_dir` is a destination dir (string or Path) for results reported
+          and files uploaded by the test.
 
-        'env' is a dict of extra environment variables to pass to the test.
+          Results are always stored in a line-JSON format in a file named
+          `results`, files are always uploaded to directory named `files`,
+          both inside `output_dir`.
+
+          The path for `output_dir` must already exist and be an empty directory
+          (ie. typically a tmpdir).
+
+        - `env` is a dict of extra environment variables to pass to the test.
 
         Returns an integer exit code of the test script.
         """

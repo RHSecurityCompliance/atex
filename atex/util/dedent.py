@@ -8,10 +8,10 @@ This allows raw blocks like
         ''')
 
 without the leading or trailing newlines and any common leading whitespaces.
-You might think using '''\ would eliminate the first newline, but the string
+You might think using `'''\` would eliminate the first newline, but the string
 is 'raw', it doesn't have escapes.
 
-textwrap.dedent() does only the common leading whitespaces.
+`textwrap.dedent()` does only the common leading whitespaces.
 """
 
 import textwrap

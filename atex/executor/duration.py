@@ -10,7 +10,7 @@ class Duration:
 
     def __init__(self, fmf_duration):
         """
-        'fmf_duration' is the string specified as 'duration' in FMF metadata.
+        - `fmf_duration` is the string specified as 'duration' in FMF metadata.
         """
         duration = self._fmf_to_seconds(fmf_duration)
         self.end = time.monotonic() + duration

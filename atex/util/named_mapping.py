@@ -27,7 +27,7 @@ as a dict, that are used if omitted from the constructor:
 
     m = MyMap()  # will have m.key == 678
 
-A class instance can unpack via ** with the entirety of its mapping contents:
+A class instance can unpack via `**` with the entirety of its mapping contents:
 
     m = MyMap(key2=456)
     both = {'key1': 123, **m}  # contains both keys
@@ -59,7 +59,7 @@ another dict-like object (does not have to be a parent of the class):
     s = SmallMap._from(b, extra=555)  # can pass extra **kwargs to __init__
     s = SmallMap(**b)                 # will copy all keys
 
-Note that this is a fairly basic implementation without __hash__, etc.
+Note that this is a fairly basic implementation without `__hash__`, etc.
 """
 
 import abc

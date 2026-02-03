@@ -11,13 +11,20 @@ class Remote(_connection.Connection):
     a Connection-like API in addition to system management helpers.
 
     An instance of Remote is typically prepared by a Provisioner and returned
-    to the caller for use and an eventual .release().
+    to the caller for use and an eventual `.release()`.
 
     Also note that Remote can be used via Context Manager, but does not
-    do automatic .release(), the manager only handles the built-in Connection.
+    do automatic `.release()`, the manager only handles the built-in Connection.
     The intention is for a Provisioner to run via its own Contest Manager and
     release all Remotes upon exit.
-    If you need automatic release of one Remote, use a try/finally block.
+
+    If you need automatic release of one Remote, use a try/finally block, ie.
+
+        try:
+            remote.cmd(...)
+            ...
+        finally:
+            remote.release()
     """
 
     @_abc.abstractmethod
@@ -32,12 +39,13 @@ class Provisioner:
     A remote resource (machine/system) provider.
 
     The idea is to request machines (a.k.a. Remotes, or class Remote instances)
-    to be reserved via a non-blocking .provision() and for them to be retrieved
-    through blocking / non-blocking .get_remote() when they become available.
+    to be reserved via a non-blocking `.provision()` and for them to be
+    retrieved through blocking / non-blocking `.get_remote()` when they
+    become available.
 
-    Each Remote has its own .release() for freeing (de-provisioning) it once
+    Each Remote has its own `.release()` for freeing (de-provisioning) it once
     the user doesn't need it anymore. The Provisioner does this automatically
-    to all Remotes during .stop() or context manager exit.
+    to all Remotes during `.stop()` or Context Manager exit.
 
         p = Provisioner()
         p.start()
@@ -53,27 +61,27 @@ class Provisioner:
             remote2 = p.get_remote()
             ...
 
-    Note that .provision() is a hint expressed by the caller, not a guarantee
-    that .get_remote() will ever return a Remote. Ie. the caller can call
-    .provision(count=math.inf) to receive as many remotes as the Provisioner
+    Note that `.provision()` is a hint expressed by the caller, not a guarantee
+    that `.get_remote()` will ever return a Remote. Ie. the caller can call
+    `.provision(count=math.inf)` to receive as many remotes as the Provisioner
     can possibly supply.
     """
 
     @_abc.abstractmethod
     def provision(self, count=1):
         """
-        Request that 'count' machines be provisioned (reserved) for use,
-        to be returned at a later point by .get_remote().
+        Request that `count` machines be provisioned (reserved) for use,
+        to be returned at a later point by `.get_remote()`.
         """
 
     @_abc.abstractmethod
     def get_remote(self, block=True):
         """
-        Return a connected class Remote instance of a previously .provision()ed
-        remote system.
+        Return a connected class Remote instance of a previously
+        `.provision()`ed remote system.
 
-        If 'block' is True, wait for the Remote to be available and connected,
-        otherwise return None if there is none available yet.
+        - If `block` is True, wait for the Remote to be available and connected,
+          otherwise return None if there is none available yet.
         """
 
     @_abc.abstractmethod
@@ -87,7 +95,7 @@ class Provisioner:
     def stop(self):
         """
         Stop the Provisioner instance, freeing all reserved resources,
-        calling .release() on all Remote instances that were created.
+        calling `.release()` on all Remote instances that were created.
         """
 
     def __enter__(self):

@@ -12,11 +12,15 @@ def listlike(data, key):
     defined as a dict or a list.
 
     This is needed because many fmf metadata keys can be used either as
+
         some_key: 123
+
     or as lists via YAML syntax
+
         some_key:
           - 123
           - 456
+
     and, for simplicity, we want to always deal with lists (iterables).
     """
     if value := data.get(key):
@@ -39,32 +43,34 @@ class FMFTests:
         context=None,
     ):
         """
-        'fmf_tree' is filesystem path somewhere inside fmf metadata tree,
-        or a root fmf.Tree instance.
+        - `fmf_tree` is filesystem path somewhere inside fmf metadata tree,
+          or a root fmf.Tree instance.
 
-        'plan_name' is fmf identifier (like /some/thing) of a tmt plan
-        to use for discovering tests. If None, a dummy (empty) plan is used.
+        - `plan_name` is fmf identifier (like `/some/thing`) of a tmt plan
+          to use for discovering tests. If None, a dummy (empty) plan is used.
 
-        'names', 'filters', 'conditions' and 'exclude' (all tuple/list)
-        are fmf tree filters (resolved by the fmf module), overriding any
-        existing tree filters in the plan's discover phase specifies, where:
+        - `names`, `filters`, `conditions` and `exclude` (all tuple/list)
+          are fmf tree filters (resolved by the fmf module), overriding any
+          existing tree filters in the plan's discover phase specifies, where:
 
-            'names' are test regexes like ["/some/test", "/another/test"]
+            - `names` are test regexes like `["/some/test", "/another/test"]`.
 
-            'filters' are fmf-style filter expressions, as documented on
-            https://fmf.readthedocs.io/en/stable/modules.html#fmf.filter
+            - `filters` are fmf-style filter expressions, as documented on
+              https://fmf.readthedocs.io/en/stable/modules.html#fmf.filter
 
-            'conditions' are python expressions whose namespace locals()
-            are set up to be a dictionary of the fmf tree. When any of the
-            expressions returns True, the tree is returned, ie.
-                ["environment['FOO'] == 'BAR'"]
-                ["'enabled' not in locals() or enabled"]
-            Note that KeyError is silently ignored and treated as False.
+            - `conditions` are python expressions whose namespace `locals()`
+              are set up to be a dictionary of the fmf tree. When any of the
+              expressions returns `True`, the tree is returned, ie.
 
-            'excludes' are test regexes to exclude, format same as 'names'
+                  ["environment['FOO'] == 'BAR'"]
+                  ["'enabled' not in locals() or enabled"]
 
-        'context' is a dict like {'distro': 'rhel-9.6'} used for additional
-        adjustment of the discovered fmf metadata.
+              Note that KeyError is silently ignored and treated as `False`.
+
+            - `excludes` are test regexes to exclude, format same as `names`.
+
+        - `context` is a dict like `{'distro': 'rhel-9.6'}` used for additional
+          adjustment of the discovered fmf metadata.
         """
         # list of packages to install, as extracted from plan
         self.prepare_pkgs = []
@@ -187,8 +193,8 @@ class FMFTests:
 
 def test_pkg_requires(data, key="require"):
     """
-    Yield RPM package names specified by test 'data' (fmf metadata dict)
-    in the metadata 'key' (require or recommend), ignoring any non-RPM-package
+    Yield RPM package names specified by test `data` (fmf metadata dict)
+    in the metadata `key` (require or recommend), ignoring any non-RPM-package
     requires/recommends.
     """
     for entry in listlike(data, key):
@@ -204,7 +210,7 @@ def test_pkg_requires(data, key="require"):
 def all_pkg_requires(fmf_tests, key="require"):
     """
     Yield RPM package names from the plan and all tests discovered by
-    a class FMFTests instance 'fmf_tests', ignoring any non-RPM-package
+    a class FMFTests instance `fmf_tests`, ignoring any non-RPM-package
     requires/recommends.
     """
     # use a set to avoid duplicates
@@ -213,25 +219,3 @@ def all_pkg_requires(fmf_tests, key="require"):
     for data in fmf_tests.tests.values():
         pkgs.update(test_pkg_requires(data, key))
     yield from pkgs
-
-
-# Some extra notes for fmf.prune() arguments:
-#
-# Set 'names' to filter by a list of fmf node names, ie.
-#     ['/some/test', '/another/test']
-#
-# Set 'filters' to filter by a list of fmf-style filter expressions, see
-#     https://fmf.readthedocs.io/en/stable/modules.html#fmf.filter
-#
-# Set 'conditions' to filter by a list of python expressions whose namespace
-# locals() are set up to be a dictionary of the tree. When any of the
-# expressions returns True, the tree is returned, ie.
-#     ['environment["FOO"] == "BAR"']
-#     ['"enabled" not in locals() or enabled']
-# Note that KeyError is silently ignored and treated as False.
-#
-# Set 'context' to a dictionary to post-process the tree metadata with
-# adjust expressions (that may be present in a tree) using the specified
-# context. Any other filters are applied afterwards to allow modification
-# of tree metadata by the adjust expressions. Ie.
-#     {'distro': 'rhel-9.6.0', 'arch': 'x86_64'}

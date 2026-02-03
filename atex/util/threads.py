@@ -39,12 +39,12 @@ class ThreadQueue:
 
     def start_thread(self, target, target_args=None, target_kwargs=None, **user_kwargs):
         """
-        Start a new thread and call 'target' as a callable inside it, passing it
-        'target_args' as arguments and 'target_kwargs' as keyword arguments.
+        Start a new thread and call `target` as a callable inside it, passing it
+        `target_args` as arguments and `target_kwargs` as keyword arguments.
 
-        Any additional 'user_kwargs' specified are NOT passed to the callable,
+        Any additional `user_kwargs` specified are NOT passed to the callable,
         but instead become part of the ThreadReturn namespace returned by the
-        .get_raw() method.
+        `.get_raw()` method.
         """
         t = threading.Thread(
             target=self._wrapper,
@@ -59,8 +59,8 @@ class ThreadQueue:
     def get_raw(self, block=True, timeout=None):
         """
         Wait for and return the next available ThreadReturn instance on the
-        queue, as enqueued by a finished callable started by the .start_thread()
-        method.
+        queue, as enqueued by a finished callable started by the
+        `.start_thread()` method.
         """
         with self.lock:
             if block and timeout is None and not self.threads:
@@ -75,7 +75,7 @@ class ThreadQueue:
     def get(self, block=True, timeout=None):
         """
         Wait for and return the next available return value of a callable
-        enqueued via the .start_thread() method.
+        enqueued via the `.start_thread()` method.
 
         If the callable raised an exception, the exception is re-raised here.
         """
@@ -100,7 +100,7 @@ class ThreadQueue:
 
     def qsize(self):
         """
-        Return the amount of elements .get() can retrieve before it raises
-        queue.Empty.
+        Return the amount of elements `.get()` can retrieve before it raises
+        `queue.Empty`.
         """
         return self.queue.qsize()

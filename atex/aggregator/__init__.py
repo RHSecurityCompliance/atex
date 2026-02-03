@@ -11,11 +11,11 @@ class Aggregator:
     @_abc.abstractmethod
     def ingest(self, platform, test_name, test_results, test_files):
         """
-        Process 'test_results' (string/Path) for as results reported by a test
-        ran by Executor, along with 'test_files' as files uploaded by that test,
-        aggregating them under 'platform' (string) as 'test_name' (string).
+        Process `test_results` (string/Path) for as results reported by a test
+        ran by Executor, along with `test_files` as files uploaded by that test,
+        aggregating them under `platform` (string) as `test_name` (string).
 
-        This is DESTRUCTIVE, the input results/files are consumed in the
+        This is **destructive**, the input results/files are consumed in the
         process.
         """
 

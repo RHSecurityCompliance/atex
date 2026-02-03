@@ -14,12 +14,12 @@ class PodmanRemote(Remote, connection.podman.PodmanConnection):
 
     def __init__(self, image, container, *, release_hook):
         """
-        'image' is an image tag (used for repr()).
+        - `image` is an image tag (used for `repr()`).
 
-        'container' is a podman container id / name.
+        - `container` is a podman container ID / name.
 
-        'release_hook' is a callable called on .release() in addition
-        to disconnecting the connection.
+        - `release_hook` is a callable called on `.release()` in addition
+          to disconnecting the connection.
         """
         super().__init__(container=container)
         self.lock = threading.RLock()
@@ -61,11 +61,11 @@ class PodmanRemote(Remote, connection.podman.PodmanConnection):
 class PodmanProvisioner(Provisioner):
     def __init__(self, image, run_options=None):
         """
-        'image' is a string of image tag/id to create containers from.
-        It can be a local identifier or an URL.
+        - `image` is a string of image tag/ID to create containers from.
+          It can be a local identifier or an URL.
 
-        'run_options' is an iterable with additional CLI options passed
-        to 'podman container run'.
+        - `run_options` is an iterable with additional CLI options passed
+          to `podman container run`.
         """
         self.lock = threading.RLock()
         self.image = image

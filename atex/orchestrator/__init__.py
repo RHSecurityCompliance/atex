@@ -22,8 +22,8 @@ class Orchestrator:
         (for provisioning, new test execution, etc.) and returning once these
         are taken care of.
 
-        Returns True to indicate that it should be called again by the user
-        (more work to be done), False once all testing is concluded.
+        Returns `True` to indicate that it should be called again by the user
+        (more work to be done), `False` once all testing is concluded.
         """
 
     def serve_forever(self):

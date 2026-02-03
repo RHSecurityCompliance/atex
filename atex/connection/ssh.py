@@ -1,15 +1,15 @@
 """
-Connection API implementation using the OpenSSH ssh(1) client.
+Connection API implementation using the OpenSSH `ssh(1)` client.
 
 Any SSH options are passed via dictionaries of options, and later translated
-to '-o' client CLI options, incl. Hostname, User, Port, IdentityFile, etc.
+to `-o` client CLI options, incl. Hostname, User, Port, IdentityFile, etc.
 No "typical" ssh CLI switches are used.
 
 This allows for a nice flexibility from Python code - this module provides
 some sensible option defaults (for scripted use), but you are free to
 overwrite any options via class or function arguments (where appropriate).
 
-Note that .cmd() quotes arguments to really execute individual arguments
+Note that `.cmd()` quotes arguments to really execute individual arguments
 as individual arguments in the remote shell, so you need to give it a proper
 iterable (like for other Connections), not a single string with spaces.
 """
@@ -68,7 +68,7 @@ class ConnectError(SSHError):
 
 def _shell_cmd(command, sudo=None):
     """
-    Make a command line for running 'command' on the target system.
+    Make a command line for running `command` on the target system.
     """
     quoted_args = (shlex.quote(str(arg)) for arg in command)
     if sudo:
@@ -81,7 +81,7 @@ def _shell_cmd(command, sudo=None):
 
 def _options_to_cli(options):
     """
-    Assemble an ssh(1) or sshpass(1) command line with -o options.
+    Assemble an `ssh(1)` or `sshpass(1)` command line with `-o` options.
     """
     list_opts = []
     for key, value in options.items():
@@ -94,7 +94,7 @@ def _options_to_cli(options):
 
 def _options_to_ssh(options, password=None, extra_cli_flags=()):
     """
-    Assemble an ssh(1) or sshpass(1) command line with -o options.
+    Prefix `sshpass(1)` if password was specified.
     """
     cli_opts = _options_to_cli(options)
     if password:
@@ -111,7 +111,7 @@ def _options_to_ssh(options, password=None, extra_cli_flags=()):
 # return a string usable for rsync -e
 def _options_to_rsync_e(options, password=None):
     """
-    Return a string usable for the rsync -e argument.
+    Return a string usable for the rsync `-e` argument.
     """
     cli_opts = _options_to_cli(options)
     batch_mode = "-oBatchMode=no" if password else "-oBatchMode=yes"
@@ -121,9 +121,10 @@ def _options_to_rsync_e(options, password=None):
 def _rsync_host_cmd(*args, options, password=None, sudo=None):
     """
     Assemble a rsync command line, noting that
-      - 'sshpass' must be before 'rsync', not inside the '-e' argument
-      - 'ignored_arg' must be passed by user as destination, not inside '-e'
-      - 'sudo' is part of '--rsync-path', yet another argument
+
+    - `sshpass` must be before `rsync`, not inside the `-e` argument
+    - `ignored_arg` must be passed by user as destination, not inside `-e`
+    - `sudo` is part of `--rsync-path`, yet another argument
     """
     return (
         *(("sshpass", "-p", password) if password else ()),
@@ -136,25 +137,25 @@ def _rsync_host_cmd(*args, options, password=None, sudo=None):
 
 class StatelessSSHConnection(Connection):
     """
-    Implements the Connection API using a ssh(1) client using "standalone"
-    (stateless) logic - connect() and disconnect() are no-op, .cmd() simply
-    executes the ssh client and .rsync() executes 'rsync -e ssh'.
+    Implements the Connection API using a `ssh(1)` client using "standalone"
+    (stateless) logic - `connect()` and `disconnect()` are no-op, `.cmd()`
+    simply executes the ssh client and `.rsync()` executes `rsync -e ssh`.
 
-    Compared to ManagedSSHConnection, this may be slow for many .cmd() calls,
+    Compared to ManagedSSHConnection, this may be slow for many `.cmd()` calls,
     but every call is stateless, there is no persistent connection.
 
-    If you need only one .cmd(), this will be faster than ManagedSSHConnection.
+    For only one `.cmd()`, this class is faster than ManagedSSHConnection.
     """
 
     def __init__(self, options, *, password=None, sudo=None):
         """
-        Prepare to connect to an SSH server specified in 'options'.
+        Prepare to connect to an SSH server specified in `options`.
 
-        If 'password' is given, spawn the ssh(1) command via 'sshpass' and
-        pass the password to it.
+        - If `password` is given, spawn the `ssh` command via `sshpass` and
+          pass the password to it.
 
-        If 'sudo' specifies a username, call sudo(8) on the remote shell
-        to run under a different user on the remote host.
+        - If `sudo` specifies a username, call `sudo(8)` on the remote shell
+          to run under a different user on the remote host.
         """
         self.options = DEFAULT_OPTIONS.copy()
         self.options.update(options)
@@ -164,11 +165,7 @@ class StatelessSSHConnection(Connection):
         self._master_proc = None
 
     def connect(self, block=True):
-        """
-        Optional, .cmd() and .rsync() work without it, but it is provided here
-        for compatibility with the Connection API.
-        """
-        # TODO: just wait until .cmd(['true']) starts responding ?
+        pass
 
     def disconnect(self):
         pass
@@ -216,9 +213,9 @@ class StatelessSSHConnection(Connection):
 
 class ManagedSSHConnection(Connection):
     """
-    Implements the Connection API using one persistently-running ssh(1) client
-    started in a 'ControlMaster' mode, with additional ssh clients using that
-    session to execute remote commands. Similarly, .rsync() uses it too.
+    Implements the Connection API using one persistently-running `ssh(1)` client
+    started in a ControlMaster mode, with additional ssh clients using that
+    session to execute remote commands. Similarly, `.rsync()` uses it too.
 
     This is much faster than StatelessSSHConnection when executing multiple
     commands, but contains a complex internal state (what if ControlMaster
@@ -229,13 +226,13 @@ class ManagedSSHConnection(Connection):
 
     def __init__(self, options, *, password=None, sudo=None):
         """
-        Prepare to connect to an SSH server specified in 'options'.
+        Prepare to connect to an SSH server specified in `options`.
 
-        If 'password' is given, spawn the ssh(1) command via 'sshpass' and
-        pass the password to it.
+        - If `password` is given, spawn the `ssh` command via `sshpass`
+        and pass the password to it.
 
-        If 'sudo' specifies a username, call sudo(8) on the remote shell
-        to run under a different user on the remote host.
+        - If `sudo` specifies a username, call `sudo(8)` on the remote shell
+          to run under a different user on the remote host.
         """
         self.lock = threading.RLock()
         self.options = DEFAULT_OPTIONS.copy()
@@ -330,14 +327,14 @@ class ManagedSSHConnection(Connection):
 
     def forward(self, forward_type, *spec, cancel=False):
         """
-        Add (one or more) ssh forwarding specifications as 'spec' to an
+        Add (one or more) ssh forwarding specifications as `spec` to an
         already-connected instance. Each specification has to follow the
-        format of LocalForward or RemoteForward (see ssh_config(5)).
-        Ie. "1234 1.2.3.4:22" or "0.0.0.0:1234 1.2.3.4:22".
+        format of LocalForward or RemoteForward (see `ssh_config(5)`).
+        Ie. `1234 1.2.3.4:22` or `0.0.0.0:1234 1.2.3.4:22`.
 
-        'forward_type' must be either LocalForward or RemoteForward.
+        - `forward_type` must be either LocalForward or RemoteForward.
 
-        If 'cancel' is True, cancel the forwarding instead of adding it.
+        - If `cancel` is `True`, cancel the forwarding instead of adding it.
         """
         assert forward_type in ("LocalForward", "RemoteForward")
         self.assert_master()

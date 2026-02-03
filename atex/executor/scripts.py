@@ -34,12 +34,12 @@ def test_wrapper(*, test, tests_dir, test_exec):
     is considered as test output and any unintended environment changes
     will impact the test itself.
 
-    'test' is a class Test instance.
+    - `test` is a class Test instance.
 
-    'test_dir' is a remote directory (repository) of all the tests,
-    a.k.a. FMF metadata root.
+    - `test_dir` is a remote directory (repository) of all the tests,
+      a.k.a. FMF metadata root.
 
-    'test_exec' is a remote path to the actual test to run.
+    - `test_exec` is a remote path to the actual test to run.
     """
     out = "#!/bin/bash\n"
 
@@ -104,13 +104,13 @@ def test_setup(*, test, wrapper_exec, test_exec, test_yaml, **kwargs):
     scripts: a test script (contents of 'test' from FMF) and a wrapper script
     to run the test script.
 
-    'test' is a class Test instance.
+    - `test` is a class Test instance.
 
-    'wrapper_exec' is the remote path where the wrapper script should be put.
+    - `wrapper_exec` is the remote path where the wrapper script should be put.
 
-    'test_exec' is the remote path where the test script should be put.
+    - `test_exec` is the remote path where the test script should be put.
 
-    Any 'kwargs' are passed to test_wrapper().
+    Any `kwargs` are passed to `test_wrapper()`.
     """
     out = "#!/bin/bash\n"
 

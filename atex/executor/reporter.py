@@ -18,14 +18,14 @@ class Reporter:
 
     def __init__(self, output_dir, results_file, files_dir):
         """
-        'output_dir' is a destination dir (string or Path) for results reported
-        and files uploaded.
+        - `output_dir` is a destination dir (string or Path) for results
+          reported and files uploaded.
 
-        'results_file' is a file name inside 'output_dir' the results will be
-        reported into.
+        - `results_file` is a file name inside `output_dir` the results
+          will be reported into.
 
-        'files_dir' is a dir name inside 'output_dir' any files will be
-        uploaded to.
+        - `files_dir` is a dir name inside `output_dir` any files will be
+          uploaded to.
         """
         self.output_dir = Path(output_dir)
         self.results_file = self.output_dir / results_file
@@ -67,7 +67,7 @@ class Reporter:
         """
         Persistently record a test result.
 
-        'result_line' is a dict in the format specified by RESULTS.md.
+        - `result_line` is a dict in the format specified by RESULTS.md.
         """
         json.dump(result_line, self.results_fobj, indent=None)
         self.results_fobj.write("\n")
@@ -83,10 +83,10 @@ class Reporter:
     @contextlib.contextmanager
     def open_file(self, file_name, mode, result_name=None):
         """
-        Open a file named 'file_name' in a directory relevant to 'result_name'.
+        Open a file named `file_name` in a directory relevant to `result_name`.
         Yields an opened file descriptor (as integer) as a Context Manager.
 
-        If 'result_name' (typically a subtest) is not given, open the file
+        If `result_name` (typically a subtest) is not given, open the file
         for the test (name) itself.
         """
         fd = os.open(self._dest_path(file_name, result_name), mode)

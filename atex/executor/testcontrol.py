@@ -13,21 +13,22 @@ class BufferFullError(Exception):
 class NonblockLineReader:
     """
     Kind of like io.BufferedReader but capable of reading from non-blocking
-    sources (both O_NONBLOCK sockets and os.set_blocking(False) descriptors),
-    re-assembling full lines from (potentially) multiple read() calls.
+    sources (both `O_NONBLOCK` sockets and `os.set_blocking(False)`
+    descriptors), re-assembling full lines from (potentially) multiple
+    `read()` calls.
 
     It also takes a file descriptor (not a file-like object) and takes extra
     care to read one-byte-at-a-time to not read (and buffer) more data from the
     source descriptor, allowing it to be used for in-kernel move, such as via
-    os.sendfile() or os.splice().
+    `os.sendfile()` or `os.splice()`.
     """
 
     def __init__(self, src, maxlen=4096):
         """
-        'src' is an opened file descriptor (integer).
+        - `src` is an opened file descriptor (integer).
 
-        'maxlen' is a maximum potential line length, incl. the newline
-        character - if reached, a BufferFullError is raised.
+        - `maxlen` is a maximum potential line length, incl. the newline
+          character - if reached, a BufferFullError is raised.
         """
         self.src = src
         self.eof = False
@@ -36,7 +37,7 @@ class NonblockLineReader:
 
     def readline(self):
         r"""
-        Read a line and return it, without the '\n' terminating character,
+        Read a line and return it, without the `\n` terminating character,
         clearing the internal buffer upon return.
 
         Returns None if nothing could be read (BlockingIOError) or if EOF
@@ -96,12 +97,12 @@ class TestControl:
 
     def __init__(self, *, reporter, duration, control_fd=None):
         """
-        'control_fd' is a non-blocking file descriptor to be read.
+        - `control_fd` is a non-blocking file descriptor to be read.
 
-        'reporter' is an instance of class Reporter all the results
-        and uploaded files will be written to.
+        - `reporter` is an instance of class Reporter all the results
+          and uploaded files will be written to.
 
-        'duration' is a class Duration instance.
+        - `duration` is a class Duration instance.
         """
         self.reporter = reporter
         self.duration = duration
@@ -137,7 +138,7 @@ class TestControl:
         Read from the control file descriptor and potentially perform any
         appropriate action based on commands read from the test.
 
-        Returns True if there is more data expected, False otherwise
+        Returns `True` if there is more data expected, `False` otherwise
         (when the control file descriptor reached EOF).
         """
         # if a parser operation is in progress, continue calling it,
@@ -190,8 +191,8 @@ class TestControl:
     @classmethod
     def _merge(cls, dst, src):
         """
-        Merge a 'src' dict into 'dst', using the rules described by
-        TEST_CONTROL.md for 'Partial results'.
+        Merge a `src` dict into `dst`, using the rules described by
+        TEST_CONTROL.md for "Partial results".
         """
         for key, value in src.items():
             # delete existing if new value is None (JSON null)

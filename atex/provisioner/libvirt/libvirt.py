@@ -49,17 +49,17 @@ class LibvirtCloningRemote(Remote, connection.ssh.ManagedSSHConnection):
 
     def __init__(self, ssh_options, host, domain, source_image, *, release_hook):
         """
-        'ssh_options' are a dict, passed to ManagedSSHConnection __init__().
+        - `ssh_options` are a dict, passed to ManagedSSHConnection `__init__()`.
 
-        'host' is a str of libvirt host name (used for repr()).
+        - `host` is a str of libvirt host name (used for `repr()`).
 
-        'domain' is a str of libvirt domain name (used for repr()).
+        - `domain` is a str of libvirt domain name (used for `repr()`).
 
-        'source_image' is a str of libvirt volume name that was cloned
-        for the domain to boot from (used for repr()).
+        - `source_image` is a str of libvirt volume name that was cloned
+          for the domain to boot from (used for `repr()`).
 
-        'release_hook' is a callable called on .release() in addition
-        to disconnecting the connection.
+        - `release_hook` is a callable called on `.release()` in addition
+          to disconnecting the connection.
         """
         # NOTE: self.lock inherited from ManagedSSHConnection
         super().__init__(options=ssh_options)
@@ -132,37 +132,42 @@ class LibvirtCloningProvisioner(Provisioner):
         reserve_delay=3, reserve_time=3600, start_event_loop=True,
     ):
         """
-        'host' is a ManagedSSHConnection class instance, connected to a libvirt host.
+        - `host` is a ManagedSSHConnection class instance, connected to
+          a libvirt host.
 
-        'image' is a string with a libvirt storage volume name inside the
-        given storage 'pool' that should be used as the source for cloning.
+        - `image` is a string with a libvirt storage volume name inside the
+          given storage `pool` that should be used as the source for cloning.
 
-        'pool' is a libvirt storage pool used by all relevant domains on the
-        libvirt host **as well as** the would-be-cloned images.
+        - `pool` is a libvirt storage pool used by all relevant domains on the
+          libvirt host **as well as** the would-be-cloned images.
 
-        'domain_filter' is a regex string matching libvirt domain names to
-        attempt reservation on. Useful for including only ie. 'auto-.*' domains
-        while leaving other domains on the same libvirt host untouched.
+        - `domain_filter` is a regex string matching libvirt domain names to
+          attempt reservation on. Useful for including only ie. `auto-.*`
+          domains while leaving other domains on the same libvirt host
+          untouched.
 
-        'domain_user' and 'domain_sshkey' (strings) specify how to connect to
-        an OS booted from the pre-instaled 'image', as these credentials are
-        known only to the logic that created the 'image' in the first place.
+        - `domain_user` and `domain_sshkey` (strings) specify how to connect to
+          an OS booted from the pre-instaled `image`, as these credentials are
+          known only to the logic that created the `image` in the first place.
 
-        'reserve_delay' is an int of how many seconds to wait between trying to
-        lock libvirt domains, after every unsuccessful locking attempt.
-        Ie. with delay=5 and 20 domains, the code will try to lock every domain
-        in 5*20=100 seconds before looping back to the first.
+        - `reserve_delay` is an int of how many seconds to wait between trying
+          to lock libvirt domains, after every unsuccessful locking attempt.
 
-        'reserve_time' is an int of maximum seconds to reserve a libvirt domain
-        for before other users can steal it for themselves. Note that there is
-        no automatic timeout release logic, it's just a hint for others.
+          Ie. with `delay=5` and 20 domains, the code will try to lock every
+          domain in `5*20=100` seconds before looping back to the first.
 
-        'start_event_loop' set to True starts a global default libvirt event
-        loop as part of .start() (or context manager enter) in a background
-        daemon thread.
-        This is necessary to maintain connection keep-alives, but if you plan
-        on managing the loop yourself (have custom uses for the libvirt module),
-        setting False here avoids any meddling by this class.
+        - `reserve_time` is an int of maximum seconds to reserve a libvirt
+          domain for before other users can steal it for themselves. Note that
+          there is no automatic timeout release logic, it's just a hint for
+          others.
+
+        - `start_event_loop` set to `True` starts a global default libvirt event
+          loop as part of `.start()` (or context manager enter) in a background
+          daemon thread.
+
+          This is necessary to maintain connection keep-alives, but if you plan
+          on managing the loop yourself (have custom uses for the libvirt
+          module), setting `False` here avoids any meddling by this class.
         """
         self.lock = threading.RLock()
         self.host = host

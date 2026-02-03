@@ -18,7 +18,7 @@ these keys:
     - function (or other callable) that will be called when invoked by the user,
       gets passed one non-kw argument: argparse-style Namespace
 
-This module-level dict must be named 'CLI_SPEC'.
+This module-level dict must be named `CLI_SPEC`.
 """
 
 import sys

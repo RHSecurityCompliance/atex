@@ -65,32 +65,32 @@ class AdHocOrchestrator(Orchestrator):
         max_remotes=1, max_spares=0, max_failed_setups=10, env=None,
     ):
         """
-        'platform' is a string with platform name.
+        - `platform` is a string with platform name.
 
-        'fmf_tests' is a class FMFTests instance of the tests to run.
+        - `fmf_tests` is a class FMFTests instance of the tests to run.
 
-        'provisioners' is an iterable of class Provisioner instances.
+        - `provisioners` is an iterable of class Provisioner instances.
 
-        'aggregator' is a class CSVAggregator instance.
+        - `aggregator` is a class Aggregator instance.
 
-        'tmp_dir' is a string/Path to a temporary directory, to be used for
-        storing per-test results and uploaded files before being ingested
-        by the aggregator. Can be safely shared by Orchestrator instances.
+        - `tmp_dir` is a string/Path to a temporary directory, to be used for
+          storing per-test results and uploaded files before being ingested
+          by the aggregator. Can be safely shared by Orchestrator instances.
 
-        'max_remotes' is how many Remotes to hold reserved at any given time,
-        eg. how many tests to run in parallel. Clamped to the number of
-        to-be-run tests given as 'fmf_tests'.
+        - `max_remotes` is how many Remotes to hold reserved at any given time,
+          eg. how many tests to run in parallel. Clamped to the number of
+          to-be-run tests given as `fmf_tests`.
 
-        'max_spares' is how many set-up Remotes to hold reserved and unused,
-        ready to replace a Remote destroyed by test. Values above 0 greatly
-        speed up test reruns as Remote reservation happens asynchronously
-        to test execution. Spares are reserved on top of 'max_remotes'.
+        - `max_spares` is how many set-up Remotes to hold reserved and unused,
+          ready to replace a Remote destroyed by test. Values above 0 greatly
+          speed up test reruns as Remote reservation happens asynchronously
+          to test execution. Spares are reserved on top of `max_remotes`.
 
-        'max_failed_setups' is an integer of how many times an Executor's
-        plan setup (uploading tests, running prepare scripts, etc.) may fail
-        before FailedSetupError is raised.
+        - `max_failed_setups` is an integer of how many times an Executor's
+          plan setup (uploading tests, running prepare scripts, etc.) may fail
+          before FailedSetupError is raised.
 
-        'env' is a dict of extra environment variables to pass to Executor.
+        - `env` is a dict of extra environment variables to pass to Executor.
         """
         if not fmf_tests.tests:
             raise ValueError("'fmf_tests' has no tests (bad discover params?)")
@@ -121,8 +121,10 @@ class AdHocOrchestrator(Orchestrator):
 
     def _run_new_test(self, info):
         """
-        'info' can be either
+        `info` can be either
+
           - SetupInfo instance with Remote/Executor to run the new test.
+
           - FinishedInfo instance of a previously executed test
             (reusing Remote/Executor for a new test).
         """
@@ -158,7 +160,7 @@ class AdHocOrchestrator(Orchestrator):
 
     def _process_finished_test(self, finfo):
         """
-        'finfo' is a FinishedInfo instance.
+        `finfo` is a FinishedInfo instance.
         """
         test_data = self.fmf_tests.tests[finfo.test_name]
         remote_with_test = f"{finfo.remote}: '{finfo.test_name}'"
@@ -230,14 +232,6 @@ class AdHocOrchestrator(Orchestrator):
             finfo.provisioner.provision(1)
 
     def serve_once(self):
-        """
-        Run the orchestration logic, processing any outstanding requests
-        (for provisioning, new test execution, etc.) and returning once these
-        are taken care of.
-
-        Returns True to indicate that it should be called again by the user
-        (more work to be done), False once all testing is concluded.
-        """
         # all done
         if not self.to_run and not self.running_tests:
             return False
@@ -409,7 +403,7 @@ class AdHocOrchestrator(Orchestrator):
         """
         Set up a newly acquired class Remote instance for test execution.
 
-        'sinfo' is a SetupInfo instance with the (fully connected) remote.
+        - `sinfo` is a SetupInfo instance with the (fully connected) remote.
         """
         sinfo.executor.start()
         sinfo.executor.upload_tests()
@@ -424,18 +418,20 @@ class AdHocOrchestrator(Orchestrator):
         """
         Return a test name (string) to be executed next.
 
-        'to_run' is a set of test names to pick from. The returned test name
-        must be chosen from this set.
+        - `to_run` is a set of test names to pick from. The returned test name
+          must be chosen from this set.
 
-        'tests' is a dict indexed by test name (string), with values being
-        fully resolved fmf test metadata (dicts) of all possible tests.
+        - `tests` is a dict indexed by test name (string), with values being
+          fully resolved fmf test metadata (dicts) of all possible tests.
 
-        'previous' can be either
+        - `previous` can be either
+
           - Orchestrator.SetupInfo instance (first test to be run)
+
           - Orchestrator.FinishedInfo instance (previous executed test)
 
         This method must not modify any of its arguments, it must treat them
-        as read-only, eg. don't remove the returned test name from 'to_run'.
+        as read-only, eg. don't remove the returned test name from `to_run`.
         """
         # default to simply picking any available test
         return next(iter(to_run))
@@ -447,9 +443,9 @@ class AdHocOrchestrator(Orchestrator):
         to a class Remote instance, indicating that the Remote instance
         should not be used for further test execution.
 
-        'info' is Orchestrator.FinishedInfo namedtuple of the test.
+        - `info` is Orchestrator.FinishedInfo namedtuple of the test.
 
-        'test_data' is a dict of fully resolved fmf test metadata of that test.
+        - `test_data` is a dict of fully resolved fmf test metadata of that test.
         """
         # if Executor ended with an exception (ie. duration exceeded),
         # consider the test destructive
@@ -467,11 +463,11 @@ class AdHocOrchestrator(Orchestrator):
     def was_successful(info, test_data):  # noqa: ARG004
         """
         Return a boolean result whether a finished test was successful.
-        Returning False might cause it to be re-run (per should_be_rerun()).
+        Returning `False` might cause it to be re-run (per `should_be_rerun()`).
 
-        'info' is Orchestrator.FinishedInfo namedtuple of the test.
+        - `info` is Orchestrator.FinishedInfo namedtuple of the test.
 
-        'test_data' is a dict of fully resolved fmf test metadata of that test.
+        - `test_data` is a dict of fully resolved fmf test metadata of that test.
         """
         remote_with_test = f"{info.remote}: '{info.test_name}'"
         # executor (or test) threw exception
@@ -493,9 +489,9 @@ class AdHocOrchestrator(Orchestrator):
         that another execution attempt might succeed, due to race conditions
         in the test or other non-deterministic factors.
 
-        'info' is Orchestrator.FinishedInfo namedtuple of the test.
+        - `info` is Orchestrator.FinishedInfo namedtuple of the test.
 
-        'test_data' is a dict of fully resolved fmf test metadata of that test.
+        - `test_data` is a dict of fully resolved fmf test metadata of that test.
         """
         # never rerun by default
         return False

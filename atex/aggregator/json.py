@@ -20,30 +20,31 @@ class JSONAggregator(Aggregator):
     Collects reported results in a line-JSON output file and uploaded files
     (logs) from multiple test runs under a shared directory.
 
-    Note that the aggregated JSON file *does not* use the test-based JSON format
-    described by executor/RESULTS.md - both use JSON, but are very different.
+    Note that the aggregated JSON file **does not** use the test-based JSON
+    format described by `executor/RESULTS.md` - both use JSON, but are very
+    different.
 
     This aggergated format uses a top-level array (on each line) with a fixed
     field order:
 
         platform, status, test name, subtest name, files, note
 
-    All these are strings except 'files', which is another (nested) array
+    All these are strings except `files`, which is another (nested) array
     of strings.
 
-    If 'testout' is present in an input test result, it is prepended to
-    the list of 'files'.
-    If a field is missing in the source result, it is translated to a null
+    If `testout` is present in an input test result, it is prepended to
+    the list of `files`.
+    If a field is missing in the source result, it is translated to a `null`
     value.
     """
 
     def __init__(self, target, files):
         """
-        'target' is a string/Path to a .json file for all ingested
-        results to be aggregated (written) to.
+        - `target` is a string/Path to a `.json` file for all ingested
+          results to be aggregated (written) to.
 
-        'files' is a string/Path of the top-level parent for all
-        per-platform / per-test files uploaded by tests.
+        - `files` is a string/Path of the top-level parent for all per-platform
+          / per-test files uploaded by tests.
         """
         self.lock = threading.RLock()
         self.target = Path(target)
@@ -67,7 +68,7 @@ class JSONAggregator(Aggregator):
     def _get_test_files_path(self, platform, test_name):
         """
         Return a directory path to where uploaded files should be stored
-        for a particular 'platform' and 'test_name'.
+        for a particular `platform` and `test_name`.
         """
         platform_files = self.files / platform
         platform_files.mkdir(exist_ok=True)
@@ -81,8 +82,8 @@ class JSONAggregator(Aggregator):
     @staticmethod
     def _move_test_files(test_files, target_dir):
         """
-        Move (or otherwise process) 'test_files' as directory of files uploaded
-        by the test, into the pre-computed 'target_dir' location (inside
+        Move (or otherwise process) `test_files` as directory of files uploaded
+        by the test, into the pre-computed `target_dir` location (inside
         a hierarchy of all files from all tests).
         """
         _verbatim_move(test_files, target_dir)
@@ -210,25 +211,26 @@ class GzipJSONAggregator(CompressedJSONAggregator):
         compress_files=True, compress_files_suffix=".gz", compress_files_exclude=None,
     ):
         """
-        'target' is a string/Path to a .json.gz file for all ingested
-        results to be aggregated (written) to.
+        - `target` is a string/Path to a `.json.gz` file for all ingested
+          results to be aggregated (written) to.
 
-        'files' is a string/Path of the top-level parent for all
-        per-platform / per-test files uploaded by tests.
+        - `files` is a string/Path of the top-level parent for all per-platform
+          / per-test files uploaded by tests.
 
-        'compress_level' specifies how much effort should be spent compressing,
-        (1 = fast, 9 = slow).
+        - `compress_level` specifies how much effort should be spent compressing,
+          (1 = fast, 9 = slow).
 
-        If 'compress_files' is True, compress also any files uploaded by tests.
+        - If `compress_files` is `True`, compress also any files uploaded by
+          tests.
 
-        The 'compress_files_suffix' is appended to any processed test-uploaded
-        files, and the respective 'files' results array is modified with the
-        new file names (as if the test uploaded compressed files already).
-        Set to "" (empty string) to use original file names and just compress
-        them transparently in-place.
+        - The `compress_files_suffix` is appended to any processed test-uploaded
+          files, and the respective `files` results array is modified with the
+          new file names (as if the test uploaded compressed files already).
+          Set to `""` (empty string) to use original file names and just
+          compress them transparently in-place.
 
-        'compress_files_exclude' is a tuple/list of strings (input 'files'
-        names) to skip when compressing. Their names also won't be modified.
+        - `compress_files_exclude` is a tuple/list of strings (input `files`
+          names) to skip when compressing. Their names also won't be modified.
         """
         super().__init__(target, files)
         self.level = compress_level
@@ -251,26 +253,27 @@ class LZMAJSONAggregator(CompressedJSONAggregator):
         compress_files=True, compress_files_suffix=".xz", compress_files_exclude=None,
     ):
         """
-        'target' is a string/Path to a .json.xz file for all ingested
-        results to be aggregated (written) to.
+        - `target` is a string/Path to a `.json.xz` file for all ingested
+          results to be aggregated (written) to.
 
-        'files' is a string/Path of the top-level parent for all
-        per-platform / per-test files uploaded by tests.
+        - `files` is a string/Path of the top-level parent for all per-platform
+          / per-test files uploaded by tests.
 
-        'compress_preset' specifies how much effort should be spent compressing,
-        (1 = fast, 9 = slow). Optionally ORed with lzma.PRESET_EXTREME to spend
-        even more CPU time compressing.
+        - `compress_preset` specifies how much effort should be spent
+          compressing (1 = fast, 9 = slow). Optionally ORed with
+          `lzma.PRESET_EXTREME` to spend even more CPU time compressing.
 
-        If 'compress_files' is True, compress also any files uploaded by tests.
+        - If `compress_files` is `True`, compress also any files uploaded by
+          tests.
 
-        The 'compress_files_suffix' is appended to any processed test-uploaded
-        files, and the respective 'files' results array is modified with the
-        new file names (as if the test uploaded compressed files already).
-        Set to "" (empty string) to use original file names and just compress
-        them transparently in-place.
+        - The `compress_files_suffix` is appended to any processed test-uploaded
+          files, and the respective `files` results array is modified with the
+          new file names (as if the test uploaded compressed files already).
+          Set to `""` (empty string) to use original file names and just
+          compress them transparently in-place.
 
-        'compress_files_exclude' is a tuple/list of strings (input 'files'
-        names) to skip when compressing. Their names also won't be modified.
+        - `compress_files_exclude` is a tuple/list of strings (input `files`
+          names) to skip when compressing. Their names also won't be modified.
         """
         super().__init__(target, files)
         self.preset = compress_preset

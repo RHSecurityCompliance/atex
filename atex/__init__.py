@@ -1,7 +1,7 @@
 """
 Ad-hoc Test EXecutor
 
-Some documentation here.
+Some intro documentation here.
 """
 
 import importlib as _importlib

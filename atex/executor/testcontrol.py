@@ -323,6 +323,18 @@ class TestControl:
             except FileExistsError:
                 raise BadReportJSONError(f"file '{testout}' already exists") from None
 
+        # deduplicate file names
+        # - appending to files (multiple identical file 'name' in one result, or
+        #   using partial:true) can create large amounts of files:[] entries,
+        #   so simply add up all their lengths and specify each file 'name' once
+        if files := result.get("files"):
+            counter = collections.Counter()
+            for entry in files:
+                counter[entry["name"]] += entry["length"]
+            result["files"] = tuple(
+                {"name": name, "length": length} for name, length in counter.items()
+            )
+
         self.reporter.report(result)
 
     def _parser_duration(self, arg):

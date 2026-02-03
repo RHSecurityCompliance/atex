@@ -189,8 +189,7 @@ def test_files_append(provisioner, tmp_dir):
     assert json.loads(results) == {
         "status": "pass",
         "files": [
-            {"name": "one_file", "length": 2},
-            {"name": "one_file", "length": 3},
+            {"name": "one_file", "length": 5},
         ],
     }
     output = (tmp_dir / "files" / "one_file").read_bytes()
@@ -332,8 +331,7 @@ def test_partial_files_append(provisioner, tmp_dir):
     assert json.loads(results) == {
         "status": "pass",
         "files": [
-            {"name": "one_file", "length": 2},
-            {"name": "one_file", "length": 3},
+            {"name": "one_file", "length": 5},
         ],
     }
     output = (tmp_dir / "files" / "one_file").read_bytes()

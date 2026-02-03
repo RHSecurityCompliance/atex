@@ -1,8 +1,9 @@
 import os
-import collections
 import json
+import logging
+import collections
 
-from .. import util
+logger = logging.getLogger("atex.executor.testcontrol")
 
 
 class BufferFullError(Exception):
@@ -154,7 +155,7 @@ class TestControl:
         except BufferFullError as e:
             raise BadControlError(str(e)) from None
 
-        util.extradebug(f"control line: {line} // eof: {self.stream.eof}")
+        logger.debug(f"control line: {line} // eof: {self.stream.eof}")
 
         if self.stream.eof:
             self.eof = True

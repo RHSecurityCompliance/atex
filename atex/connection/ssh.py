@@ -17,6 +17,7 @@ iterable (like for other Connections), not a single string with spaces.
 import os
 import time
 import shlex
+import logging
 import tempfile
 import threading
 import subprocess
@@ -24,6 +25,8 @@ from pathlib import Path
 
 from .. import util
 from . import Connection
+
+logger = logging.getLogger("atex.connection.ssh")
 
 
 DEFAULT_OPTIONS = {
@@ -261,7 +264,7 @@ class ManagedSSHConnection(Connection):
         proc = self._master_proc
         if not proc:
             return
-        util.debug(f"disconnecting: {self.options}")
+        logger.info(f"disconnecting: {self.options}")
         proc.kill()
         # don't zombie forever, return EPIPE on any attempts to write to us
         proc.stdout.close()
@@ -281,7 +284,7 @@ class ManagedSSHConnection(Connection):
         sock = self._tmpdir / "control.sock"
 
         if not self._master_proc:
-            util.debug(f"connecting: {self.options}")
+            logger.info(f"connecting: {self.options}")
             options = self.options.copy()
             options["SessionType"] = "none"
             options["ControlMaster"] = "yes"

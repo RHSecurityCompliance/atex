@@ -169,7 +169,7 @@ def stats(args):
 
 
 def reserve(args):
-    util.info(f"Reserving {args.compose} on {args.arch} for {args.timeout} minutes")
+    print(f"Reserving {args.compose} on {args.arch} for {args.timeout} minutes")
 
     if args.hvm:
         hardware = {"virtualization": {"is-supported": True}}
@@ -192,7 +192,7 @@ def reserve(args):
         api=api,
     )
     with res as m:
-        util.info(f"Got machine: {m}")
+        print(f"Got machine: {m}")
         while True:
             try:
                 res.request.assert_alive()
@@ -223,20 +223,20 @@ def watch_pipeline(args):
     api = _get_api(args)
     request = tf.Request(id=args.request_id, api=api)
 
-    util.info(f"Waiting for {args.request_id} to be 'running'")
+    print(f"Waiting for {args.request_id} to be 'running'")
     try:
         request.wait_for_state("running")
     except tf.GoneAwayError:
-        util.info(f"Request {args.request_id} already finished")
+        print(f"Request {args.request_id} already finished")
         return
 
-    util.info("Querying pipeline.log")
+    print("Querying pipeline.log")
     try:
         for line in tf.PipelineLogStreamer(request):
             sys.stdout.write(line)
             sys.stdout.write("\n")
     except tf.GoneAwayError:
-        util.info(f"Request {args.request_id} finished, exiting")
+        print(f"Request {args.request_id} finished, exiting")
 
 
 def parse_args(parser):

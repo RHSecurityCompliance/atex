@@ -18,17 +18,6 @@ class PodmanConnection(Connection):
     already-running container, it does not handle any image pulling,
     container creation, starting or stopping.
     """
-
-#    def __init__(self, container, *, user=None, workdir=None):
-#        """
-#        'container' is a string with either the full or partial podman
-#        container ID, or a container name, as recognized by podman CLI.
-#
-#        'user' is a string with a username or UID, possibly including a GID,
-#        passed to the podman CLI as --user.
-#
-#        'workdir' is a string specifying the CWD inside the container.
-#        """
     def __init__(self, container):
         self.container = container
 

@@ -1,6 +1,7 @@
 import os
 import re
 import time
+import logging
 import tempfile
 import datetime
 import textwrap
@@ -14,6 +15,8 @@ from ... import util
 
 import json
 import urllib3
+
+logger = logging.getLogger("atex.provisioner.testingfarm")
 
 DEFAULT_API_URL = "https://api.testing-farm.io"
 
@@ -371,12 +374,12 @@ class PipelineLogStreamer:
                 # 403: happens on internal OSCI artifacts server, probably
                 #      due to similar reasons (folder exists without log)
                 if reply.status in (404,403):
-                    util.debug(f"got {reply.status} for {log}, retrying")
+                    logger.info(f"got {reply.status} for {log}, retrying")
                     continue
                 elif reply.status != 200:
                     raise APIError(f"got HTTP {reply.status} on HEAD {log}", reply)
 
-                util.info(f"artifacts: {artifacts}")
+                logger.info(f"artifacts: {artifacts}")
 
                 return log
 
@@ -592,8 +595,8 @@ class Reserve:
             with self.lock:
                 self.request = Request(api=self.api)
                 self.request.submit(spec)
-            util.debug(f"submitted request {self.request.id}")
-            util.extradebug(
+            logger.info(f"submitted request {self.request.id}")
+            logger.debug(
                 f"request {self.request.id}:\n{textwrap.indent(str(self.request), '    ')}",
             )
 
@@ -602,7 +605,7 @@ class Reserve:
             for line in PipelineLogStreamer(self.request):
                 # the '\033[0m' is to reset colors sometimes left in a bad
                 # state by pipeline.log
-                util.extradebug(f"{line}\033[0m")
+                logger.debug(f"{line}\033[0m")
                 # find hidden login details
                 m = re.search(
                     # host address can be an IP address or a hostname

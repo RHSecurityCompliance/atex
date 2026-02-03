@@ -1,7 +1,10 @@
+import logging
 import collections
 
 from .. import util
 from .adhoc import AdHocOrchestrator
+
+logger = logging.getLogger("atex.provisioner.contest")
 
 
 # copy/pasted from the Contest repo, lib/virt.py
@@ -59,9 +62,9 @@ class ContestOrchestrator(AdHocOrchestrator):
         if type(previous) is AdHocOrchestrator.SetupInfo:
             for next_name in to_run:
                 next_tags = all_tests[next_name].get("tag", ())
-                util.debug(f"considering next_test for destructivity: {next_name}")
+                logger.debug(f"considering next_test for destructivity: {next_name}")
                 if "destructive" in next_tags:
-                    util.debug(f"chosen next_test: {next_name}")
+                    logger.debug(f"chosen next_test: {next_name}")
                     return next_name
 
         # previous test was run and finished non-destructively,
@@ -69,15 +72,15 @@ class ContestOrchestrator(AdHocOrchestrator):
         # as the previous one, allowing snapshot reuse by Contest
         elif type(previous) is AdHocOrchestrator.FinishedInfo:
             finished_tags = all_tests[previous.test_name].get("tag", ())
-            util.debug(f"previous finished test on {previous.remote}: {previous.test_name}")
+            logger.debug(f"previous finished test on {previous.remote}: {previous.test_name}")
             # if Guest tag is None, don't bother searching
             if finished_guest_tag := calculate_guest_tag(finished_tags):
                 for next_name in to_run:
-                    util.debug(f"considering next_test with tags {finished_tags}: {next_name}")
+                    logger.debug(f"considering next_test with tags {finished_tags}: {next_name}")
                     next_tags = all_tests[next_name].get("tag", ())
                     next_guest_tag = calculate_guest_tag(next_tags)
                     if next_guest_tag and finished_guest_tag == next_guest_tag:
-                        util.debug(f"chosen next_test: {next_name}")
+                        logger.debug(f"chosen next_test: {next_name}")
                         return next_name
 
         # fallback to the default next_test()
@@ -108,7 +111,7 @@ class ContestOrchestrator(AdHocOrchestrator):
         remote_with_test = f"{info.remote}: '{info.test_name}'"
 
         reruns_left = self.reruns[info.test_name]
-        util.info(f"{remote_with_test}: {reruns_left} reruns left")
+        logger.info(f"{remote_with_test}: {reruns_left} reruns left")
         if reruns_left > 0:
             self.reruns[info.test_name] -= 1
             return True

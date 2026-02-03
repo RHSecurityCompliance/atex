@@ -4,6 +4,7 @@ import uuid
 import shlex
 import socket
 import random
+import logging
 import textwrap
 import tempfile
 import threading
@@ -17,6 +18,8 @@ from .. import Provisioner, Remote
 from . import locking
 
 libvirt = util.import_libvirt()
+
+logger = logging.getLogger("atex.provisioner.libvirt")
 
 # thread-safe bool
 libvirt_needs_setup = threading.Semaphore(1)
@@ -34,7 +37,7 @@ def setup_event_loop():
             time.sleep(0.5)
             libvirt.virEventRunDefaultImpl()
 
-    util.debug("starting libvirt event loop")
+    logger.debug("starting libvirt event loop")
     thread = threading.Thread(target=loop, name="libvirt_event_loop", daemon=True)
     thread.start()
 
@@ -204,7 +207,7 @@ class LibvirtCloningProvisioner(Provisioner):
         xml_root = ET.fromstring(source_vol.XMLDesc())
         source_format = xml_root.find("target").find("format").get("type")
 
-        util.debug(
+        logger.info(
             f"found volume {source_vol.name()} (format:{source_format}) in pool {pool.name()}",
         )
 
@@ -214,7 +217,7 @@ class LibvirtCloningProvisioner(Provisioner):
         already_reserving = {conn.lookupByName(name) for name in already_reserving}
 
         # acquire (lock) a domain on the libvirt host
-        util.debug("attempting to acquire a domain")
+        logger.info("attempting to acquire a domain")
         acquired = None
         while not acquired:
             domains = []
@@ -229,7 +232,7 @@ class LibvirtCloningProvisioner(Provisioner):
             for domain in domains:
                 if locking.lock(domain, self.signature, self.reserve_end):
                     acquired = domain
-                    util.debug(f"acquired domain {acquired.name()}")
+                    logger.info(f"acquired domain {acquired.name()}")
                     break
                 time.sleep(self.reserve_delay)
 
@@ -245,7 +248,7 @@ class LibvirtCloningProvisioner(Provisioner):
 
         # parse XML definition of the domain
         xmldesc = acquired.XMLDesc().rstrip("\n")
-        util.extradebug(f"domain {acquired.name()} XML:\n{textwrap.indent(xmldesc, '    ')}")
+        logger.debug(f"domain {acquired.name()} XML:\n{textwrap.indent(xmldesc, '    ')}")
         xml_root = ET.fromstring(xmldesc)
         nvram_vol = nvram_path = None
 
@@ -279,7 +282,7 @@ class LibvirtCloningProvisioner(Provisioner):
                 if "Storage volume not found" not in str(e):
                     raise
         if nvram_vol:
-            util.debug(f"deleting nvram volume {nvram_vol.name()}")
+            logger.info(f"deleting nvram volume {nvram_vol.name()}")
             nvram_vol.delete()
 
         # try to find a disk that is a volume in the specified storage pool
@@ -298,7 +301,7 @@ class LibvirtCloningProvisioner(Provisioner):
             if xml_disk_source.get("pool") != pool.name():
                 continue
             disk_vol_name = xml_disk_source.get("volume")
-            util.debug(f"found a domain disk in XML: {disk_vol_name} for pool {pool.name()}")
+            logger.info(f"found a domain disk in XML: {disk_vol_name} for pool {pool.name()}")
             break
         else:
             raise RuntimeError("could not find any <disk> in <devices>")
@@ -322,7 +325,7 @@ class LibvirtCloningProvisioner(Provisioner):
         pool.createXMLFrom(new_volume, source_vol)
 
         # start the domain up
-        util.debug(f"starting up {acquired.name()}")
+        logger.info(f"starting up {acquired.name()}")
         acquired.create()  # like 'virsh start' NOT 'virsh create'
 
         # wait for an IP address leased by libvirt host
@@ -332,7 +335,7 @@ class LibvirtCloningProvisioner(Provisioner):
                 libvirt.VIR_DOMAIN_INTERFACE_ADDRESSES_SRC_LEASE,
             )
             time.sleep(1)
-        util.debug(f"found iface addrs: {addrs}")
+        logger.info(f"found iface addrs: {addrs}")
         first_iface = next(iter(addrs.values()))
         first_addr = next(iter(first_iface.values()))[0]["addr"]
 
@@ -414,7 +417,7 @@ class LibvirtCloningProvisioner(Provisioner):
             name = Path(f.name)
             name.chmod(0o0500)  # r-x------
             uri = f"qemu+ext:///system?command={urllib.parse.quote(str(name.absolute()))}"
-            util.debug(f"opening libvirt conn to {uri}")
+            logger.info(f"opening libvirt conn to {uri}")
             conn = libvirt.open(uri)
         conn.setKeepAlive(5, 3)
         return conn
@@ -429,7 +432,6 @@ class LibvirtCloningProvisioner(Provisioner):
 
     def stop(self):
         with self.lock:
-            #util.debug(f"SELF.RESERVING: {self.reserving} // SELF.REMOTES: {self.remotes}")
             # close reserving libvirt host connection
             # - this stops _reserve_one() from doing anything bad
             if self.reserve_conn:

@@ -1,9 +1,12 @@
+import logging
 import tempfile
 import concurrent.futures
 from pathlib import Path
 
 from .. import util, executor
 from . import Orchestrator, OrchestratorError
+
+logger = logging.getLogger("atex.orchestrator.adhoc")
 
 
 class FailedSetupError(OrchestratorError):
@@ -126,7 +129,7 @@ class AdHocOrchestrator(Orchestrator):
         next_test_name = self.next_test(self.to_run, self.fmf_tests.tests, info)
         assert next_test_name in self.to_run, "next_test() returned valid test name"
 
-        util.info(f"{info.remote}: starting '{next_test_name}'")
+        logger.info(f"{info.remote}: starting '{next_test_name}'")
 
         self.to_run.remove(next_test_name)
 
@@ -162,7 +165,7 @@ class AdHocOrchestrator(Orchestrator):
 
         if not self.was_successful(finfo, test_data) and self.should_be_rerun(finfo, test_data):
             # re-run the test
-            util.info(f"{remote_with_test} failed, re-running")
+            logger.info(f"{remote_with_test} failed, re-running")
             self.to_run.add(finfo.test_name)
         else:
             # ingest the result
@@ -170,7 +173,7 @@ class AdHocOrchestrator(Orchestrator):
             # a condition just in case Executor code itself threw an exception
             # and didn't even report the fallback 'infra' result
             if finfo.results is not None and finfo.files is not None:
-                util.info(f"{remote_with_test} completed, ingesting result")
+                logger.info(f"{remote_with_test} completed, ingesting result")
 
                 def ingest_and_cleanup(ingest, args, cleanup):
                     ingest(*args)
@@ -201,7 +204,7 @@ class AdHocOrchestrator(Orchestrator):
         # if there are still tests to be run and the last test was not
         # destructive, just run a new test on it
         if self.to_run and not (finfo.exception or self.destructive(finfo, test_data)):
-            util.debug(f"{remote_with_test} was non-destructive, running next test")
+            logger.debug(f"{remote_with_test} was non-destructive, running next test")
             self._run_new_test(finfo)
             return
 
@@ -211,7 +214,7 @@ class AdHocOrchestrator(Orchestrator):
         if self.remotes_requested >= len(self.to_run):
             # we have enough remotes in the pipe to run every test,
             # we don't need a new one - just release the current one
-            util.debug(f"{finfo.remote} no longer useful, releasing it")
+            logger.debug(f"{finfo.remote} no longer useful, releasing it")
             self.release_queue.start_thread(
                 finfo.remote.release,
                 remote=finfo.remote,
@@ -219,7 +222,7 @@ class AdHocOrchestrator(Orchestrator):
         else:
             # we need more remotes and the last test was destructive,
             # get a new one and let serve_once() run a test later
-            util.debug(f"{remote_with_test} was destructive, getting a new Remote")
+            logger.debug(f"{remote_with_test} was destructive, getting a new Remote")
             self.release_queue.start_thread(
                 finfo.remote.release,
                 remote=finfo.remote,
@@ -282,12 +285,12 @@ class AdHocOrchestrator(Orchestrator):
                     remote=sinfo.remote,
                 )
                 if (retries_left := self.failed_setups_left) > 0:
-                    util.warning(f"{msg}, re-trying ({retries_left} setup retries left)")
+                    logger.warning(f"{msg}, re-trying ({retries_left} setup retries left)")
                     self.failed_setups_left -= 1
                     sinfo.provisioner.provision(1)
                     self.remotes_requested += 1
                 else:
-                    util.warning(f"{msg}, setup retries exceeded, giving up")
+                    logger.warning(f"{msg}, setup retries exceeded, giving up")
                     raise FailedSetupError("setup retries limit exceeded, broken infra?")
             else:
                 self._run_new_test(sinfo)
@@ -300,7 +303,7 @@ class AdHocOrchestrator(Orchestrator):
                     treturn = self.setup_queue.get_raw(block=False)
                 except util.ThreadQueue.Empty:
                     break
-                util.debug(f"releasing extraneous set-up {treturn.sinfo.remote}")
+                logger.debug(f"releasing extraneous set-up {treturn.sinfo.remote}")
                 self.release_queue.start_thread(
                     treturn.sinfo.remote.release,
                     remote=treturn.sinfo.remote,
@@ -322,7 +325,7 @@ class AdHocOrchestrator(Orchestrator):
                     target_args=(sinfo,),
                     sinfo=sinfo,
                 )
-                util.info(f"{provisioner}: running setup on new {remote}")
+                logger.info(f"{provisioner}: running setup on new {remote}")
 
         # gather returns from Remote.release() functions - check for exceptions
         # thrown, re-report them as warnings as they are not typically critical
@@ -335,9 +338,9 @@ class AdHocOrchestrator(Orchestrator):
             else:
                 if treturn.exception:
                     exc_str = f"{type(treturn.exception).__name__}({treturn.exception})"
-                    util.warning(f"{treturn.remote} release failed: {exc_str}")
+                    logger.warning(f"{treturn.remote} release failed: {exc_str}")
                 else:
-                    util.debug(f"{treturn.remote} release completed")
+                    logger.debug(f"{treturn.remote} release completed")
 
         # gather returns from Aggregator.ingest() calls - check for exceptions
         while True:
@@ -348,9 +351,9 @@ class AdHocOrchestrator(Orchestrator):
             else:
                 if treturn.exception:
                     exc_str = f"{type(treturn.exception).__name__}({treturn.exception})"
-                    util.warning(f"'{treturn.test_name}' ingesting failed: {exc_str}")
+                    logger.warning(f"'{treturn.test_name}' ingesting failed: {exc_str}")
                 else:
-                    util.debug(f"'{treturn.test_name}' ingesting completed")
+                    logger.debug(f"'{treturn.test_name}' ingesting completed")
 
         return True
 
@@ -388,9 +391,9 @@ class AdHocOrchestrator(Orchestrator):
             else:
                 if treturn.exception:
                     exc_str = f"{type(treturn.exception).__name__}({treturn.exception})"
-                    util.warning(f"'{treturn.test_name}' ingesting failed: {exc_str}")
+                    logger.warning(f"'{treturn.test_name}' ingesting failed: {exc_str}")
                 else:
-                    util.debug(f"'{treturn.test_name}' ingesting completed")
+                    logger.debug(f"'{treturn.test_name}' ingesting completed")
         self.ingest_queue.join()
 
         # stop all provisioners, also releasing all remotes
@@ -474,11 +477,11 @@ class AdHocOrchestrator(Orchestrator):
         # executor (or test) threw exception
         if info.exception:
             exc_str = f"{type(info.exception).__name__}({info.exception})"
-            util.info(f"{remote_with_test} threw {exc_str} during test runtime")
+            logger.info(f"{remote_with_test} threw {exc_str} during test runtime")
             return False
         # the test exited as non-0
         if info.exit_code != 0:
-            util.info(f"{remote_with_test} exited with non-zero: {info.exit_code}")
+            logger.info(f"{remote_with_test} exited with non-zero: {info.exit_code}")
             return False
         # otherwise we good
         return True

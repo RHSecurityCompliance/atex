@@ -1,6 +1,7 @@
+import logging
 import subprocess
 
-from .log import extradebug
+logger = logging.getLogger("atex.util.subprocess")
 
 
 def subprocess_run(cmd, **kwargs):
@@ -9,7 +10,7 @@ def subprocess_run(cmd, **kwargs):
     """
     # when logging, skip current stack frame - report the place we were called
     # from, not util.subprocess_run itself
-    extradebug(f"running: '{cmd}' with {kwargs=}")
+    logger.info(f"running: '{cmd}' with {kwargs=}")
     return subprocess.run(cmd, **kwargs)
 
 
@@ -17,7 +18,7 @@ def subprocess_output(cmd, *, check=True, text=True, **kwargs):
     """
     A wrapper simulating subprocess.check_output() via a modern .run() API.
     """
-    extradebug(f"running: '{cmd}' with {check=}, {text=} and {kwargs=}")
+    logger.info(f"running: '{cmd}' with {check=}, {text=} and {kwargs=}")
     proc = subprocess.run(cmd, check=check, text=text, stdout=subprocess.PIPE, **kwargs)
     return proc.stdout.rstrip("\n") if text else proc.stdout
 
@@ -26,7 +27,7 @@ def subprocess_Popen(cmd, **kwargs):  # noqa: N802
     """
     A simple wrapper for the real subprocess.Popen() that logs the command used.
     """
-    extradebug(f"running: '{cmd}' with {kwargs=}")
+    logger.info(f"running: '{cmd}' with {kwargs=}")
     return subprocess.Popen(cmd, **kwargs)
 
 
@@ -56,7 +57,7 @@ def subprocess_stream(cmd, *, stream="stdout", check=False, input=None, **kwargs
         all_kwargs["stdin"] = subprocess.PIPE
     all_kwargs |= kwargs
 
-    extradebug(f"running: '{cmd}' with {all_kwargs=}")
+    logger.info(f"running: '{cmd}' with {all_kwargs=}")
     proc = subprocess.Popen(cmd, **all_kwargs)
 
     def generate_lines():
@@ -80,7 +81,7 @@ def subprocess_log(cmd, **kwargs):
 
     Uses subprocess_stream() to gather the lines.
     """
-    extradebug(f"running: '{cmd}' with {kwargs=}")
+    logger.info(f"running: '{cmd}' with {kwargs=}")
     _, lines = subprocess_stream(cmd, **kwargs)
     for line in lines:
-        extradebug(line)
+        logger.info(line)

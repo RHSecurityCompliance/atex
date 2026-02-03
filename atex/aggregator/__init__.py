@@ -1,3 +1,4 @@
+import abc as _abc
 import importlib as _importlib
 import pkgutil as _pkgutil
 
@@ -7,6 +8,7 @@ class Aggregator:
     TODO: generic description, not JSON-specific
     """
 
+    @_abc.abstractmethod
     def ingest(self, platform, test_name, test_results, test_files):
         """
         Process 'test_results' (string/Path) for as results reported by a test
@@ -16,20 +18,19 @@ class Aggregator:
         This is DESTRUCTIVE, the input results/files are consumed in the
         process.
         """
-        raise NotImplementedError(f"'ingest' not implemented for {self.__class__.__name__}")
 
+    @_abc.abstractmethod
     def start(self):
         """
         Start the Aggregator instance, opening any files / allocating resources
         as necessary.
         """
-        raise NotImplementedError(f"'start' not implemented for {self.__class__.__name__}")
 
+    @_abc.abstractmethod
     def stop(self):
         """
         Stop the Aggregator instance, freeing all allocated resources.
         """
-        raise NotImplementedError(f"'stop' not implemented for {self.__class__.__name__}")
 
     def __enter__(self):
         try:

@@ -77,7 +77,6 @@ class BadControlError(Exception):
     such as invalid syntax, unknown control word, or bad or unexpected data for
     any given control word.
     """
-    pass
 
 
 class BadReportJSONError(BadControlError):
@@ -86,7 +85,6 @@ class BadReportJSONError(BadControlError):
     the TEST_CONROL.md specification when passing JSON data to the 'result'
     control word.
     """
-    pass
 
 
 class TestControl:

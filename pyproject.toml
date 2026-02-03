@@ -113,8 +113,6 @@ ignore = [
 
     # buggy in ruff, inconsistent across ruff versions
     "RUF100",   # unused-noqa
-    # buggy, triggers on valid code
-    "PIE790",   # unnecessary-placeholder
 ]
 
 [tool.ruff.format]

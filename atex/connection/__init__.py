@@ -1,3 +1,4 @@
+import abc as _abc
 import importlib as _importlib
 import pkgutil as _pkgutil
 
@@ -52,6 +53,7 @@ class Connection:
     def __exit__(self, exc_type, exc_value, traceback):
         self.disconnect()
 
+    @_abc.abstractmethod
     def connect(self, block=True):
         """
         Establish a persistent connection to the remote.
@@ -59,14 +61,14 @@ class Connection:
         If 'block' is True, wait for the connection to be up,
         otherwise raise BlockingIOError if the connection is still down.
         """
-        raise NotImplementedError(f"'connect' not implemented for {self.__class__.__name__}")
 
+    @_abc.abstractmethod
     def disconnect(self):
         """
         Destroy the persistent connection to the remote.
         """
-        raise NotImplementedError(f"'disconnect' not implemented for {self.__class__.__name__}")
 
+    @_abc.abstractmethod
     def cmd(self, command, *, func=_util.subprocess_run, **func_args):
         """
         Execute a single command on the remote, using subprocess-like semantics.
@@ -77,8 +79,8 @@ class Connection:
 
         'func_args' are further keyword arguments to pass to 'func'.
         """
-        raise NotImplementedError(f"'cmd' not implemented for {self.__class__.__name__}")
 
+    @_abc.abstractmethod
     def rsync(self, *args, func=_util.subprocess_run, **func_args):
         """
         Synchronize local/remote files/directories via 'rsync'.
@@ -97,7 +99,6 @@ class Connection:
 
         The remote must have rsync(1) already installed.
         """
-        raise NotImplementedError(f"'rsync' not implemented for {self.__class__.__name__}")
 
 
 _submodules = [

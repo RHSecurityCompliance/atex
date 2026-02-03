@@ -1,3 +1,4 @@
+import abc as _abc
 import importlib as _importlib
 import pkgutil as _pkgutil
 import time as _time
@@ -14,6 +15,7 @@ class Orchestrator:
     TODO: more description
     """
 
+    @_abc.abstractmethod
     def serve_once(self):
         """
         Run the orchestration logic, processing any outstanding requests
@@ -23,7 +25,6 @@ class Orchestrator:
         Returns True to indicate that it should be called again by the user
         (more work to be done), False once all testing is concluded.
         """
-        raise NotImplementedError(f"'serve_once' not implemented for {self.__class__.__name__}")
 
     def serve_forever(self):
         """
@@ -32,18 +33,18 @@ class Orchestrator:
         while self.serve_once():
             _time.sleep(1)
 
+    @_abc.abstractmethod
     def start(self):
         """
         Start the Orchestrator instance, opening any files / allocating
         resources as necessary.
         """
-        raise NotImplementedError(f"'start' not implemented for {self.__class__.__name__}")
 
+    @_abc.abstractmethod
     def stop(self):
         """
         Stop the Orchestrator instance, freeing all allocated resources.
         """
-        raise NotImplementedError(f"'stop' not implemented for {self.__class__.__name__}")
 
     def __enter__(self):
         try:

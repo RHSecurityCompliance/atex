@@ -48,7 +48,6 @@ class DisconnectedError(SSHError):
     """
     Raised when an already-connected ssh session goes away (breaks connection).
     """
-    pass
 
 
 class NotConnectedError(SSHError):
@@ -56,14 +55,12 @@ class NotConnectedError(SSHError):
     Raised when an operation on ssh connection is requested, but the connection
     is not yet open (or has been closed/disconnected).
     """
-    pass
 
 
 class ConnectError(SSHError):
     """
     Raised when a to-be-opened ssh connection fails to open.
     """
-    pass
 
 
 def _shell_cmd(command, sudo=None):
@@ -169,7 +166,6 @@ class StatelessSSHConnection(Connection):
         for compatibility with the Connection API.
         """
         # TODO: just wait until .cmd(['true']) starts responding ?
-        pass
 
     def disconnect(self):
         pass

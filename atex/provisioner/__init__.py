@@ -1,3 +1,4 @@
+import abc as _abc
 import importlib as _importlib
 import pkgutil as _pkgutil
 
@@ -19,11 +20,11 @@ class Remote(_connection.Connection):
     If you need automatic release of one Remote, use a try/finally block.
     """
 
+    @_abc.abstractmethod
     def release(self):
         """
         Release (de-provision) the remote resource.
         """
-        raise NotImplementedError(f"'release' not implemented for {self.__class__.__name__}")
 
 
 class Provisioner:
@@ -58,13 +59,14 @@ class Provisioner:
     can possibly supply.
     """
 
+    @_abc.abstractmethod
     def provision(self, count=1):
         """
         Request that 'count' machines be provisioned (reserved) for use,
         to be returned at a later point by .get_remote().
         """
-        raise NotImplementedError(f"'provision' not implemented for {self.__class__.__name__}")
 
+    @_abc.abstractmethod
     def get_remote(self, block=True):
         """
         Return a connected class Remote instance of a previously .provision()ed
@@ -73,21 +75,20 @@ class Provisioner:
         If 'block' is True, wait for the Remote to be available and connected,
         otherwise return None if there is none available yet.
         """
-        raise NotImplementedError(f"'get_remote' not implemented for {self.__class__.__name__}")
 
+    @_abc.abstractmethod
     def start(self):
         """
         Start the Provisioner instance, start any provisioning-related
         processes that lead to systems being reserved.
         """
-        raise NotImplementedError(f"'start' not implemented for {self.__class__.__name__}")
 
+    @_abc.abstractmethod
     def stop(self):
         """
         Stop the Provisioner instance, freeing all reserved resources,
         calling .release() on all Remote instances that were created.
         """
-        raise NotImplementedError(f"'stop' not implemented for {self.__class__.__name__}")
 
     def __enter__(self):
         try:

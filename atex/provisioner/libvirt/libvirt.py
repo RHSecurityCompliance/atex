@@ -445,8 +445,7 @@ class LibvirtCloningProvisioner(Provisioner):
                 try:
                     domain = self.manage_conn.lookupByName(self.reserving.pop())
                     locking.unlock(domain, self.signature)
-                except libvirt.libvirtError as e:
-                    util.debug(f"GOT ERROR: {str(e)}")
+                except libvirt.libvirtError:
                     pass
             # cancel/release all Remotes ever created by us
             while self.remotes:

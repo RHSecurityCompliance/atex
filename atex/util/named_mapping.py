@@ -153,6 +153,6 @@ class NamedMapping(collections.abc.Mapping, metaclass=_NamedMappingMeta):
     def __repr__(self):
         return (
             f"{self.__class__.__name__}("
-            + ", ".join((f"{k}={repr(v)}" for k,v in self._data.items()))
+            + ", ".join(f"{k}={repr(v)}" for k,v in self._data.items())
             + ")"
         )

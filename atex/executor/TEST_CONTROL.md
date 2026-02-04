@@ -98,8 +98,8 @@ The parent then read `word2 arg1 arg2\n` as another _control line_, calling
       + `duration restore` to add a 600sec safety timer for the infra task.
     - The save/restore logic works with a stack, so ie. library code can use its
       own save/restore commands while already running in a saved context.
-- **`reconnect`**
-  - ie. `reconnect\n`
+- **`disconnect`**
+  - ie. `disconnect\n`
   - Signals to the controller that an upcoming ssh disconnect is intentionally
     caused by the test (ie. due to a reboot or temporary firewall change),
     instructing it to reconnect and restart the test.
@@ -107,13 +107,20 @@ The parent then read `word2 arg1 arg2\n` as another _control line_, calling
     an abnormal situation and will abort the testing on that remote.
   - The flag is automatically cleared on new reconnect and needs to be issued
     before every disconnect.
-  - To always reconnect and always restart the test, the test can issue
-    `reconnect always\n` once.
-    - Useful for ie. reserve background tasks that should be immune to OS
-      reboots caused by the user.
   - Note that `duration save` + `restore` can be used to subtract the disconnect
     time from test run time (as long as the test starts up again and does
     `restore`). Useful for reboots that might take up to 30 minutes on some HW.
+- **`noop`**
+  - ie. `noop\n`
+  - Do nothing.
+  - Useful to check, from the test side, whether the control is alive - if not,
+    the write should fail with `EPIPE`.
+  - Intended for use in a loop, after `disconnect`, to wait for the remote end
+    to close the control channel before rebooting an OS, ie.
+    - `disconnect\n`
+    - `noop\n`
+    - `noop\n`
+    - `noop\n` - write returns `EPIPE`
 - **`setenv`** (IDEA ONLY)
   - ie. `setenv FOO=some value\n`
   - Exports one KEY=VALUE environment variable to the test environment.

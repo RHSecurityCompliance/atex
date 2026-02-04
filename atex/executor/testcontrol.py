@@ -116,7 +116,7 @@ class TestControl:
         self.in_progress = None
         self.partial_results = collections.defaultdict(dict)
         self.exit_code = None
-        self.reconnect = None
+        self.disconnect_received = False
         self.nameless_result_seen = False
 
     def reassign(self, new_fd):
@@ -176,8 +176,10 @@ class TestControl:
             parser = self._parser_duration(arg)
         elif word == "exitcode":
             parser = self._parser_exitcode(arg)
-        elif word == "reconnect":
-            parser = self._parser_reconnect(arg)
+        elif word == "disconnect":
+            parser = self._parser_disconnect(arg)
+        elif word == "noop":
+            parser = self._parser_noop(arg)
         else:
             raise BadControlError(f"unknown control word: {word}")
 
@@ -240,7 +242,7 @@ class TestControl:
                 yield
                 continue
             if chunk == b"":
-                raise BadControlError("EOF when reading data")
+                raise BadControlError(f"EOF when reading data, got so far: {json_data}")
             json_data += chunk
             json_length -= len(chunk)
             yield
@@ -368,13 +370,14 @@ class TestControl:
         if False:
             yield
 
-    def _parser_reconnect(self, arg):
-        if not arg:
-            self.reconnect = "once"
-        elif arg == "always":
-            self.reconnect = "always"
-        else:
-            raise BadControlError(f"unknown reconnect arg: {arg}")
+    def _parser_disconnect(self, _):
+        self.disconnect_received = True
+        # pretend to be a generator
+        if False:
+            yield
+
+    @staticmethod
+    def _parser_noop(_):
         # pretend to be a generator
         if False:
             yield

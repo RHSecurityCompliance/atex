@@ -313,7 +313,7 @@ class Executor:
                             abort(f"got exceptional condition on control_fd {control_fd}")
                         elif rlist:
                             control.process()
-                            if control.eof:
+                            if control.eof or control.disconnect_received:
                                 os.close(control_fd)
                                 control_fd = None
                                 state = self.State.WAITING_FOR_EXIT
@@ -329,11 +329,16 @@ class Executor:
                             else:
                                 # unexpected error happened (crash, disconnect, etc.)
                                 self.conn.disconnect()
-                                # if reconnect was requested, do so, otherwise abort
-                                if control.reconnect:
+                                # if there was a test control parser running
+                                if control.in_progress:
+                                    abort(
+                                        f"{str(control.in_progress)} was running while test "
+                                        f"wrapper unexpectedly exited with {code}",
+                                    )
+                                # if test control disconnect was intentional, try to reconnect
+                                if control.disconnect_received:
                                     state = self.State.RECONNECTING
-                                    if control.reconnect != "always":
-                                        control.reconnect = None
+                                    control.disconnect_received = False
                                 else:
                                     abort(
                                         f"test wrapper unexpectedly exited with {code} and "

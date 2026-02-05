@@ -59,17 +59,21 @@ class PodmanRemote(Remote, connection.podman.PodmanConnection):
 
 
 class PodmanProvisioner(Provisioner):
-    def __init__(self, image, run_options=None):
+    def __init__(self, image, *, run_options=None, run_command=("sleep", "inf")):
         """
         - `image` is a string of image tag/ID to create containers from.
           It can be a local identifier or an URL.
 
         - `run_options` is an iterable with additional CLI options passed
           to `podman container run`.
+
+        - `run_command` is an iterable (cmd + args) specifying the command
+          to execute as the "init system" in the container.
         """
         self.lock = threading.RLock()
         self.image = image
         self.run_options = run_options or ()
+        self.run_command = run_command
 
         # created PodmanRemote instances, ready to be handed over to the user,
         # or already in use by the user
@@ -99,7 +103,7 @@ class PodmanProvisioner(Provisioner):
         proc = util.subprocess_run(
             (
                 "podman", "container", "run", "--quiet", "--detach", "--pull", "never",
-                *self.run_options, self.image, "sleep", "inf",
+                *self.run_options, self.image, *self.run_command,
             ),
             check=True,
             text=True,
@@ -145,7 +149,7 @@ def pull_image(origin):
     return proc.stdout.rstrip("\n")
 
 
-def build_container_with_deps(origin, tag=None, *, extra_pkgs=None):
+def build_container_with_deps(origin, tag=None, *, extra_pkgs=None, extra_content=""):
     tag_args = ("-t", tag) if tag else ()
 
     pkgs = ["rsync"]
@@ -158,6 +162,7 @@ def build_container_with_deps(origin, tag=None, *, extra_pkgs=None):
             FROM {origin}
             RUN dnf -y -q --setopt=install_weak_deps=False install {pkgs_str} >/dev/null
             RUN dnf -y -q clean packages >/dev/null
+            {extra_content}
         """))
         tmpf.close()
         proc = util.subprocess_run(

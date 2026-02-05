@@ -1,0 +1,58 @@
+/plan:
+    execute:
+        how: tmt
+/test_reboot:
+    duration: 5m
+    test: |
+        if [[ -f /already-rebooted ]]; then
+            echo rebooted
+            rm -f /already-rebooted
+            exit 0
+        else
+            touch /already-rebooted || exit 1
+            echo disconnecting
+            echo disconnect >&$ATEX_TEST_CONTROL || exit 1
+            while :; do
+                echo noop >&$ATEX_TEST_CONTROL || break
+                sleep 0.1
+            done
+            reboot
+            sleep inf
+        fi
+/test_reboot_count:
+    duration: 5m
+    test: |
+        case "$TMT_REBOOT_COUNT" in
+            0)
+                echo first boot
+                echo disconnect >&$ATEX_TEST_CONTROL || exit 1
+                while :; do
+                    echo noop >&$ATEX_TEST_CONTROL || break
+                    sleep 0.1
+                done
+                reboot
+                sleep inf
+                ;;
+            1)
+                echo second boot
+                echo disconnect >&$ATEX_TEST_CONTROL || exit 1
+                while :; do
+                    echo noop >&$ATEX_TEST_CONTROL || break
+                    sleep 0.1
+                done
+                reboot
+                sleep inf
+                ;;
+            2)
+                echo third boot
+                exit 0
+                ;;
+            *)
+                exit 1
+                ;;
+        esac
+/test_reboot_unexpected:
+    duration: 5m
+    test: |
+        reboot
+        sleep inf

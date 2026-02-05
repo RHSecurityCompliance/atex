@@ -342,7 +342,7 @@ class Executor:
                                 else:
                                     abort(
                                         f"test wrapper unexpectedly exited with {code} and "
-                                        "reconnect was not sent via test control",
+                                        "disconnect was not sent via test control",
                                     )
                             test_proc = None
                         except subprocess.TimeoutExpired:

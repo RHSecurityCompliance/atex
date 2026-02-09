@@ -22,10 +22,11 @@ This module-level dict must be named `CLI_SPEC`.
 """
 
 import sys
-import importlib
+import signal
+import logging
 import pkgutil
 import argparse
-import logging
+import importlib
 
 
 def setup_logging(level):
@@ -47,6 +48,12 @@ def collect_modules():
         if not hasattr(mod, "CLI_SPEC"):
             raise ValueError(f"CLI submodule '{info.name}' does not define CLI_SPEC")
         yield (info.name, mod.CLI_SPEC)
+
+
+def interrupt_only_once(signum, frame):
+    signal.signal(signal.SIGINT, signal.SIG_IGN)
+    #raise KeyboardInterrupt
+    signal.default_int_handler(signum, frame)  # CPython
 
 
 def main():
@@ -82,6 +89,9 @@ def main():
             mains[alias] = spec["main"]
 
     args = parser.parse_args()
+
+    # prevent double-SIGINT interrupting cleanup
+    signal.signal(signal.SIGINT, interrupt_only_once)
 
     setup_logging(args.loglevel)
     # per-logger overrides

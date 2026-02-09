@@ -1,5 +1,5 @@
 execute:
-    how: tmt
+  how: tmt
 
 prepare:
   - how: install

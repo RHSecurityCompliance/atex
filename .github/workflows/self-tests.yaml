@@ -19,6 +19,7 @@ jobs:
         env:
           TESTING_FARM_COMPOSE: CentOS-Stream-10
           TESTING_FARM_API_TOKEN: ${{ secrets.TESTING_FARM_API_TOKEN }}
+
   provisioner-podman:
     runs-on: ubuntu-latest
     steps:
@@ -28,6 +29,7 @@ jobs:
       - name: Run tests
         run: |
           python3 -m pytest -s tests/provisioner/test_podman.py
+
   executor:
     runs-on: ubuntu-latest
     steps:
@@ -37,6 +39,7 @@ jobs:
       - name: Run tests
         run: |
           python3 -m pytest -s tests/executor
+
   fmf:
     runs-on: ubuntu-latest
     steps:

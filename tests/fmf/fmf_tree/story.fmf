@@ -1,8 +1,8 @@
 story:
-    As a developer, I want to test this story.
+  As a developer, I want to test this story.
 description:
-    Some description.
-    This references https://tmt.readthedocs.io/en/stable/spec/stories.html
+  Some description.
+  This references https://tmt.readthedocs.io/en/stable/spec/stories.html
 example:
   - first command
   - second command

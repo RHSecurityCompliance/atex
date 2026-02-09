@@ -1,7 +1,7 @@
 /subtest:
-    summary: Summary of a "virtual" test
-    test: ./test.sh
+  summary: Summary of a "virtual" test
+  test: ./test.sh
 
 /nested:
-    /subtest:
-        test: ./test.sh
+  /subtest:
+    test: ./test.sh

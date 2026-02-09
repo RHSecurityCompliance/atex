@@ -1,7 +1,7 @@
 execute:
-    how: tmt
+  how: tmt
 
 # bare dict, not a list
 prepare:
-    how: shell
-    script: foo bar
+  how: shell
+  script: foo bar

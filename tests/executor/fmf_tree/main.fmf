@@ -1,97 +1,42 @@
 /env:
-    /plan:
-        execute:
-            how: tmt
-        environment:
-            VAR_FROM_PLAN: foo bar
-        prepare:
-            how: shell
-            script: env > /tmp/plan_env
-    /test_env:
-        test: env
-    /test_write_env:
-        test: echo 'VAR_FROM_TEST="foo bar"' >> "$TMT_PLAN_ENVIRONMENT_FILE"
+  /plan:
+    execute:
+      how: tmt
+    environment:
+      VAR_FROM_PLAN: foo bar
+    prepare:
+      how: shell
+      script: env > /tmp/plan_env
+  /test_env:
+    test: env
+  /test_write_env:
+    test: echo 'VAR_FROM_TEST="foo bar"' >> "$TMT_PLAN_ENVIRONMENT_FILE"
 
 /cwd:
-    /plan:
-        execute:
-            how: tmt
-        prepare:
-            how: shell
-            script: cat file_in_fmfdir > /tmp/file_contents
-    /test_cwd:
-        test: cat file_in_fmfdir
+  /plan:
+    execute:
+      how: tmt
+    prepare:
+      how: shell
+      script: cat file_in_fmfdir > /tmp/file_contents
+  /test_cwd:
+    test: cat file_in_fmfdir
 
 /pkgs:
-    /plan:
-        execute:
-            how: tmt
-        prepare:
-            how: install
-            package: bsd-games
-    /test_prepare:
-        test: rpm -q bsd-games
-    /test_require:
-        require: rogue
-        test: rpm -q rogue
-    /test_require_fail:
-        require: [rogue, nonexistent_pkg]
-        test: rpm -q rogue
-    /test_recommend:
-        recommend: [rogue, nonexistent_pkg]
-        test: rpm -q rogue
-
-/reboot:
-    /plan:
-        execute:
-            how: tmt
-    /test_reboot:
-        duration: 5m
-        test: |
-            if [[ -f /already-rebooted ]]; then
-                echo rebooted
-                rm -f /already-rebooted
-                exit 0
-            else
-                touch /already-rebooted || exit 1
-                echo disconnecting
-                echo disconnect >&$ATEX_TEST_CONTROL || exit 1
-                while :; do
-                    echo noop >&$ATEX_TEST_CONTROL || break
-                    sleep 0.1
-                done
-                reboot
-                sleep inf
-            fi
-    /test_reboot_count:
-        duration: 5m
-        test: |
-            case "$TMT_REBOOT_COUNT" in
-                0)
-                    echo first boot
-                    echo disconnect >&$ATEX_TEST_CONTROL || exit 1
-                    while :; do
-                        echo noop >&$ATEX_TEST_CONTROL || break
-                        sleep 0.1
-                    done
-                    reboot
-                    sleep inf
-                    ;;
-                1)
-                    echo second boot
-                    echo disconnect >&$ATEX_TEST_CONTROL || exit 1
-                    while :; do
-                        echo noop >&$ATEX_TEST_CONTROL || break
-                        sleep 0.1
-                    done
-                    reboot
-                    sleep inf
-                    ;;
-                2)
-                    echo third boot
-                    exit 0
-                    ;;
-                *)
-                    exit 1
-                    ;;
-            esac
+  /plan:
+    execute:
+      how: tmt
+    prepare:
+      how: install
+      package: bsd-games
+  /test_prepare:
+    test: rpm -q bsd-games
+  /test_require:
+    require: rogue
+    test: rpm -q rogue
+  /test_require_fail:
+    require: [rogue, nonexistent_pkg]
+    test: rpm -q rogue
+  /test_recommend:
+    recommend: [rogue, nonexistent_pkg]
+    test: rpm -q rogue

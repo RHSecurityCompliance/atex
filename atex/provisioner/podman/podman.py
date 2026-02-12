@@ -34,8 +34,8 @@ class PodmanRemote(Remote, connection.podman.PodmanConnection):
                 return
             else:
                 self.release_called = True
-        self.release_hook(self)
         self.disconnect()
+        self.release_hook(self)
         util.subprocess_run(
             ("podman", "container", "rm", "-f", "-t", "0", self.container),
             check=False,  # ignore if it fails

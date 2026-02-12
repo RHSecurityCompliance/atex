@@ -26,9 +26,6 @@ jobs:
 
       - name: Generate docs
         run: |
-            # required to import libvirt provisioner
-            sudo apt-get install python3-libvirt
-
             # also install '.' to get all dependencies from pip
             python3 -m pip install pdoc .
 

@@ -13,7 +13,6 @@ dependencies = [
     "urllib3 >= 2, < 3",
     "fmf >= 1.6",
     "PyYAML",
-#    "libvirt-python",  # see atex/util/libvirt.py
 ]
 classifiers = [
     "Programming Language :: Python :: 3",

@@ -1,7 +1,7 @@
-import os
+import collections
 import json
 import logging
-import collections
+import os
 
 logger = logging.getLogger("atex.executor.testcontrol")
 

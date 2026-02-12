@@ -1,14 +1,14 @@
-import os
-import enum
-import time
-import select
-import threading
 import contextlib
+import enum
+import os
+import select
 import subprocess
+import threading
+import time
 from pathlib import Path
 
-from .. import util, fmf
-from . import TestSetupError, TestAbortedError, testcontrol, scripts
+from .. import fmf, util
+from . import TestAbortedError, TestSetupError, scripts, testcontrol
 from .duration import Duration
 from .reporter import Reporter
 

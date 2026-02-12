@@ -1,20 +1,19 @@
+import collections
+import datetime
+import json
+import logging
 import os
 import re
-import time
-import logging
+import subprocess
 import tempfile
-import datetime
 import textwrap
 import threading
-import subprocess
-import collections
-
+import time
 from pathlib import Path
 
-from ... import util
-
-import json
 import urllib3
+
+from ... import util
 
 logger = logging.getLogger("atex.provisioner.testingfarm")
 

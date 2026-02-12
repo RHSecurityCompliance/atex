@@ -14,13 +14,13 @@ as individual arguments in the remote shell, so you need to give it a proper
 iterable (like for other Connections), not a single string with spaces.
 """
 
-import os
-import time
-import shlex
 import logging
+import os
+import shlex
+import subprocess
 import tempfile
 import threading
-import subprocess
+import time
 from pathlib import Path
 
 from .. import util

@@ -1,10 +1,10 @@
-import os
 import collections
+import os
 from pathlib import Path
 
 import yaml
 
-from .. import util, fmf
+from .. import fmf, util
 
 # name: fmf path to the test as string, ie. /some/test
 # data: dict of the parsed fmf metadata (ie. {'tag': ... , 'environment': ...})

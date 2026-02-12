@@ -1,13 +1,11 @@
-import tempfile
 import subprocess
-import pytest
+import tempfile
 from pathlib import Path
 
-from atex.provisioner.podman import PodmanProvisioner
-from atex.provisioner.podman import pull_image, build_container_with_deps
-
+import pytest
 import testutil
 
+from atex.provisioner.podman import PodmanProvisioner, build_container_with_deps, pull_image
 from tests.provisioner.test_podman import IMAGE
 
 

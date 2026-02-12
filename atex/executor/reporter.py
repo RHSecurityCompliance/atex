@@ -1,6 +1,6 @@
-import os
-import json
 import contextlib
+import json
+import os
 from pathlib import Path
 
 from .. import util

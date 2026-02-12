@@ -1,5 +1,5 @@
-import logging
 import collections
+import logging
 
 from .. import util
 from .adhoc import AdHocOrchestrator

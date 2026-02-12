@@ -1,6 +1,6 @@
-import signal
-import functools
 import contextlib
+import functools
+import signal
 
 
 class TestTimeoutError(Exception):

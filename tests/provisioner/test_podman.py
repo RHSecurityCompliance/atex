@@ -1,11 +1,9 @@
 import subprocess
+
 import pytest
-
-from atex.provisioner.podman import PodmanProvisioner
-from atex.provisioner.podman import pull_image, build_container_with_deps
-
 import testutil
 
+from atex.provisioner.podman import PodmanProvisioner, build_container_with_deps, pull_image
 from tests.provisioner import shared
 
 IMAGE = "registry.fedoraproject.org/fedora"

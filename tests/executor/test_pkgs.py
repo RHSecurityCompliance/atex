@@ -1,7 +1,7 @@
 import json
 
-from atex.fmf import FMFTests
 from atex.executor import Executor, TestSetupError
+from atex.fmf import FMFTests
 
 
 def test_prepare(provisioner, tmp_dir):

@@ -1,6 +1,6 @@
+import subprocess
 import tempfile
 import threading
-import subprocess
 
 from ... import connection, util
 from .. import Provisioner, Remote

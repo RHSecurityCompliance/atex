@@ -1,5 +1,5 @@
-import re
 import collections
+import re
 from pathlib import Path
 
 # from system-wide sys.path

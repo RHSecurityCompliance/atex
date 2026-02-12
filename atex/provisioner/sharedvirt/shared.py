@@ -1,52 +1,9 @@
 import re
-import time
-import uuid
-import shlex
-import socket
-import random
-import logging
-import textwrap
-import tempfile
-import threading
-import subprocess
-import urllib.parse
-import xml.etree.ElementTree as ET
-from pathlib import Path
 
 from ... import connection, util
 from .. import Provisioner, Remote
-from . import locking
 
-libvirt = util.import_libvirt()
-
-logger = logging.getLogger("atex.provisioner.libvirt")
-
-# thread-safe bool
-libvirt_needs_setup = threading.Semaphore(1)
-
-
-def setup_event_loop():
-    if not libvirt_needs_setup.acquire(blocking=False):
-        return
-
-    # register and run default even loop
-    libvirt.virEventRegisterDefaultImpl()
-
-    def loop():
-        while True:
-            time.sleep(0.5)
-            libvirt.virEventRunDefaultImpl()
-
-    logger.debug("starting libvirt event loop")
-    thread = threading.Thread(target=loop, name="libvirt_event_loop", daemon=True)
-    thread.start()
-
-
-class LibvirtCloningRemote(Remote, connection.ssh.ManagedSSHConnection):
-    """
-    TODO
-    """
-
+class SharedVirtRemote(Remote, connection.ssh.ManagedSSHConnection):
     def __init__(self, ssh_options, host, domain, source_image, *, release_hook):
         """
         - `ssh_options` are a dict, passed to ManagedSSHConnection `__init__()`.
@@ -84,56 +41,14 @@ class LibvirtCloningRemote(Remote, connection.ssh.ManagedSSHConnection):
         return f"{class_name}({self.host}, {self.domain}, {self.source_image})"
 
 
-# needs ManagedSSHConnection due to .forward()
-def reliable_ssh_local_fwd(conn, dest, retries=10):
-    for _ in range(retries):
-        # let the kernel give us a free port
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-            s.bind(("127.0.0.1", 0))
-            port = s.getsockname()[1]
-        # and try to quickly use it for forwarding
-        try:
-            conn.forward("LocalForward", f"127.0.0.1:{port} {dest}")
-            return port
-        except subprocess.CalledProcessError:
-            pass
-    raise ConnectionError("could not add LocalForward / find a free port")
-
-
-class LibvirtCloningProvisioner(Provisioner):
-    """
-    Provisioning done via pre-created libvirt domains on the libvirt VM host,
-    which are left (largely) untouched, except for their disk images, which are
-    swapped in by a fresh clones of a user-specified image name.
-    (This image name is presumably a fresh OS install made by 3rd party logic.)
-
-    This allows concurrent access by multiple users (no domains are created
-    or removed, just taken/released) and fast provisioning times (volume cloning
-    is much faster than Anaconda installs).
-
-    Access to the libvirt host is via ssh, but the remote user does not need to
-    have shell access, only TCP forwarding and libvirt socket access, ie.
-
-        Match User libvirtuser
-            AllowTcpForwarding yes
-            ForceCommand /usr/bin/virt-ssh-helper qemu:///system
-            #ForceCommand /usr/bin/nc -U /var/run/libvirt/libvirt-sock  # older
-
-    Note that eligible domains must also have a pre-existing disk image defined
-    as a volume (<disk type='volume' ...>) NOT as path (<disk type='path' ...>)
-    since only a volume has a pool association that can be matched up with the
-    would-be-cloned image name.
-    """
-
+class SharedVirtProvisioner(Provisioner):
     def __init__(
-        self, host, image, *, pool="default", domain_filter=".*",
-        domain_user="root", domain_sshkey,
-        reserve_delay=3, reserve_time=3600, start_event_loop=True,
+        self, host, image, *, pool="default",
+        domain_filter=".*", domain_user="root", domain_sshkey, domain_host=None,
+        reserve_delay=3, 
     ):
         """
-        - `host` is a ManagedSSHConnection class instance, connected to
-          a libvirt host.
+        - `host` is a Connection class instance, connected to a libvirt host.
 
         - `image` is a string with a libvirt storage volume name inside the
           given storage `pool` that should be used as the source for cloning.
@@ -150,24 +65,18 @@ class LibvirtCloningProvisioner(Provisioner):
           an OS booted from the pre-instaled `image`, as these credentials are
           known only to the logic that created the `image` in the first place.
 
+        - `domain_host` (string) is a hostname or an IP address through which
+          to connect to the domains' ssh ports, as stored in the libvirt domain
+          XML (`<backend type='passt'>`, `<portForward ...>`).
+
+          Normally, this is extracted from `host` if it is *SSHConnection
+          (the Hostname `ssh_options` attribute) and doesn't need to be provided
+          here, but is necessary for non-SSH `host`.
+
+          For example, for a LocalConnection, it would be `127.0.0.1`.
+
         - `reserve_delay` is an int of how many seconds to wait between trying
-          to lock libvirt domains, after every unsuccessful locking attempt.
-
-          Ie. with `delay=5` and 20 domains, the code will try to lock every
-          domain in `5*20=100` seconds before looping back to the first.
-
-        - `reserve_time` is an int of maximum seconds to reserve a libvirt
-          domain for before other users can steal it for themselves. Note that
-          there is no automatic timeout release logic, it's just a hint for
-          others.
-
-        - `start_event_loop` set to `True` starts a global default libvirt event
-          loop as part of `.start()` (or context manager enter) in a background
-          daemon thread.
-
-          This is necessary to maintain connection keep-alives, but if you plan
-          on managing the loop yourself (have custom uses for the libvirt
-          module), setting `False` here avoids any meddling by this class.
+          to reserve a libvirt domain, reducing reservation bursting.
         """
         self.lock = threading.RLock()
         self.host = host
@@ -177,20 +86,18 @@ class LibvirtCloningProvisioner(Provisioner):
         self.domain_user = domain_user
         self.domain_sshkey = domain_sshkey
         self.reserve_delay = reserve_delay
-        self.reserve_time = reserve_time
-        self.start_event_loop = start_event_loop
 
-        self.signature = uuid.uuid4()
-        self.reserve_end = None
+        if domain_host is None:
+            if isinstance(
+                host,
+                (connection.ssh.ManagedSSHConnection, connection.ssh.StandaloneSSHConnection),
+            ):
+                domain_host = host.ssh_options["Hostname"]
+            else:
+                raise ValueError("'domain_host' not given and 'host' is not SSH")
+
         self.queue = util.ThreadQueue(daemon=True)
         self.to_reserve = 0
-
-        # use two libvirt connections - one to handle reservations and cloning,
-        # and another for management and cleanup;
-        # the idea is to neuter the reserving thread on exit simply by closing
-        # its connection, so we can run cleanup from the other one
-        self.reserve_conn = None
-        self.manage_conn = None
 
         # domain names we successfully locked, but which are still in the
         # process of being set up (image cloning, OS booting, waiting for ssh
@@ -403,31 +310,8 @@ class LibvirtCloningProvisioner(Provisioner):
 
         return remote
 
-    def _open_libvirt_conn(self):
-        # trick .cmd() to not run anything, but just return the ssh CLI
-        cli_args = self.host.cmd(
-            ("virt-ssh-helper", "qemu:///system"),
-            func=lambda *args, **_: args[0],
-        )
-        # to make libvirt connect via our ManagedSSHConnection, we need to give it
-        # a specific ssh CLI, but libvirt URI command= takes only one argv[0]
-        # and cannot pass arguments - we work around this by creating a temp
-        # arg-less executable
-        with tempfile.NamedTemporaryFile("w+t", delete_on_close=False) as f:
-            f.write("#!/bin/bash\n")
-            f.write("exec ")
-            f.write(shlex.join(cli_args))
-            f.write("\n")
-            f.close()
-            name = Path(f.name)
-            name.chmod(0o0500)  # r-x------
-            uri = f"qemu+ext:///system?command={urllib.parse.quote(str(name.absolute()))}"
-            logger.info(f"opening libvirt conn to {uri}")
-            conn = libvirt.open(uri)
-        conn.setKeepAlive(5, 3)
-        return conn
-
     def start(self):
+        # TODO: connect via ssh to VM host
         if self.start_event_loop:
             setup_event_loop()
         with self.lock:
@@ -437,16 +321,8 @@ class LibvirtCloningProvisioner(Provisioner):
 
     def stop(self):
         with self.lock:
-            # close reserving libvirt host connection
-            # - this stops _reserve_one() from doing anything bad
-            if self.reserve_conn:
-                self.reserve_conn.close()
-                self.reserve_conn = None
+            # TODO: ssh connection to VM host
 
-            # reopen managing connection here (because we closed reserve_conn)
-            # - note that we can't open this in .start() because libvirt conns
-            #   can break on signals/interrupts, resulting in "Cannot recv data"
-            self.manage_conn = self._open_libvirt_conn()
             # abort reservations in progress
             while self.reserving:
                 try:
@@ -454,13 +330,13 @@ class LibvirtCloningProvisioner(Provisioner):
                     locking.unlock(domain, self.signature)
                 except libvirt.libvirtError:
                     pass
+
             # cancel/release all Remotes ever created by us
             while self.remotes:
                 self.remotes.pop().release()
             self.manage_conn.close()
             self.manage_conn = None
 
-            self.reserve_end = None
             # TODO: wait for threadqueue threads to join?
 
     def provision(self, count=1):
@@ -485,6 +361,6 @@ class LibvirtCloningProvisioner(Provisioner):
         remotes = len(self.remotes)
         host_name = self.host.options["Hostname"]
         return (
-            f"{class_name}({host_name}, {self.domain_filter}, {self.signature}, "
+            f"{class_name}({host_name}, {self.domain_filter}, "
             f"{remotes} remotes, {hex(id(self))})"
         )

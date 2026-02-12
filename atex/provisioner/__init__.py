@@ -1,3 +1,8 @@
+"""
+TODO: README.md about the concept of Provisioner + include it here via pdoc,
+      have class docstrings only about how to practically use them
+"""
+
 import abc as _abc
 import importlib as _importlib
 import pkgutil as _pkgutil
@@ -61,10 +66,11 @@ class Provisioner:
             remote2 = p.get_remote()
             ...
 
-    Note that `.provision()` is a hint expressed by the caller, not a guarantee
-    that `.get_remote()` will ever return a Remote. Ie. the caller can call
-    `.provision(count=math.inf)` to receive as many remotes as the Provisioner
-    can possibly supply.
+    Note that `.provision()` is not a guarantee that `.get_remote()` will ever
+    return a Remote. Ie. the caller can call `.provision(count=math.inf)` to
+    receive as many remotes as the Provisioner can possibly supply.
+
+    ...
     """
 
     @_abc.abstractmethod

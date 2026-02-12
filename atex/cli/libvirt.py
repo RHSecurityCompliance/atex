@@ -1,5 +1,5 @@
-import sys
 import re
+import sys
 
 from .. import util
 from ..provisioner.libvirt import locking

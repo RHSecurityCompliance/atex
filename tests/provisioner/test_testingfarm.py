@@ -1,10 +1,9 @@
 import os
+
 import pytest
-
-from atex.provisioner.testingfarm import TestingFarmProvisioner
-
 import testutil
 
+from atex.provisioner.testingfarm import TestingFarmProvisioner
 from tests.provisioner import shared
 
 COMPOSE = None

@@ -1,9 +1,9 @@
+import concurrent.futures
 import logging
 import tempfile
-import concurrent.futures
 from pathlib import Path
 
-from .. import util, executor
+from .. import executor, util
 from . import Orchestrator, OrchestratorError
 
 logger = logging.getLogger("atex.orchestrator.adhoc")

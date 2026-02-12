@@ -21,12 +21,12 @@ these keys:
 This module-level dict must be named `CLI_SPEC`.
 """
 
-import sys
-import signal
-import logging
-import pkgutil
 import argparse
 import importlib
+import logging
+import pkgutil
+import signal
+import sys
 
 
 def setup_logging(level):

@@ -1,6 +1,6 @@
 from atex import util
-from atex.fmf import FMFTests
 from atex.executor import Executor
+from atex.fmf import FMFTests
 
 
 def test_prepare_cwd(provisioner):

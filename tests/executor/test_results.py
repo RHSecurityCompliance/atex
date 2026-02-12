@@ -1,11 +1,11 @@
+import json
 import os
 import sys
-import json
 from pathlib import Path
 
-from atex.fmf import FMFTests
 from atex.executor import Executor
-from atex.executor.testcontrol import BadReportJSONError, BadControlError
+from atex.executor.testcontrol import BadControlError, BadReportJSONError
+from atex.fmf import FMFTests
 
 
 def run_fmf_test(provisioner, tmp_dir, *, read_results=True):

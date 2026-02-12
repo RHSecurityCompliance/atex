@@ -1,7 +1,7 @@
 import json
 
-from atex.fmf import FMFTests
 from atex.executor import Executor, TestAbortedError
+from atex.fmf import FMFTests
 
 
 def test_reboot(provisioner_systemd, tmp_dir):

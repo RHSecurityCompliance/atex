@@ -6,9 +6,9 @@
 # This is useful when doing a second, separate, test run, and wanting to run
 # only tests that were not previously executed.
 
-import sys
-import json
 import gzip
+import json
+import sys
 
 
 def yield_testnames(fobj):

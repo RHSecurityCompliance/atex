@@ -61,6 +61,7 @@ select = [
     "COM",  # flake8-commas
     "C4",   # flake8-comprehensions
     "EXE",  # flake8-executable
+    "I",    # isort
     "PIE",  # flake8-pie
     "Q",    # flake8-quotes
     "RSE",  # flake8-raise

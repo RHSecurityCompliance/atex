@@ -1,7 +1,7 @@
-import sys
+import collections
 import json
 import pprint
-import collections
+import sys
 
 from .. import util
 from ..provisioner.testingfarm import api as tf

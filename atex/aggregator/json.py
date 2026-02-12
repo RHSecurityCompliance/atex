@@ -1,7 +1,7 @@
 import abc
 import gzip
-import lzma
 import json
+import lzma
 import shutil
 import threading
 from pathlib import Path

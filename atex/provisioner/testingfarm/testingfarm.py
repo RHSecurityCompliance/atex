@@ -1,12 +1,11 @@
-import time
+import concurrent.futures
 import logging
 import tempfile
 import threading
-import concurrent.futures
+import time
 
 from ... import connection, util
 from .. import Provisioner, Remote
-
 from . import api
 
 logger = logging.getLogger("atex.provisioner.testingfarm")

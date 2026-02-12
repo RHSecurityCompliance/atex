@@ -14,9 +14,9 @@ and any expired timestamps (`now() > timestamp`) are ignored by the locking
 logic.
 """
 
+import random
 import re
 import time
-import random
 import xml.etree.ElementTree as ET
 
 from ... import util

@@ -1,7 +1,7 @@
 import os
-import pytest
-
 from pathlib import Path
+
+import pytest
 
 
 # change CWD for each test to the directory containing the test_*.py file

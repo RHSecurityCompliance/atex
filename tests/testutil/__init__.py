@@ -1,6 +1,6 @@
 import importlib as _importlib
-import pkgutil as _pkgutil
 import inspect as _inspect
+import pkgutil as _pkgutil
 
 __all__ = []
 

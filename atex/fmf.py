@@ -191,6 +191,21 @@ class FMFTests:
                 Path(child.sources[-1]).parent.relative_to(self.root)
 
 
+def duration_to_seconds(string):
+    match = re.fullmatch(r"([0-9]+)([a-z]*)", string)
+    if not match:
+        raise ValueError(f"invalid fmf duration format: {string}")
+    length, unit = match.groups()
+    if unit == "m":
+        return int(length)*60
+    elif unit == "h":
+        return int(length)*60*60
+    elif unit == "d":
+        return int(length)*60*60*24
+    else:
+        return int(length)
+
+
 def test_pkg_requires(data, key="require"):
     """
     Yield RPM package names specified by test `data` (fmf metadata dict)

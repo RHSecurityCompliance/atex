@@ -1,7 +1,7 @@
 import collections
 import logging
 
-from .. import util, fmf
+from .. import util
 from .adhoc import AdHocOrchestrator
 
 logger = logging.getLogger("atex.provisioner.contest")
@@ -85,13 +85,7 @@ class ContestOrchestrator(AdHocOrchestrator):
                         return next_name
 
         # try to prioritize important tests (or ones that rerun often)
-        def calc_prio(test):
-            meta = all_tests[test]
-            priority = meta.get("extra-priority", 0)
-            duration = fmf.duration_to_seconds(meta.get("duration", "0"))
-            return (priority, duration)
-
-        return max(to_run, key=calc_prio)
+        return max(to_run, key=lambda test: all_tests[test].get("extra-priority", 0))
 
     @staticmethod
     def destructive(info, test_data):

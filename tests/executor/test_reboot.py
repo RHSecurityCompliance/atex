@@ -1,14 +1,31 @@
 import json
+import time
 
 from atex.executor import Executor, TestAbortedError
 from atex.fmf import FMFTests
+
+
+def wait_for_systemd(remote):
+    # wait for systemd itself to create its socket
+    for _ in range(100):
+        proc = remote.cmd(("test", "-S", "/run/systemd/private"))
+        if proc.returncode == 0:
+            break
+        time.sleep(0.1)
+    else:
+        raise RuntimeError("waiting for systemd socket failed")
+
+    # wait for the full system to be up
+    proc = remote.cmd(("systemctl", "is-system-running", "--wait"))
+    if proc.returncode != 0:
+        raise RuntimeError("systemctl is-system-running failed to wait")
 
 
 def test_reboot(provisioner_systemd, tmp_dir):
     fmf_tests = FMFTests("fmf_tree", plan_name="/reboot/plan")
     provisioner_systemd.provision(1)
     remote = provisioner_systemd.get_remote()
-    remote.cmd(("systemctl", "is-system-running", "--wait"), check=True)
+    wait_for_systemd(remote)
     with Executor(fmf_tests, remote) as e:
         e.upload_tests()
         e.run_test("/reboot/test_reboot", tmp_dir)
@@ -22,7 +39,7 @@ def test_reboot_count(provisioner_systemd, tmp_dir):
     fmf_tests = FMFTests("fmf_tree", plan_name="/reboot/plan")
     provisioner_systemd.provision(1)
     remote = provisioner_systemd.get_remote()
-    remote.cmd(("systemctl", "is-system-running", "--wait"), check=True)
+    wait_for_systemd(remote)
     with Executor(fmf_tests, remote) as e:
         e.upload_tests()
         e.run_test("/reboot/test_reboot_count", tmp_dir)
@@ -36,7 +53,7 @@ def test_reboot_unexpected(provisioner_systemd, tmp_dir):
     fmf_tests = FMFTests("fmf_tree", plan_name="/reboot/plan")
     provisioner_systemd.provision(1)
     remote = provisioner_systemd.get_remote()
-    remote.cmd(("systemctl", "is-system-running", "--wait"), check=True)
+    wait_for_systemd(remote)
     with Executor(fmf_tests, remote) as e:
         e.upload_tests()
         try:

@@ -84,8 +84,8 @@ class ContestOrchestrator(AdHocOrchestrator):
                         logger.debug(f"chosen next_test: {next_name}")
                         return next_name
 
-        # fallback to the default next_test()
-        return super().next_test(to_run, all_tests, previous)
+        # try to prioritize important tests (or ones that rerun often)
+        return max(to_run, key=lambda test: all_tests[test].get("extra-priority", 0))
 
     @staticmethod
     def destructive(info, test_data):

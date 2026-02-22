@@ -302,6 +302,7 @@ class Executor:
                                     stdout=pipe_w,
                                     stderr=testout_fd,
                                     func=util.subprocess_Popen,
+                                    bufsize=0,  # we handle fds ourselves
                                 )
                         finally:
                             os.close(pipe_w)

@@ -3,11 +3,63 @@ import threading
 
 from .named_mapping import NamedMapping
 
-# TODO: documentation; this is like concurrent.futures, but with daemon=True support
+
+class ThreadReturn(threading.Thread):
+    """
+    Simple wrapper around threading.Thread that propagates the target function
+    return value or raised exception to the parent via .join().
+    """
+    def __init__(self, *args, **kwargs):
+        self.__result = None
+        self.__exception = None
+        super().__init__(*args, **kwargs)
+
+    def run(self):
+        try:
+            if self._target is not None:
+                self.__result = self._target(*self._args, **self._kwargs)
+        except Exception as e:
+            self.__exception = e
+        # taken from the original threading.Thread.run
+        finally:
+            # Avoid a refcycle if the thread is running a function with
+            # an argument that has a member that points to the thread.
+            del self._target, self._args, self._kwargs
+
+    def join(self, timeout=None):
+        super().join(timeout)
+        if self.is_alive():
+            raise TimeoutError("thread still alive after timeout expired")
+        if self.__exception:
+            raise self.__exception
+        else:
+            return self.__result
 
 
-class ThreadQueue:
-    class ThreadReturn(NamedMapping, required=("thread", "returned", "exception")):
+class ThreadReturnQueue:
+    """
+    Extension of ThreadReturn to support multiple threads and a central
+    SimpleQueue that collects their return values (or exceptions).
+
+    This is very similar to concurrent.futures.ThreadPoolExecutor and its
+    .submit() and .as_completed() or FIRST_COMPLETED, but with support for
+    additional metadata via a custom NamedMapping and (crucially) support
+    for daemon=True threads.
+
+    (Also, this starts one thread per function, not a thread pool of workers.)
+
+    Example:
+        def func(*args):
+            return args
+
+        queue = ThreadReturnQueue(daemon=True)
+        queue.start_thread(target=func, target_args=(1,2,3))
+        queue.start_thread(target=func, target_args=(4,5,6))
+        queue.get()  # returns (1,2,3) or (4,5,6)
+        queue.get()  # returns (1,2,3) or (4,5,6)
+
+    """
+    class ThreadResult(NamedMapping, required=("thread", "returned", "exception")):
         pass
 
     Empty = queue.Empty
@@ -22,14 +74,14 @@ class ThreadQueue:
         current_thread = threading.current_thread()
         try:
             ret = func(*func_args, **func_kwargs)
-            result = self.ThreadReturn(
+            result = self.ThreadResult(
                 thread=current_thread,
                 returned=ret,
                 exception=None,
                 **user_kwargs,
             )
         except Exception as e:
-            result = self.ThreadReturn(
+            result = self.ThreadResult(
                 thread=current_thread,
                 returned=None,
                 exception=e,
@@ -43,7 +95,7 @@ class ThreadQueue:
         `target_args` as arguments and `target_kwargs` as keyword arguments.
 
         Any additional `user_kwargs` specified are NOT passed to the callable,
-        but instead become part of the ThreadReturn namespace returned by the
+        but instead become part of the ThreadResult namespace returned by the
         `.get_raw()` method.
         """
         t = threading.Thread(
@@ -58,7 +110,7 @@ class ThreadQueue:
 
     def get_raw(self, block=True, timeout=None):
         """
-        Wait for and return the next available ThreadReturn instance on the
+        Wait for and return the next available ThreadResult instance on the
         queue, as enqueued by a finished callable started by the
         `.start_thread()` method.
         """

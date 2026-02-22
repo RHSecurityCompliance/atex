@@ -182,7 +182,7 @@ class LibvirtCloningProvisioner(Provisioner):
 
         self.signature = uuid.uuid4()
         self.reserve_end = None
-        self.queue = util.ThreadQueue(daemon=True)
+        self.queue = util.ThreadReturnQueue(daemon=True)
         self.to_reserve = 0
 
         # use two libvirt connections - one to handle reservations and cloning,
@@ -475,7 +475,7 @@ class LibvirtCloningProvisioner(Provisioner):
                 self.to_reserve -= 1
         try:
             return self.queue.get(block=block)
-        except util.ThreadQueue.Empty:
+        except util.ThreadReturnQueue.Empty:
             # always non-blocking
             return None
 

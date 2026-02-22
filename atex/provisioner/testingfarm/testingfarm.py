@@ -77,7 +77,7 @@ class TestingFarmProvisioner(Provisioner):
 
         self._tmpdir = None
         self.ssh_key = self.ssh_pubkey = None
-        self.queue = util.ThreadQueue(daemon=True)
+        self.queue = util.ThreadReturnQueue(daemon=True)
         self.tf_api = api.TestingFarmAPI()
 
         # TF Reserve instances (not Remotes) actively being provisioned,
@@ -200,7 +200,7 @@ class TestingFarmProvisioner(Provisioner):
             # otherwise wait on a queue of Remotes being provisioned
             try:
                 return self.queue.get(block=block)  # thread-safe
-            except util.ThreadQueue.Empty:
+            except util.ThreadReturnQueue.Empty:
                 # always non-blocking
                 return None
             except (api.TestingFarmError, connection.ssh.SSHError) as e:

@@ -3,74 +3,9 @@ import json
 import logging
 import os
 
+from .. import util
+
 logger = logging.getLogger("atex.executor.testcontrol")
-
-
-class BufferFullError(Exception):
-    pass
-
-
-class NonblockLineReader:
-    """
-    Kind of like io.BufferedReader but capable of reading from non-blocking
-    sources (both `O_NONBLOCK` sockets and `os.set_blocking(False)`
-    descriptors), re-assembling full lines from (potentially) multiple
-    `read()` calls.
-
-    It also takes a file descriptor (not a file-like object) and takes extra
-    care to read one-byte-at-a-time to not read (and buffer) more data from the
-    source descriptor, allowing it to be used for in-kernel move, such as via
-    `os.sendfile()` or `os.splice()`.
-    """
-
-    def __init__(self, src, maxlen=4096):
-        """
-        - `src` is an opened file descriptor (integer).
-
-        - `maxlen` is a maximum potential line length, incl. the newline
-          character - if reached, a BufferFullError is raised.
-        """
-        self.src = src
-        self.eof = False
-        self.buffer = bytearray(maxlen)
-        self.bytes_read = 0
-
-    def readline(self):
-        r"""
-        Read a line and return it, without the `\n` terminating character,
-        clearing the internal buffer upon return.
-
-        Returns None if nothing could be read (BlockingIOError) or if EOF
-        was reached.
-        """
-        while self.bytes_read < len(self.buffer):
-            try:
-                data = os.read(self.src, 1)
-            except BlockingIOError:
-                return None
-
-            # stream EOF
-            if len(data) == 0:
-                self.eof = True
-                return None
-
-            char = data[0]
-
-            if char == 0x0a:  # \n
-                line = self.buffer[0:self.bytes_read]
-                self.bytes_read = 0
-                return line
-            else:
-                self.buffer[self.bytes_read] = char
-                self.bytes_read += 1
-
-        raise BufferFullError(f"line buffer reached {len(self.buffer)} bytes")
-
-    def clear(self):
-        """
-        Clear the internal buffer, clearing any partially-read line data.
-        """
-        self.bytes_read = 0
 
 
 class BadControlError(Exception):
@@ -108,7 +43,7 @@ class TestControl:
         self.duration = duration
         if control_fd:
             self.control_fd = control_fd
-            self.stream = NonblockLineReader(control_fd)
+            self.stream = util.NonblockLineReader(control_fd, read_len=1)
         else:
             self.control_fd = None
             self.stream = None
@@ -131,7 +66,7 @@ class TestControl:
             raise BadControlError(f"{err} old one is in the middle of reading a control line")
         self.eof = False
         self.control_fd = new_fd
-        self.stream = NonblockLineReader(new_fd)
+        self.stream = util.NonblockLineReader(new_fd, read_len=1)
 
     def process(self):
         """
@@ -153,7 +88,7 @@ class TestControl:
 
         try:
             line = self.stream.readline()
-        except BufferFullError as e:
+        except util.BufferFullError as e:
             raise BadControlError(str(e)) from None
 
         logger.debug(f"control line: {line} // eof: {self.stream.eof}")
@@ -169,6 +104,8 @@ class TestControl:
 
         line = line.decode()
         word, _, arg = line.partition(" ")
+
+        logger.debug(f"decoded word: {word} / arg: {arg}")
 
         if word == "result":
             parser = self._parser_result(arg)
@@ -252,6 +189,8 @@ class TestControl:
             result = json.loads(json_data)
         except json.decoder.JSONDecodeError as e:
             raise BadReportJSONError(f"JSON decode: {str(e)} caused by: {json_data}") from None
+
+        logger.debug(f"parsed result: {result}")
 
         # note that this may be None (result for the test itself)
         name = result.get("name")
@@ -372,6 +311,8 @@ class TestControl:
 
     def _parser_disconnect(self, _):
         self.disconnect_received = True
+        # also reset exitcode, let a reconnected test set it
+        self.exit_code = None
         # pretend to be a generator
         if False:
             yield

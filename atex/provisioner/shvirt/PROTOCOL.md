@@ -33,6 +33,16 @@ channel.
   S: {"cmd": "ping", "success": true, "reply": "atex-virt-helper v1 pong"}
   ```
 
+- `setname`
+  - Set a process name that others can see (when querying for `reservations`
+    or otherwise in `top` or `/proc/$pid/comm`.
+  - The name is limited to 15 characters (by `prctl(PR_SET_NAME)`).
+
+  ```json
+  C: {"cmd": "setname", "name": "fanthomas"}
+  S: {"cmd": "setname", "success": true, "name": "fanthomas"}
+  ```
+
 - `virsh`
   - Bypass to `virsh` running on the server (so the client doesn't require it).
   - The `-c` (connect) argument is handled automatically.
@@ -72,6 +82,20 @@ channel.
   ```json
   C: {"cmd": "release", "domain": "vmname2"}
   S: {"cmd": "release", "success": true, "domain": "vmname2"}
+  ```
+
+- `reservations`
+  - List all domains and whether anybody has them reserved.
+  - The response contains `domains` as a JSON object (dict) with keys being
+    domain names and values one of:
+    - `null` when not reserved,
+    - a string containing process name that holds the reservation, see also `setname`,
+    - special string `(reserved for us)` when our process holds the reservation,
+    - other special strings inside `()`, such as when a process name is empty
+
+  ```json
+  C: {"cmd": "reservations"}
+  S: {"success": true, "cmd": "reservations", "domains": {"vmname1": "(reserved for us)", "vmname3": null, "vmname2": "fanthomas"}}
   ```
 
 - `upload`

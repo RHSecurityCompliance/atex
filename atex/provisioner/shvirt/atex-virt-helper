@@ -7,6 +7,7 @@
 
 import argparse
 import atexit
+import ctypes
 import errno
 import fcntl
 import json
@@ -16,6 +17,7 @@ import pty
 import random
 import re
 import select
+import struct
 import subprocess
 import sys
 import tempfile
@@ -23,6 +25,16 @@ import time
 import xml.etree.ElementTree as ET
 from logging.handlers import SysLogHandler
 from pathlib import Path
+
+libc = ctypes.CDLL(None, use_errno=True)
+# from /usr/include/linux/prctl.h:
+PR_SET_NAME = 15
+# prepare args / return for prctl(2)
+libc.prctl.argtypes = (
+    ctypes.c_int, ctypes.c_char_p,
+    ctypes.c_ulong, ctypes.c_ulong, ctypes.c_ulong,
+)
+libc.prctl.restype = ctypes.c_int
 
 # URI passed via CLI args
 libvirt_uri = None
@@ -35,12 +47,22 @@ state_locks = {}
 clean_stdout = clean_stderr = None
 
 
-def lock(name, op=fcntl.LOCK_EX | fcntl.LOCK_NB):
+def set_procname(name):
+    name_bytes = name[:15].encode() + b"\x00"
+    if libc.prctl(PR_SET_NAME, name_bytes, 0, 0, 0) != 0:
+        err = ctypes.get_errno()
+        raise OSError(err, os.strerror(err))
+
+
+def lock(name, op=fcntl.F_SETLK):
     if name in state_locks:
         return True
-    fd = os.open(state_dir / name, os.O_WRONLY | os.O_CREAT)
+    locks_dir = state_dir / "locks"
+    # see 'struct flock', which we pack here
+    lock_data = struct.pack("@hhqqi", fcntl.F_WRLCK, os.SEEK_SET, 0, 0, 0)
+    fd = os.open(locks_dir / name, os.O_WRONLY | os.O_CREAT)
     try:
-        fcntl.flock(fd, op)
+        fcntl.fcntl(fd, op, lock_data)
     except BlockingIOError:
         os.close(fd)
         return False
@@ -55,6 +77,29 @@ def unlock(name):
         pass
     else:
         os.close(fd)
+
+
+def getlock(name):
+    # when used with F_GETLK, this does not actually lock the fd,
+    # but the struct is still needed to see if there *would* be a locking
+    # conflict (another process holds the lock)
+    # - this doesn't make sense for our 'state_locks' (we already hold the
+    #   locks) so those would *always* get F_UNLCK
+    lock_data = struct.pack("@hhqqi", fcntl.F_WRLCK, os.SEEK_SET, 0, 0, 0)
+
+    # if held by us
+    if name in state_locks:
+        return -1
+    else:
+        locks_dir = state_dir / "locks"
+        fd = os.open(locks_dir / name, os.O_WRONLY | os.O_CREAT)
+        try:
+            result = fcntl.fcntl(fd, fcntl.F_GETLK, lock_data)
+        finally:
+            os.close(fd)
+
+    l_type, _, _, _, l_pid = struct.unpack("@hhqqi", result)
+    return None if l_type == fcntl.F_UNLCK else l_pid
 
 
 def virsh(*args):
@@ -83,6 +128,15 @@ def lock_domain(pattern=None):
 
 def cmd_ping(_logger, reply, _args):
     reply(True, "atex-virt-helper v1 pong")
+
+
+def cmd_setname(_logger, reply, args):
+    name = args["name"]
+    if not name.strip():
+        reply(False, "name must not be empty")
+        return
+    set_procname(name)
+    reply(True)
 
 
 def cmd_virsh(_logger, reply, args):
@@ -125,6 +179,35 @@ def cmd_release(_logger, reply, args):
         return
     unlock(domain)
     reply(True)
+
+
+def cmd_reservations(logger, reply, _args):
+    code, output = virsh("list", "--all", "--name")
+    if code != 0:
+        msg = f"virsh list failed with {code}: {output}"
+        logger.error(msg)
+        reply(False, msg)
+        return
+
+    domains = output.rstrip("\n").split("\n")
+    status = {}
+    for domain in domains:
+        lock_pid = getlock(domain)
+        if lock_pid == -1:
+            status[domain] = "(reserved for us)"
+        elif lock_pid is not None:
+            try:
+                comm = (Path("/proc") / str(lock_pid) / "comm").read_text().rstrip("\n")
+            except FileNotFoundError:
+                status[domain] = f"(pid {lock_pid} disappeared)"
+                continue
+            if not comm.strip():
+                status[domain] = "(empty name)"
+            else:
+                status[domain] = comm
+        else:
+            status[domain] = None
+    reply(True, domains=status)
 
 
 def cmd_upload(logger, reply, args):
@@ -390,6 +473,10 @@ def handle_cmd(cmd, args):
         valid_args = {}
         func = cmd_ping
 
+    elif cmd == "setname":
+        valid_args = dict(pop_args("name"))
+        func = cmd_setname
+
     elif cmd == "virsh":
         valid_args = dict(pop_args("args"))
         func = cmd_virsh
@@ -401,6 +488,10 @@ def handle_cmd(cmd, args):
     elif cmd == "release":
         valid_args = dict(pop_args("domain"))
         func = cmd_release
+
+    elif cmd == "reservations":
+        valid_args = {}
+        func = cmd_reservations
 
     elif cmd == "upload":
         valid_args = dict(pop_args("name", "length"))
@@ -535,8 +626,9 @@ def main():
             state_dir = Path("/var/lib/atex-virt-helper")
         try:
             state_dir.mkdir(exist_ok=True)
+            (state_dir / "locks").mkdir(exist_ok=True)
         except OSError as e:
-            logging.error(f"failed to mkdir {state_dir}: {type(e).__name__}({e})")
+            logging.error(f"failed to mkdir: {type(e).__name__}({e})")
             raise SystemExit(1) from None
 
         # run in a unique tmpdir for cmds like 'upload'

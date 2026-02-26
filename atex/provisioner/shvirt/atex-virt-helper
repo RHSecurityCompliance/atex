@@ -60,7 +60,7 @@ def lock(name, op=fcntl.F_SETLK):
     locks_dir = state_dir / "locks"
     # see 'struct flock', which we pack here
     lock_data = struct.pack("@hhqqi", fcntl.F_WRLCK, os.SEEK_SET, 0, 0, 0)
-    fd = os.open(locks_dir / name, os.O_WRONLY | os.O_CREAT)
+    fd = os.open(locks_dir / name, os.O_WRONLY | os.O_CREAT, 0o666)
     try:
         fcntl.fcntl(fd, op, lock_data)
     except BlockingIOError:
@@ -92,7 +92,7 @@ def getlock(name):
         return -1
     else:
         locks_dir = state_dir / "locks"
-        fd = os.open(locks_dir / name, os.O_WRONLY | os.O_CREAT)
+        fd = os.open(locks_dir / name, os.O_WRONLY | os.O_CREAT, 0o666)
         try:
             result = fcntl.fcntl(fd, fcntl.F_GETLK, lock_data)
         finally:

@@ -159,9 +159,10 @@ class SharedVirtProvisioner(Provisioner):
     def __init__(
         self, host, image, *, pool="default",
         domain_filter=None, domain_user="root", domain_sshkey, domain_host=None,
-        reserve_delay=3,
+        reserve_delay=3, reserve_name=None,
     ):
         """
+
         - `host` is a Connection class instance, connected to a libvirt host.
 
         - `image` is a string with a libvirt storage volume name inside the
@@ -193,6 +194,10 @@ class SharedVirtProvisioner(Provisioner):
 
         - `reserve_delay` is an int of how many seconds to wait between trying
           to reserve a libvirt domain, reducing reservation bursting.
+
+        - `reserve_name` is a custom user name, to be set for any reservations
+          this Provisioner makes, seen in the list of reservations when queried
+          by a user. Must be at most 15 characters long (per PR_SET_NAME).
         """
         self.lock = threading.RLock()
         self.host = host
@@ -202,6 +207,7 @@ class SharedVirtProvisioner(Provisioner):
         self.domain_user = domain_user
         self.domain_sshkey = domain_sshkey
         self.reserve_delay = reserve_delay
+        self.reserve_name = reserve_name
 
         if domain_host is None:
             if isinstance(
@@ -412,6 +418,11 @@ class SharedVirtProvisioner(Provisioner):
                 or response.get("reply") != "atex-virt-helper v1 pong"
             ):
                 raise RuntimeError(f"bad pong from remote helper (wrong version?): {response}")
+
+            if self.reserve_name:
+                response = self._helper_query({"cmd": "setname", "name": self.reserve_name})
+                if not response["success"]:
+                    raise RuntimeError(f"failed to 'setname': {response}")
 
             # re-zero the event counter, in case we're re-starting
             # and it was set to math.inf previously

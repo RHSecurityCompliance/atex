@@ -44,8 +44,11 @@ jobs:
                     # [SOME_FOO.md](SOME_FOO.md) --> [SOME_FOO](SOME_FOO)
                     # .. and also [some foo](SOME_FOO.md) --> [some foo](SOME_FOO)
                     # .. but not [see url](https://external/SOME_FOO.md)
+                    #
+                    # additionally, remove backticks in headers (pdoc parser bugs)
                     sed -r \
-                        's/\[(.+).md\]\(([^:\]+).md\)/[\1](\2)/g ; s/\[(.+)\]\(([^:\)]+).md\)/[\1](\2)/g' \
+                        -e 's/\[(.+).md\]\(([^:\]+).md\)/[\1](\2)/g ; s/\[(.+)\]\(([^:\)]+).md\)/[\1](\2)/g' \
+                        -e '/^#/s/`//g' \
                         < "$path"
                     echo "'''"
                 } > "$py"

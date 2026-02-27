@@ -57,7 +57,7 @@ def interrupt_only_once(signum, frame):
 
 
 def main():
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(allow_abbrev=False)
 
     log_grp = parser.add_mutually_exclusive_group()
     log_grp.add_argument(

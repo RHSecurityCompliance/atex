@@ -2,8 +2,7 @@ name: Deploy documentation to GH Pages
 
 on:
   push:
-    #branches: [main]
-    branches: [devel]
+    branches: [main, devel]
   workflow_dispatch:
 
 permissions:
@@ -27,6 +26,10 @@ jobs:
       - name: Post-process .md and __init__.py files
         run: |
             set -e
+
+            # move any *.md from the repo root to atex/, so it gets processed
+            # by the code below under the python module root
+            cp -n *.md atex/.
 
             # transform any .md files to .py ones, putting their content into
             # a raw docstring
@@ -81,14 +84,13 @@ jobs:
                 mv -f "$path.new" "$path"
             done < <(find atex -name '__init__.py' -print0)
 
-      - name: Generate docs
-        run: |
-            # also install '.' to get all dependencies from pip
-            python3 -m pip install pdoc .
+      # also install '.' to get all dependencies from pip
+      - name: Install pdoc
+        run: python3 -m pip install pdoc .
 
-            # generate HTML pages inside docs/
-            pdoc -n --no-include-undocumented -d markdown -o docs \
-                ./atex !atex.cli
+      # generate HTML pages inside docs/
+      - name: Generate docs
+        run: pdoc -n -d markdown -o docs ./atex !atex.cli
 
       - uses: actions/upload-pages-artifact@v4
         with:

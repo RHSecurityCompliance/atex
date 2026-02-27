@@ -4,10 +4,6 @@ import pkgutil as _pkgutil
 
 
 class Aggregator:
-    """
-    TODO: generic description, not JSON-specific
-    """
-
     @_abc.abstractmethod
     def ingest(self, platform, test_name, test_results, test_files):
         """

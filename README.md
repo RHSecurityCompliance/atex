@@ -20,11 +20,6 @@ the job of the Python API. Any CLI should be simple by nature.
 
 ---
 
-## License
-
-Unless specified otherwise, any content within this repository is distributed
-under the GNU GPLv3 license, see the [COPYING.txt](COPYING.txt) file for more.
-
 ## Environment variables
 
 - `ATEX_DEBUG_TEST`

@@ -9,12 +9,6 @@ class OrchestratorError(Exception):
 
 
 class Orchestrator:
-    """
-    A scheduler for parallel execution on multiple resources (machines/systems).
-
-    TODO: more description
-    """
-
     @_abc.abstractmethod
     def serve_once(self):
         """

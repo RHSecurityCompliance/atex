@@ -1,9 +1,3 @@
-"""
-Ad-hoc Test EXecutor
-
-Some intro documentation here.
-"""
-
 import importlib as _importlib
 import pkgutil as _pkgutil
 

@@ -5,8 +5,8 @@ from .. import fmf
 
 
 def _fatal(msg):
-    print(msg, file=sys.stderr)
-    sys.exit(1)
+    print(f"error: {msg}", file=sys.stderr)
+    raise SystemExit(1)
 
 
 def _get_context(args):

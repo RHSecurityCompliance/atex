@@ -6,7 +6,7 @@ import sys
 
 def _fatal(msg):
     print(f"error: {msg}", file=sys.stderr)
-    sys.exit(1)
+    raise SystemExit(1)
 
 
 def reservations(args):

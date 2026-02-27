@@ -21,7 +21,7 @@ def yield_testnames(fobj):
 
 if len(sys.argv) != 2:
     print(f"usage: {sys.argv[0]} results.json.gz")
-    sys.exit(1)
+    raise SystemExit(1)
 
 _, results_json = sys.argv
 

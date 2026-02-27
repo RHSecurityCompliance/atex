@@ -24,3 +24,16 @@ For more details, see
 - [PROTOCOL.md](PROTOCOL.md) for details how the Provisioner and the
   server-side `atex-virt-helper` talk.
 
+## Why
+
+Reserving from a pre-created set of domains (VMs) ensures that the VM host
+(hypervisor) is never overloaded beyond its capacity, as long as whatever logic
+or human that pre-created the domains was smart enough to not create more
+than the host can handle.
+
+It also allows static `portForward` port allocation and potentially other
+host-specific domain-XML-based setup of the VMs. Also, cleanup is non-existent
+because the next user can `destroy` / otherwise clean up the domain after
+a previous one left it running, exactly because the pool of domains is known
+and pre-defined.
+

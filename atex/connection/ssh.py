@@ -234,9 +234,13 @@ class ManagedSSHConnection(Connection):
         - If `sudo` specifies a username, call `sudo(8)` on the remote shell
           to run under a different user on the remote host.
         """
+        # commenting on lock
         self.lock = threading.RLock()
         self.options = DEFAULT_OPTIONS.copy()
         self.options.update(options)
+        """
+        commenting on password
+        """
         self.password = password
         self.sudo = sudo
         self._tmpdir = None
@@ -376,3 +380,8 @@ class ManagedSSHConnection(Connection):
             stdin=subprocess.DEVNULL,
             **func_args,
         )
+
+__all__ = (
+    "ManagedSSHConnection",
+    "StatelessSSHConnection",
+)

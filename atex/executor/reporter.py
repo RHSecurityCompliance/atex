@@ -34,15 +34,15 @@ class Reporter:
         self.testout_file = self.output_dir / self.TESTOUT
 
     def start(self):
-        if self.results_file.exists():
+        if self.results_file.exists(follow_symlinks=False):
             raise FileExistsError(f"{self.results_file} already exists")
         self.results_fobj = open(self.results_file, "w", newline="\n")
 
-        if self.testout_file.exists():
+        if self.testout_file.exists(follow_symlinks=False):
             raise FileExistsError(f"{self.testout_file} already exists")
         self.testout_file.touch()
 
-        if self.files_dir.exists():
+        if self.files_dir.exists(follow_symlinks=False):
             raise FileExistsError(f"{self.files_dir} already exists")
         self.files_dir.mkdir()
 

@@ -197,27 +197,27 @@ class Executor:
         WAITING_FOR_EXIT = enum.auto()
         RECONNECTING = enum.auto()
 
-    def run_test(self, test_name, output_dir, *, env=None):
+    def run_test(self, test_name, artifacts, *, env=None):
         """
         Run one test on the remote system.
 
         - `test_name` is a string with test name.
 
-        - `output_dir` is a destination dir (string or Path) for results reported
+        - `artifacts` is a destination dir (string or Path) for results reported
           and files uploaded by the test.
 
           Results are always stored in a line-JSON format in a file named
           `results`, files are always uploaded to directory named `files`,
-          both inside `output_dir`.
+          both inside `artifacts`.
 
-          The path for `output_dir` must already exist and be an empty directory
+          The path for `artifacts` must already exist and be an empty directory
           (ie. typically a tmpdir).
 
         - `env` is a dict of extra environment variables to pass to the test.
 
         Returns an integer exit code of the test script.
         """
-        output_dir = Path(output_dir)
+        artifacts = Path(artifacts)
         test_data = self.fmf_tests.tests[test_name]
 
         # start with fmf-plan-defined environment
@@ -237,7 +237,7 @@ class Executor:
             env_vars.update(env)
 
         with contextlib.ExitStack() as stack:
-            reporter = stack.enter_context(Reporter(output_dir, "results", "files"))
+            reporter = stack.enter_context(Reporter(artifacts, "results", "files"))
             duration = Duration(test_data.get("duration", "5m"))
             control = testcontrol.TestControl(reporter=reporter, duration=duration)
 

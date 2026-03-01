@@ -37,8 +37,8 @@ class AdHocOrchestrator(Orchestrator):
         required=(
             # string with /test/name
             "test_name",
-            # class tempfile.TemporaryDirectory instance passed to Executor
-            "tmp_dir",
+            # Path of a dir with test artifacts as a TemporaryDirectory instance
+            "artifacts",
         ),
     ):
         pass
@@ -52,10 +52,6 @@ class AdHocOrchestrator(Orchestrator):
             # exception class instance if running the test failed
             # (None if no exception happened (exit_code is defined))
             "exception",
-            # Path of a 'results' JSON file with test-reported results
-            "results",
-            # Path of a 'files' directory with test-uploaded files
-            "files",
         ),
     ):
         pass
@@ -76,6 +72,9 @@ class AdHocOrchestrator(Orchestrator):
         - `tmp_dir` is a string/Path to a temporary directory, to be used for
           storing per-test results and uploaded files before being ingested
           by the aggregator. Can be safely shared by Orchestrator instances.
+
+          TODO: rename to old_results or so, =None by default, don't offload
+          the creation of temp dirs onto the caller
 
         - `max_remotes` is how many Remotes to hold reserved at any given time,
           eg. how many tests to run in parallel. Clamped to the number of
@@ -135,26 +134,30 @@ class AdHocOrchestrator(Orchestrator):
 
         self.to_run.remove(next_test_name)
 
+        artifacts = tempfile.TemporaryDirectory(
+            prefix=next_test_name.strip("/").replace("/","-") + "-",
+            dir=self.tmp_dir,
+            delete=False,
+        )
+
         rinfo = self.RunningInfo._from(
             info,
             test_name=next_test_name,
-            tmp_dir=tempfile.TemporaryDirectory(
-                prefix=next_test_name.strip("/").replace("/","-") + "-",
-                dir=self.tmp_dir,
-                delete=False,
-            ),
+            artifacts=artifacts,
         )
 
-        tmp_dir_path = Path(rinfo.tmp_dir.name)
-        tmp_dir_path.chmod(0o755)
         self.test_queue.start_thread(
             target=info.executor.run_test,
             target_args=(
                 next_test_name,
-                tmp_dir_path,
+                artifacts.name,
             ),
             rinfo=rinfo,
         )
+
+        # TODO: is it necessary once we're always calling Aggregator
+        # and not re-using the tmpdir for old runs?
+        Path(artifacts.name).chmod(0o755)
 
         self.running_tests[next_test_name] = rinfo
 
@@ -165,43 +168,40 @@ class AdHocOrchestrator(Orchestrator):
         test_data = self.fmf_tests.tests[finfo.test_name]
         remote_with_test = f"{finfo.remote}: '{finfo.test_name}'"
 
+        # TODO: deal with artifacts dir, don't just leave previous runs there,
+        #       possibly have another Aggregator for old results
+
         if not self.was_successful(finfo, test_data) and self.should_be_rerun(finfo, test_data):
             # re-run the test
             logger.info(f"{remote_with_test} failed, re-running")
             self.to_run.add(finfo.test_name)
+
+#        elif any(Path(finfo.artifacts.name).iterdir()):
+#            logger.error(f"{remote_with_test} produced empty artifacts, skipping")
+
         else:
-            # ingest the result
-            #
-            # a condition just in case Executor code itself threw an exception
-            # and didn't even report the fallback 'infra' result
-            if finfo.results is not None and finfo.files is not None:
-                logger.info(f"{remote_with_test} completed, ingesting result")
+            logger.info(f"{remote_with_test} completed, ingesting result")
 
-                def ingest_and_cleanup(ingest, args, cleanup):
-                    ingest(*args)
-                    # also delete the tmpdir housing these
-                    cleanup()
+            def ingest_and_cleanup(ingest, args, cleanup):
+                ingest(*args)
+                # also delete the tmpdir housing these
+                cleanup()
 
-                self.ingest_queue.start_thread(
-                    ingest_and_cleanup,
-                    target_args=(
-                        # ingest func itself
-                        self.aggregator.ingest,
-                        # args for ingest
-                        (self.platform, finfo.test_name, finfo.results, finfo.files),
-                        # cleanup func itself
-                        finfo.tmp_dir.cleanup,
-                    ),
-                    test_name=finfo.test_name,
-                )
+            self.ingest_queue.start_thread(
+                ingest_and_cleanup,
+                target_args=(
+                    # ingest func itself
+                    self.aggregator.ingest,
+                    # args for ingest
+                    (self.platform, finfo.test_name, finfo.artifacts.name),
+                    # cleanup func itself
+                    finfo.artifacts.cleanup,
+                ),
+                test_name=finfo.test_name,
+            )
 
-                # ingesting destroys these
-                finfo = self.FinishedInfo._from(
-                    finfo,
-                    results=None,
-                    files=None,
-                    tmp_dir=None,
-                )
+            # ingesting destroys artifacts
+            finfo = self.FinishedInfo._from(finfo, artifacts=None)
 
         # if there are still tests to be run and the last test was not
         # destructive, just run a new test on it
@@ -247,16 +247,10 @@ class AdHocOrchestrator(Orchestrator):
             rinfo = treturn.rinfo
             del self.running_tests[rinfo.test_name]
 
-            tmp_dir_path = Path(rinfo.tmp_dir.name)
-            results_path = tmp_dir_path / "results"
-            files_path = tmp_dir_path / "files"
-
             finfo = self.FinishedInfo(
                 **rinfo,
                 exit_code=treturn.returned,
                 exception=treturn.exception,
-                results=results_path if results_path.exists() else None,
-                files=files_path if files_path.exists() else None,
             )
             self._process_finished_test(finfo)
 
@@ -421,7 +415,7 @@ class AdHocOrchestrator(Orchestrator):
         - `to_run` is a set of test names to pick from. The returned test name
           must be chosen from this set.
 
-        - `tests` is a dict indexed by test name (string), with values being
+        - `all_tests` is a dict indexed by test name (string), with values being
           fully resolved fmf test metadata (dicts) of all possible tests.
 
         - `previous` can be either

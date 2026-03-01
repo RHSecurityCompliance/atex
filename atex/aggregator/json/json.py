@@ -6,7 +6,7 @@ import shutil
 import threading
 from pathlib import Path
 
-from . import Aggregator
+from .. import Aggregator
 
 
 def _verbatim_move(src, dst):
@@ -16,28 +16,6 @@ def _verbatim_move(src, dst):
 
 
 class JSONAggregator(Aggregator):
-    """
-    Collects reported results in a line-JSON output file and uploaded files
-    (logs) from multiple test runs under a shared directory.
-
-    Note that the aggregated JSON file **does not** use the test-based JSON
-    format described by `executor/RESULTS.md` - both use JSON, but are very
-    different.
-
-    This aggergated format uses a top-level array (on each line) with a fixed
-    field order:
-
-        platform, status, test name, subtest name, files, note
-
-    All these are strings except `files`, which is another (nested) array
-    of strings.
-
-    If `testout` is present in an input test result, it is prepended to
-    the list of `files`.
-    If a field is missing in the source result, it is translated to a `null`
-    value.
-    """
-
     def __init__(self, target, files):
         """
         - `target` is a string/Path to a `.json` file for all ingested
@@ -52,11 +30,11 @@ class JSONAggregator(Aggregator):
         self.target_fobj = None
 
     def start(self):
-        if self.target.exists():
+        if self.target.exists(follow_symlinks=False):
             raise FileExistsError(f"{self.target} already exists")
         self.target_fobj = open(self.target, "w")
 
-        if self.files.exists():
+        if self.files.exists(follow_symlinks=False):
             raise FileExistsError(f"{self.files} already exists")
         self.files.mkdir()
 
@@ -64,16 +42,6 @@ class JSONAggregator(Aggregator):
         if self.target_fobj:
             self.target_fobj.close()
             self.target_fobj = None
-
-    def _get_test_files_path(self, platform, test_name):
-        """
-        Return a directory path to where uploaded files should be stored
-        for a particular `platform` and `test_name`.
-        """
-        platform_files = self.files / platform
-        platform_files.mkdir(exist_ok=True)
-        test_files = platform_files / test_name.lstrip("/")
-        return test_files
 
     @staticmethod
     def _modify_file_list(test_files):
@@ -117,16 +85,25 @@ class JSONAggregator(Aggregator):
             )
             yield json.dumps(output_line, indent=None)
 
-    def ingest(self, platform, test_name, test_results, test_files):
-        target_test_files = self._get_test_files_path(platform, test_name)
-        if target_test_files.exists():
+    def ingest(self, platform, test_name, artifacts):
+        artifacts = Path(artifacts)
+        # TODO: define these as TestArtifacts namedtuple in Executor?
+        artifacts_results = artifacts / "results"
+        artifacts_files = artifacts / "files"
+
+        if not artifacts_results.exists(follow_symlinks=False):
+            raise FileNotFoundError(f"{artifacts_results} does not exist")
+
+        platform_files = self.files / platform
+        target_test_files = platform_files / test_name.lstrip("/")
+        if target_test_files.exists(follow_symlinks=False):
             raise FileExistsError(f"{target_test_files} already exists for {test_name}")
 
         # parse the results separately, before writing any aggregated output,
         # to ensure that either ALL results from the test are ingested, or none
         # at all (ie. if one of the result lines contains JSON errors)
-        with open(test_results) as test_results_fobj:
-            output_results = self._gen_test_results(test_results_fobj, platform, test_name)
+        with open(artifacts_results) as f:
+            output_results = self._gen_test_results(f, platform, test_name)
             output_json = "\n".join(output_results) + "\n"
 
         with self.lock:
@@ -134,11 +111,13 @@ class JSONAggregator(Aggregator):
             self.target_fobj.flush()
 
         # clean up the source test_results (Aggregator should 'mv', not 'cp')
-        Path(test_results).unlink()
+        Path(artifacts_results).unlink()
 
         # if the test_files dir is not empty
-        if any(test_files.iterdir()):
-            self._move_test_files(test_files, target_test_files)
+        if any(artifacts_files.iterdir()):
+            platform_files.mkdir(exist_ok=True)
+            # TODO: why does this work without .mkdir(target_test_files.parent) ?
+            self._move_test_files(artifacts_files, target_test_files)
 
 
 class CompressedJSONAggregator(JSONAggregator, abc.ABC):
@@ -151,11 +130,11 @@ class CompressedJSONAggregator(JSONAggregator, abc.ABC):
         pass
 
     def start(self):
-        if self.target.exists():
+        if self.target.exists(follow_symlinks=False):
             raise FileExistsError(f"{self.target_file} already exists")
         self.target_fobj = self.compressed_open(self.target, "wt", newline="\n")
 
-        if self.files.exists():
+        if self.files.exists(follow_symlinks=False):
             raise FileExistsError(f"{self.storage_dir} already exists")
         self.files.mkdir()
 

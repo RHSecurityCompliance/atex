@@ -1,7 +1,6 @@
 # Command line interface to atex
 
-Submodules (subpackages) of this one must define a module-level dict with
-these keys:
+Submodules of this one must define a module-level dict with these keys:
 
 - help
   - short oneliner about what the submodule is about (for argparse `--help`)

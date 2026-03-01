@@ -214,7 +214,7 @@ def reserve(args):
                     input("Press RETURN to try to reconnect, Ctrl-C to quit ...")
                 except KeyboardInterrupt:
                     print()
-                    raise
+                    break
             else:
                 break
 

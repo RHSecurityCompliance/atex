@@ -37,3 +37,14 @@ because the next user can `destroy` / otherwise clean up the domain after
 a previous one left it running, exactly because the pool of domains is known
 and pre-defined.
 
+### Copying disks
+
+Cloning/copying of images was chosen over `qcow2`-based snapshot backing volumes
+because it allows atomic updates to the original template images while keeping
+all existing domains unaffected (and capable of destroy/start).
+
+With `virsh vol-create-as --backing-vol*`, this would not be possible as
+replacing (updating) the original template image would corrupt any domains
+that were using the original one. Theoretically, this would work as long as
+the domains wouldn't shutdown, but QEMU sometimes re-opens the original file
+path during runtime, so it wouldn't be bullet-proof.

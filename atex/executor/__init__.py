@@ -19,3 +19,7 @@ class TestAbortedError(ExecutorError):
 # TODO: remove testcontrol here?
 from . import testcontrol  # noqa: F401, E402
 from .executor import Executor  # noqa: F401, E402
+
+__all__ = (
+    "Executor",
+)

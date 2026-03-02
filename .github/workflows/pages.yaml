@@ -86,7 +86,7 @@ jobs:
 
       # also install '.' to get all dependencies from pip
       - name: Install pdoc
-        run: python3 -m pip install pdoc .
+        run: python3 -m pip install pdoc==16.0.0 .
 
       - name: Prepare pdoc templates
         run: |
@@ -104,6 +104,14 @@ jobs:
           </style>
           {% endblock %}
           EOF
+
+      - name: Patch pdoc
+        run: |
+          # don't add automatic hyperlinks because of bugs like
+          # `results.json` --> `resultsatex.aggregator.json.json`
+          render_helpers_py=$(python -c 'import pdoc.render_helpers; print(pdoc.render_helpers.__file__)')
+          sed '/^    def linkify_repl(/i\ \ \ \ return Markup(code)\n' \
+            -i "$render_helpers_py"
 
       # generate HTML pages inside docs/
       - name: Generate docs

@@ -1,22 +1,93 @@
-# ATEX = Ad-hoc Test EXecutor
+# ATEX
 
-A collections of Python APIs to provision operating systems, collect
-and execute [FMF](https://github.com/teemtee/fmf/)-style tests, gather
-and organize their results and generate reports from those results.
+ATEX is a framework for a configurable test execution.
 
-The name comes from a (fairly unique to FMF/TMT ecosystem) approach that
-allows provisioning a pool of systems and scheduling tests on them as one would
-on an ad-hoc pool of thread/process workers - once a worker becomes free,
-it receives a test to run.  
-This is in contrast to splitting a large list of N tests onto M workers
-like N/M, which yields significant time penalties due to tests having
-very varies runtimes.
+It is a set of Python-based abstract APIs and several implementations utilizing
+them, providing building blocks for you to make simple Python-based scripts
+that control the execution and result processing of your tests.
 
-Above all, this project is meant to be a toolbox, not a silver-plate solution.
-Use its Python APIs to build a CLI tool for your specific use case.  
-The CLI tool provided here is just for demonstration / testing, not for serious
-use - we want to avoid huge modular CLIs for Every Possible Scenario. That's
-the job of the Python API. Any CLI should be simple by nature.
+Its main building blocks are:
+
+TODO fix links when built with pdoc:
+
+- [**Provisioners**](atex/provisioner) that give you systems to run tests on
+- [**Executors**](atex/executor) that prepare and run the tests on them
+- [**Aggregators**](atex/aggregator) that collect results from multiple tests
+- [**Orchestrators**](atex/orchestrator) that string everything up together,
+  using Provisioners to get systems for Executors to run tests on, calling
+  an Aggregator to ingest all test results
+
+... TODO image ...
+
+ATEX is **not a linear pipeline** like `Provision -> Execute -> Report`,
+the building blocks can be used **independently** and **at any time**.
+
+Even during orchestration, Provisioners **run in parallel** to Executors,
+so that re-runs of failed tests can get fresh systems, and tests can start
+running as soon as one system is provisioned. Aggregators can upload to
+3rd party services as soon as any one test finishes.
+
+## You are in control
+
+The key part is that this is a framework to be used by YOU. Your script controls
+what gets used and how.
+
+You can download / fetch tests from multiple repositories, modify their metadata
+on-the-fly, do anything you want via normal Python code, and also call ATEX
+building blocks to help you.
+
+There is no "vendor lock in" to one tool or ecosystem. You don't need ATEX to
+implement feature XYZ when you can write a trivial piece of Python code to
+do it (ie. pre-processing test metadata, post-processing results).
+
+There are no boundaries for you to stay within - **you don't need to implement
+a Provisioner using the Provisioner API**. Just obtain the system *somehow*,
+wrap its SSH details in an [SSHConnection](atex/connection/ssh), and give that
+to an [FMFExecutor](atex/executor/fmf).
+
+You don't need to write a "plugin for ATEX", you just write Python code.
+
+## How it works
+
+Each building block defines one or more abstract base classes:
+
+```python
+class Brewer:
+    def intake(self, ingredients):
+        """Input `ingredients` for brewing."""
+
+    def brew(self):
+        """Brew the beverage and return it."""
+```
+
+Note that **only the function names and their positional arguments are part
+of the API**. That means `__init__()`, any other functions and keyword arguments
+(with default values) to the standard functions are left to the implementation.
+
+```python
+class CoffeeBrewer(Brewer):
+    def __init__(self, kind, strength=None):
+        self.kind = kind
+        self.strength = strength if strength is not None else 5
+
+    def _the_actual_brewing(self):
+        ...
+
+    def intake(self, ingredients, *, grind=True):
+        ...
+
+    def brew(self, *, speed=100):
+        return self._the_actual_brewing()
+```
+
+Any piece of code can then state that it takes an initialized `Brewer` instance
+as an argument, and have a guarantee that it will have `.intake(ingredients)`
+and `.brew()` available, no matter the implementation.
+
+```python
+b = CoffeeBrewer("espresso", 1000)
+serve_to_employees(brewer=b)
+```
 
 ---
 
@@ -63,3 +134,17 @@ TODO: codestyle from contest
 
   - TL;DR - use a modular pythonic approach, not a gluetool-style long CLI
 ```
+
+## What it stands for
+
+ATEX = Ad-hoc Test EXecution, named after the most prominent Orchestrator,
+originally the only one available.
+
+The name comes from a (fairly unique to FMF/TMT ecosystem) approach that
+allows provisioning a pool of systems and scheduling tests on them as one would
+on an ad-hoc pool of thread/process workers - once a worker becomes free,
+it receives a test to run.
+
+This is in contrast to a more common approach of splitting a large list of
+N tests onto M workers like N/M, which yields significant time penalties due
+to tests having very varies runtimes.

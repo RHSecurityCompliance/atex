@@ -6,6 +6,7 @@ import shutil
 import threading
 from pathlib import Path
 
+from ... import util
 from .. import Aggregator
 
 
@@ -94,8 +95,8 @@ class JSONAggregator(Aggregator):
         if not artifacts_results.exists(follow_symlinks=False):
             raise FileNotFoundError(f"{artifacts_results} does not exist")
 
-        platform_files = self.files / platform
-        target_test_files = platform_files / test_name.lstrip("/")
+        platform_files = self.files / util.normalize_path(platform)
+        target_test_files = platform_files / util.normalize_path(test_name)
         if target_test_files.exists(follow_symlinks=False):
             raise FileExistsError(f"{target_test_files} already exists for {test_name}")
 

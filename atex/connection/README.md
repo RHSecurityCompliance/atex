@@ -1,40 +1,56 @@
+> [!NOTE]
+> This describes a generic API concept - these classes don't actually do
+> anything, but they serve as a template for other implementations to follow,
+> providing the API described here for you.  
+> IOW there exist several Connections for different use cases, but they all
+> follow the API described here.
+
 # Connection
 
-TODO: better docs?
-
-
-A unified API for connecting to a remote system, running multiple commands,
-rsyncing files to/from it and checking for connection state.
+A channel to a resource (machine/system) for running commands and transferring
+files.
 
 ```python
-conn = Connection()
-conn.connect()
-proc = conn.cmd(["ls", "/"])
-#proc = conn.cmd(["ls", "/"], func=subprocess.Popen)  # non-blocking
-#output = conn.cmd(["ls", "/"], func=subprocess.check_output)  # stdout
-conn.rsync("-v", "remote:/etc/passwd", "passwd")
-conn.disconnect()
+with Connection() as c:
+    c.cmd(["ls", "/"])  # outputs to your console
 
-# or as try/except/finally
-conn = Connection()
-try:
-    conn.connect()
-    ...
-finally:
-    conn.disconnect()
+    output = c.cmd(["ls", "/"], func=subprocess.check_output)
 
-# or via Context Manager
-with Connection() as conn:
-    ...
+    proc = c.cmd(
+        ["ls", "/"],
+        func=subprocess.run,
+        stdout=subprocess.PIPE,  # kwargs passed to func
+        text=True,
+        check=True,
+    )
+    print(proc.stdout)
+
+    c.rsync("/etc/passwd", "remote:/tmp/.")
 ```
 
-Note that internal connection handling must be implemented as thread-aware,
-ie. `disconnect()` might be called from a different thread while `connect()`
-or `cmd()` are still running.  
-Similarly, multiple threads may run `cmd()` or `rsync()` independently.
+Note that both `.cmd()` and `.rsync()` expect `func=` to behave like one of
+the `subprocess` functions (`.run()`, `.check_output()`, `.Popen()`, etc.),
+giving it a command to execute and any other kwargs you specify.
 
-TODO: document that any exceptions raised by a Connection should be children
-of ConnectionError
+A Connection can be connected/disconnected using a context manager (above)
+or manually via `.connect()` and `.disconnect()`:
 
-If any connection-related error happens, a ConnectionError (or an exception
-derived from it) must be raised.
+```python
+c = Connection()
+
+c.connect()
+proc = c.cmd(["ls", "/"])
+c.disconnect()
+```
+
+Or via `try`/`finally` to guard against exceptions:
+
+```python
+c = Connection()
+
+try:
+    c.connect()
+    ...
+finally:
+    c.disconnect()
+```

@@ -29,7 +29,16 @@ jobs:
 
           # move any *.md from the repo root to atex/, so it gets processed
           # by the code below under the python module root
-          cp -n *.md atex/.
+          while IFS= read -r -d '' path; do
+            dest="atex/$path"
+            if [[ -e $dest ]]; then
+              echo "error: '$dest' already exists"
+              exit 1
+            fi
+            # but remove any atex/ prefix in links, since we're moving the files
+            # inside the atex/ dir
+            sed -r 's/\[(.+)\]\(atex\/(.+)\)/[\1](\2)/g' "$path" > "$dest"
+          done < <(find . -maxdepth 1 -name '*.md' -print0)
 
           # transform any .md files to .py ones, putting their content into
           # a raw docstring
@@ -52,7 +61,7 @@ jobs:
               sed -r \
                 -e 's/\[(.+).md\]\(([^:\]+).md\)/[\1](\2)/g ; s/\[(.+)\]\(([^:\)]+).md\)/[\1](\2)/g' \
                 -e '/^#/s/`//g' \
-                < "$path"
+                "$path"
               echo "'''"
             } > "$py"
           done < <(find atex -name '*.md' -print0)
@@ -73,7 +82,7 @@ jobs:
             # post-process the README docstring, add module-name/ to all relative
             # Markdown links (pdoc treats __init__.py as if it was in the parent)
             module_name=${parent##*/}
-            contents=$(sed -r "s/\[(.+)\]\(([^:\]+)\)/[\1](${module_name}\/\2)/g" < "$readme")
+            contents=$(sed -r "s/\[(.+)\]\(([^:\]+)\)/[\1](${module_name}\/\2)/g" "$readme")
 
             # prepend the README to __init__.py
             echo "prepending '$readme' to '$path'"

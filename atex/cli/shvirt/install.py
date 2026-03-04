@@ -139,7 +139,10 @@ def install(args):
     logging.info(f"pre-creating new {temp_image}")
     response = helper_query({
         "cmd": "virsh",
-        "args": ["vol-create-as", args.pool, temp_image, f"{args.size}G", "--format", args.format],
+        "args": [
+            "vol-create-as", args.pool, temp_image,
+            f"{args.size}G", "--format", args.format, "--prealloc-metadata",
+        ],
     })
     if not response["success"]:
         output = response["reply"]

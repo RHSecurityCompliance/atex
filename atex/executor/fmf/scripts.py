@@ -4,7 +4,7 @@ from pathlib import Path
 
 import yaml
 
-from .. import fmf, util
+from ... import fmf, util
 
 # name: fmf path to the test as string, ie. /some/test
 # data: dict of the parsed fmf metadata (ie. {'tag': ... , 'environment': ...})

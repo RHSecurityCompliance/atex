@@ -2,7 +2,7 @@ import re
 import tempfile
 
 from atex import util
-from atex.executor import Executor
+from atex.executor.fmf import FMFExecutor
 from atex.fmf import FMFTests
 
 
@@ -10,7 +10,7 @@ def test_prepare_env(provisioner):
     fmf_tests = FMFTests("fmf_tree", plan_name="/env/plan")
     provisioner.provision(1)
     remote = provisioner.get_remote()
-    with Executor(fmf_tests, remote) as e:
+    with FMFExecutor(fmf_tests, remote) as e:
         e.upload_tests()
         e.plan_prepare()
     output = remote.cmd(("cat", "/tmp/plan_env"), func=util.subprocess_output)
@@ -21,7 +21,7 @@ def test_test_env(provisioner, tmp_dir):
     fmf_tests = FMFTests("fmf_tree", plan_name="/env/plan")
     provisioner.provision(1)
     remote = provisioner.get_remote()
-    with Executor(fmf_tests, remote) as e:
+    with FMFExecutor(fmf_tests, remote) as e:
         e.upload_tests()
         e.run_test("/env/test_env", tmp_dir, env={"VAR_FROM_PARAM": "foo bar"})
     output = (tmp_dir / "files" / "output.txt").read_text()
@@ -33,7 +33,7 @@ def test_envfile(provisioner, tmp_dir):
     fmf_tests = FMFTests("fmf_tree", plan_name="/env/plan")
     provisioner.provision(1)
     remote = provisioner.get_remote()
-    with Executor(fmf_tests, remote) as e:
+    with FMFExecutor(fmf_tests, remote) as e:
         e.upload_tests()
         e.plan_prepare()
         with tempfile.TemporaryDirectory() as tmp_dir2:
@@ -47,7 +47,7 @@ def test_envfile_shared(provisioner, tmp_dir):
     fmf_tests = FMFTests("fmf_tree", plan_name="/env/plan")
     provisioner.provision(1)
     remote = provisioner.get_remote()
-    with Executor(fmf_tests, remote) as e:
+    with FMFExecutor(fmf_tests, remote) as e:
         e.upload_tests()
         e.plan_prepare()
         e.run_test("/env/test_env", tmp_dir)

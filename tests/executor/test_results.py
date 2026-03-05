@@ -3,8 +3,8 @@ import os
 import sys
 from pathlib import Path
 
-from atex.executor import Executor
-from atex.executor.testcontrol import BadControlError, BadReportJSONError
+from atex.executor.fmf import FMFExecutor
+from atex.executor.fmf.testcontrol import BadControlError, BadReportJSONError
 from atex.fmf import FMFTests
 
 
@@ -13,7 +13,7 @@ def run_fmf_test(provisioner, tmp_dir, *, read_results=True):
     fmf_tests = FMFTests("fmf_tree", plan_name="/results/plan")
     provisioner.provision(1)
     remote = provisioner.get_remote()
-    with Executor(fmf_tests, remote) as e:
+    with FMFExecutor(fmf_tests, remote) as e:
         e.upload_tests()
         e.run_test(f"/results/{test}", tmp_dir)
     if read_results:

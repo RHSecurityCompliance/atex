@@ -7,13 +7,27 @@ import threading
 import time
 from pathlib import Path
 
-from .. import fmf, util
-from . import TestAbortedError, TestSetupError, scripts, testcontrol
+from ... import fmf, util
+from .. import Executor, ExecutorError
+from . import scripts
 from .duration import Duration
 from .reporter import Reporter
+from .testcontrol import BadReportJSONError, TestControl
 
 
-class Executor:
+class TestSetupError(ExecutorError):
+    """
+    Raised when the preparation for test execution (ie. pkg install) fails.
+    """
+
+
+class TestAbortedError(ExecutorError):
+    """
+    Raised when an infrastructure-related issue happened while running a test.
+    """
+
+
+class FMFExecutor(Executor):
     """
     Logic for running tests on a remote system and processing results
     and uploaded files by those tests.
@@ -239,7 +253,7 @@ class Executor:
         with contextlib.ExitStack() as stack:
             reporter = stack.enter_context(Reporter(artifacts, "results", "files"))
             duration = Duration(test_data.get("duration", "5m"))
-            control = testcontrol.TestControl(reporter=reporter, duration=duration)
+            control = TestControl(reporter=reporter, duration=duration)
 
             # run a setup script, preparing wrapper + test scripts
             setup_script = scripts.test_setup(
@@ -394,7 +408,7 @@ class Executor:
                             try:
                                 reporter.link_testout(testout, name)
                             except FileExistsError:
-                                raise testcontrol.BadReportJSONError(
+                                raise BadReportJSONError(
                                     f"file '{testout}' already exists",
                                 ) from None
                         reporter.report(result)

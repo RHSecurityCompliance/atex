@@ -3,7 +3,7 @@ import json
 import logging
 import os
 
-from .. import util
+from ... import util
 
 logger = logging.getLogger("atex.executor.testcontrol")
 

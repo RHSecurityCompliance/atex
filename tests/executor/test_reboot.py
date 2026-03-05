@@ -1,7 +1,7 @@
 import json
 import time
 
-from atex.executor import Executor, TestAbortedError
+from atex.executor.fmf import FMFExecutor, TestAbortedError
 from atex.fmf import FMFTests
 
 
@@ -26,7 +26,7 @@ def test_reboot(provisioner_systemd, tmp_dir):
     provisioner_systemd.provision(1)
     remote = provisioner_systemd.get_remote()
     wait_for_systemd(remote)
-    with Executor(fmf_tests, remote) as e:
+    with FMFExecutor(fmf_tests, remote) as e:
         e.upload_tests()
         e.run_test("/reboot/test_reboot", tmp_dir)
     results = (tmp_dir / "results").read_text()
@@ -40,7 +40,7 @@ def test_reboot_count(provisioner_systemd, tmp_dir):
     provisioner_systemd.provision(1)
     remote = provisioner_systemd.get_remote()
     wait_for_systemd(remote)
-    with Executor(fmf_tests, remote) as e:
+    with FMFExecutor(fmf_tests, remote) as e:
         e.upload_tests()
         e.run_test("/reboot/test_reboot_count", tmp_dir)
     results = (tmp_dir / "results").read_text()
@@ -54,7 +54,7 @@ def test_reboot_unexpected(provisioner_systemd, tmp_dir):
     provisioner_systemd.provision(1)
     remote = provisioner_systemd.get_remote()
     wait_for_systemd(remote)
-    with Executor(fmf_tests, remote) as e:
+    with FMFExecutor(fmf_tests, remote) as e:
         e.upload_tests()
         try:
             e.run_test("/reboot/test_reboot_unexpected", tmp_dir)

@@ -1,6 +1,6 @@
 import json
 
-from atex.executor import Executor, TestSetupError
+from atex.executor.fmf import FMFExecutor, TestSetupError
 from atex.fmf import FMFTests
 
 
@@ -8,7 +8,7 @@ def test_prepare(provisioner, tmp_dir):
     fmf_tests = FMFTests("fmf_tree", plan_name="/pkgs/plan")
     provisioner.provision(1)
     remote = provisioner.get_remote()
-    with Executor(fmf_tests, remote) as e:
+    with FMFExecutor(fmf_tests, remote) as e:
         e.upload_tests()
         e.plan_prepare()
         e.run_test("/pkgs/test_prepare", tmp_dir)
@@ -20,7 +20,7 @@ def test_require(provisioner, tmp_dir):
     fmf_tests = FMFTests("fmf_tree", plan_name="/pkgs/plan")
     provisioner.provision(1)
     remote = provisioner.get_remote()
-    with Executor(fmf_tests, remote) as e:
+    with FMFExecutor(fmf_tests, remote) as e:
         e.upload_tests()
         e.plan_prepare()
         e.run_test("/pkgs/test_require", tmp_dir)
@@ -37,7 +37,7 @@ def test_require_fail(provisioner, tmp_dir):
     fmf_tests = FMFTests("fmf_tree", plan_name="/pkgs/plan")
     provisioner.provision(1)
     remote = provisioner.get_remote()
-    with Executor(fmf_tests, remote) as e:
+    with FMFExecutor(fmf_tests, remote) as e:
         e.upload_tests()
         try:
             e.plan_prepare()
@@ -57,7 +57,7 @@ def test_recommend(provisioner, tmp_dir):
     fmf_tests = FMFTests("fmf_tree", plan_name="/pkgs/plan")
     provisioner.provision(1)
     remote = provisioner.get_remote()
-    with Executor(fmf_tests, remote) as e:
+    with FMFExecutor(fmf_tests, remote) as e:
         e.upload_tests()
         e.plan_prepare()
         e.run_test("/pkgs/test_recommend", tmp_dir)

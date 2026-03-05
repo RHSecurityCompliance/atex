@@ -1,6 +1,6 @@
 import time
 
-from .. import fmf
+from ... import fmf
 
 
 class Duration:

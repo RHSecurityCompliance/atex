@@ -302,7 +302,7 @@ class AdHocOrchestrator(Orchestrator):
         # running setup on them
         for provisioner in self.provisioners:
             while (remote := provisioner.get_remote(block=False)) is not None:
-                ex = executor.Executor(self.fmf_tests, remote, env=self.env)
+                ex = executor.fmf.FMFExecutor(self.fmf_tests, remote, env=self.env)
                 sinfo = self.SetupInfo(
                     provisioner=provisioner,
                     remote=remote,

@@ -66,11 +66,11 @@ class Connection:
         """
 
 
-_submodules = [
+_submodules = tuple(
     info.name for info in _pkgutil.iter_modules(__spec__.submodule_search_locations)
-]
+)
 
-__all__ = [*_submodules, Connection.__name__]  # noqa: PLE0604
+__all__ = (Connection.__name__, *_submodules)  # noqa: PLE0604
 
 
 def __dir__():

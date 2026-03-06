@@ -54,17 +54,20 @@ class TestingFarmRemote(Remote, connection.ssh.ManagedSSHConnection):
 
 class TestingFarmProvisioner(Provisioner):
     # maximum number of TF requests the user can .provision(),
-    # as a last safety measure against Orchestrator(remotes=math.inf)
-    absolute_max_remotes = 100
+    # as a safety measure against somebody passing huge max_remotes
+    absolute_max_remotes = 50
     # number of parallel threads running HTTP DELETE calls to cancel
     # TF requests on .stop() or Context Manager exit
     stop_release_workers = 10
 
-    def __init__(self, compose, arch="x86_64", *, max_retries=10, **reserve_kwargs):
+    def __init__(self, compose, arch="x86_64", max_remotes=3, *, max_retries=10, **reserve_kwargs):
         """
         - `compose` is a Testing Farm compose to prepare.
 
         - `arch`' is an architecture associated with the compose.
+
+        - `max_remotes` is how many Testing Farm Requests to keep running at any
+          one time (both queued / pending, and already reserved).
 
         - `max_retries` is a maximum number of provisioning (Testing Farm) errors
           that will be reprovisioned before giving up.
@@ -72,6 +75,7 @@ class TestingFarmProvisioner(Provisioner):
         self.lock = threading.RLock()
         self.compose = compose
         self.arch = arch
+        self.max_remotes = min(max_remotes, self.absolute_max_remotes)
         self.reserve_kwargs = reserve_kwargs
         self.retries = max_retries
 
@@ -79,6 +83,7 @@ class TestingFarmProvisioner(Provisioner):
         self.ssh_key = self.ssh_pubkey = None
         self.queue = util.ThreadReturnQueue(daemon=True)
         self.tf_api = api.TestingFarmAPI()
+        self.to_reserve = 0
 
         # TF Reserve instances (not Remotes) actively being provisioned,
         # in case we need to call their .release() on abort
@@ -134,29 +139,37 @@ class TestingFarmProvisioner(Provisioner):
 
         return remote
 
-    def _schedule_one_reservation(self, initial_delay=None):
-        # instantiate a class Reserve from the Testing Farm api module
-        # (which typically provides context manager, but we use its .reserve()
-        #  and .release() functions directly)
-        logger.info(f"{repr(self)}: reserving new remote")
-        tf_reserve = api.Reserve(
-            compose=self.compose,
-            arch=self.arch,
-            ssh_key=self.ssh_key,
-            api=self.tf_api,
-            **self.reserve_kwargs,
-        )
+    def _schedule_new_reservations(self):
+        if self.to_reserve <= 0:
+            return
 
-        # add it to self.reserving even before we schedule a provision,
-        # to avoid races on suddent abort
+        # calculate how much can we still reserve to fit within
+        # self.max_remotes, and clamp will_reserve to it
         with self.lock:
-            self.reserving.append(tf_reserve)
+            capacity = self.max_remotes - len(self.remotes) - len(self.reserving)
+            will_reserve = min(self.to_reserve, capacity)
+            if will_reserve <= 0:
+                return
+            self.to_reserve -= will_reserve
 
-        # start a background wait
-        self.queue.start_thread(
-            target=self._wait_for_reservation,
-            target_args=(tf_reserve, initial_delay),
-        )
+        logger.info(f"{repr(self)}: reserving {will_reserve} new remotes")
+        for i in range(will_reserve):
+            tf_reserve = api.Reserve(
+                compose=self.compose,
+                arch=self.arch,
+                ssh_key=self.ssh_key,
+                api=self.tf_api,
+                **self.reserve_kwargs,
+            )
+            # add it to self.reserving even before we schedule a provision,
+            # to avoid races on suddent abort
+            self.reserving.append(tf_reserve)
+            # start a background wait
+            initial_delay = (api.Request.api_query_limit / will_reserve) * i
+            self.queue.start_thread(
+                target=self._wait_for_reservation,
+                target_args=(tf_reserve, initial_delay),
+            )
 
     def start(self):
         with self.lock:
@@ -186,14 +199,8 @@ class TestingFarmProvisioner(Provisioner):
 
     def provision(self, count=1):
         with self.lock:
-            reservations = len(self.remotes) + len(self.reserving)
-            # clamp count to absolute_max_remotes
-            if count + reservations > self.absolute_max_remotes:
-                count = self.absolute_max_remotes - reservations
-            # spread out the request submissions
-            for i in range(count):
-                delay = (api.Request.api_query_limit / count) * i
-                self._schedule_one_reservation(delay)
+            self.to_reserve += count
+        self._schedule_new_reservations()
 
     def get_remote(self, block=True):
         while True:
@@ -212,7 +219,8 @@ class TestingFarmProvisioner(Provisioner):
                             f"retrying ({self.retries} left)",
                         )
                         self.retries -= 1
-                        self._schedule_one_reservation()
+                        self.to_reserve += 1
+                        self._schedule_new_reservations()
                         if block:
                             continue
                         else:
@@ -223,6 +231,17 @@ class TestingFarmProvisioner(Provisioner):
                             "exhausted all retries, giving up",
                         )
                         raise
+
+    def clear(self):
+        with self.lock:
+            self.to_reserve = 0
+        # keep all self.reserving running
+        # - this optimizes further .get_remote() calls as we don't have to
+        #   re-enter the queue for systems with new TF Requests
+        # - but also, cancelling would produce exceptions in self.queue;
+        #   TODO: add some spare=N for how many self.reserving to keep running
+        #         and cancel the rest cleanly, once we get rid of daemon=True
+        #         and switch TF API to threading.Event waits
 
     # not /technically/ a valid repr(), but meh
     def __repr__(self):

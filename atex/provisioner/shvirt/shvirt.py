@@ -257,10 +257,7 @@ class SharedVirtProvisioner(Provisioner):
             logger.debug("reserve thread exited cleanly")
 
     def _reserve(self):
-        while True:
-            if self.to_reserve <= 0:
-                return
-
+        while self.to_reserve > 0:
             if (exit_code := self.helper.poll()) is not None:
                 raise RuntimeError(f"helper not running, exited with {exit_code}")
 
@@ -389,9 +386,10 @@ class SharedVirtProvisioner(Provisioner):
                     break
 
             logger.debug(f"appending {remote}")
-            self.remotes.append(remote)
-            self.reserving_remotes.add(remote)
-            self.to_reserve -= 1
+            with self.lock:
+                self.remotes.append(remote)
+                self.reserving_remotes.add(remote)
+                self.to_reserve -= 1
             self.reserving_events.release(1)
 
             # delay for reserve_delay before reserving more
@@ -494,6 +492,14 @@ class SharedVirtProvisioner(Provisioner):
 
         # non-blocking
         return None
+
+    def clear(self):
+        # if there's a reservation in progress, it will lower to_reserve
+        # to -1, but that's fine because the next .provision() will increase
+        # it back to >= 0 and a follow-up .get_remote() will get the one
+        # Remote that was reserved before
+        with self.lock:
+            self.to_reserve = 0
 
     # not /technically/ a valid repr(), but meh
     def __repr__(self):

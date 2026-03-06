@@ -32,6 +32,15 @@ class Provisioner:
         """
 
     @_abc.abstractmethod
+    def clear(self):
+        """
+        Cancel any previous `.provision()` requests, preventing `.get_remote()`
+        (currently running and future) calls from receiving Remotes until
+        `.provision()` is called to request more machines.
+        This does not release any Remotes already returned via `.get_remote()`.
+        """
+
+    @_abc.abstractmethod
     def start(self):
         """
         Start the Provisioner instance, start any provisioning-related

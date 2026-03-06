@@ -58,11 +58,44 @@ class PodmanRemote(Remote, connection.podman.PodmanConnection):
         return f"{class_name}({image}, {name})"
 
 
+class _SettableCounter:
+    def __init__(self, value=0):
+        self.value = value
+        self.cond = threading.Condition()
+
+    def remove_one(self, block=True):
+        with self.cond:
+            if block:
+                self.cond.wait_for(lambda: self.value > 0)
+                self.value -= 1
+                return True
+            else:
+                if self.value <= 0:
+                    return False
+                else:
+                    self.value -= 1
+                    return True
+
+    def add(self, value):
+        assert value >= 0
+        with self.cond:
+            self.value += value
+            self.cond.notify(value)
+
+    def zero(self):
+        with self.cond:
+            # no need to wake any threads because it's 0
+            self.value = 0
+
+
 class PodmanProvisioner(Provisioner):
-    def __init__(self, image, *, run_options=None, run_command=("sleep", "inf")):
+    def __init__(self, image, *, max_remotes=10, run_options=None, run_command=("sleep", "inf")):
         """
         - `image` is a string of image tag/ID to create containers from.
           It can be a local identifier or an URL.
+
+        - `max_remotes` is the maximum number of containers to keep running
+          at any one time.
 
         - `run_options` is an iterable with additional CLI options passed
           to `podman container run`.
@@ -72,13 +105,14 @@ class PodmanProvisioner(Provisioner):
         """
         self.lock = threading.RLock()
         self.image = image
+        self.max_remotes = max_remotes
         self.run_options = run_options or ()
         self.run_command = run_command
 
         # created PodmanRemote instances, ready to be handed over to the user,
         # or already in use by the user
         self.remotes = []
-        self.to_create = 0
+        self.to_create = _SettableCounter(0)
 
     def start(self):
         if not self.image:
@@ -90,15 +124,11 @@ class PodmanProvisioner(Provisioner):
                 self.remotes.pop().release()
 
     def provision(self, count=1):
-        with self.lock:
-            self.to_create += count
+        self.to_create.add(count)
 
     def get_remote(self, block=True):
-        if self.to_create <= 0:
-            if block:
-                raise RuntimeError("no .provision() requested, would block forever")
-            else:
-                return None
+        if not self.to_create.remove_one(block=block):
+            return None
 
         proc = util.subprocess_run(
             (
@@ -125,11 +155,11 @@ class PodmanProvisioner(Provisioner):
             release_hook=release_hook,
         )
 
-        with self.lock:
-            self.remotes.append(remote)
-            self.to_create -= 1
-
+        self.remotes.append(remote)
         return remote
+
+    def clear(self):
+        self.to_create.zero()
 
     # not /technically/ a valid repr(), but meh
     def __repr__(self):

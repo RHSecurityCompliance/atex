@@ -104,9 +104,8 @@ class ThreadReturnQueue:
             kwargs=user_kwargs,
             daemon=self.daemon,
         )
-        with self.lock:
-            self.threads.add(t)
         t.start()
+        self.threads.add(t)
 
     def get_raw(self, block=True, timeout=None):
         """
@@ -119,7 +118,11 @@ class ThreadReturnQueue:
                 raise AssertionError("no threads are running, would block forever")
         treturn = self.queue.get(block=block, timeout=timeout)
         with self.lock:
-            self.threads.remove(treturn.thread)
+            try:
+                self.threads.remove(treturn.thread)
+            except KeyError:
+                # may have been already .pop()ed by .join()
+                pass
         return treturn
 
     # get one return value from any thread's function, like .as_completed()
@@ -143,11 +146,10 @@ class ThreadReturnQueue:
         Wait for all threads to finish, ignoring the state of the queue.
         """
         while True:
-            with self.lock:
-                try:
-                    thread = self.threads.pop()
-                except KeyError:
-                    break
+            try:
+                thread = self.threads.pop()
+            except KeyError:
+                break
             thread.join()
 
     def qsize(self):

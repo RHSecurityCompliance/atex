@@ -58,7 +58,7 @@ class AdHocOrchestrator(Orchestrator):
 
     def __init__(
         self, platform, fmf_tests, provisioners, aggregator, tmp_dir, *,
-        max_remotes=1, max_spares=0, max_failed_setups=10, env=None,
+        max_spares=0, max_failed_setups=10, env=None,
     ):
         """
         - `platform` is a string with platform name.
@@ -76,14 +76,10 @@ class AdHocOrchestrator(Orchestrator):
           TODO: rename to old_results or so, =None by default, don't offload
           the creation of temp dirs onto the caller
 
-        - `max_remotes` is how many Remotes to hold reserved at any given time,
-          eg. how many tests to run in parallel. Clamped to the number of
-          to-be-run tests given as `fmf_tests`.
-
         - `max_spares` is how many set-up Remotes to hold reserved and unused,
-          ready to replace a Remote destroyed by test. Values above 0 greatly
-          speed up test reruns as Remote reservation happens asynchronously
-          to test execution. Spares are reserved on top of `max_remotes`.
+          ready to replace a Remote destroyed by test. Values above 0 can
+          greatly speed up test reruns for Provisioners that take a long time
+          to reserve a Remote.
 
         - `max_failed_setups` is an integer of how many times an Executor's
           plan setup (uploading tests, running prepare scripts, etc.) may fail
@@ -100,13 +96,13 @@ class AdHocOrchestrator(Orchestrator):
         self.aggregator = aggregator
         self.tmp_dir = tmp_dir
         self.failed_setups_left = max_failed_setups
-        self.max_remotes = max_remotes
         self.max_spares = max_spares
         self.env = env
         # tests still waiting to be run
         self.to_run = set(fmf_tests.tests)
-        # number of Remotes being provisioned + set up (not running tests)
-        self.remotes_requested = 0
+        # True if empty self.to_run was seen at least once;
+        # needed because re-runs add the test back to self.to_run
+        self.finishing_up = False
         # running tests as a dict, indexed by test name, with RunningInfo values
         self.running_tests = {}
         # thread queue for actively running tests
@@ -166,6 +162,7 @@ class AdHocOrchestrator(Orchestrator):
         `finfo` is a FinishedInfo instance.
         """
         test_data = self.fmf_tests.tests[finfo.test_name]
+        remote_destroyed = finfo.exception or self.destructive(finfo, test_data)
         remote_with_test = f"{finfo.remote}: '{finfo.test_name}'"
 
         # TODO: deal with artifacts dir, don't just leave previous runs there,
@@ -175,6 +172,11 @@ class AdHocOrchestrator(Orchestrator):
             # re-run the test
             logger.info(f"{remote_with_test} failed, re-running")
             self.to_run.add(finfo.test_name)
+
+            # provision a replacement for a destroyed Remote
+            if remote_destroyed:
+                logger.debug(f"{remote_with_test} was destructive, getting a new Remote")
+                finfo.provisioner.provision(1)
 
 #        elif any(Path(finfo.artifacts.name).iterdir()):
 #            logger.error(f"{remote_with_test} produced empty artifacts, skipping")
@@ -203,37 +205,23 @@ class AdHocOrchestrator(Orchestrator):
             # ingesting destroys artifacts
             finfo = self.FinishedInfo._from(finfo, artifacts=None)
 
-        # if there are still tests to be run and the last test was not
-        # destructive, just run a new test on it
-        if self.to_run and not (finfo.exception or self.destructive(finfo, test_data)):
+        # if there are still tests to run and the Remote is still valid,
+        # run the next test on it (possibly a rerun)
+        if self.to_run and not remote_destroyed:
             logger.debug(f"{remote_with_test} was non-destructive, running next test")
             self._run_new_test(finfo)
-            return
-
-        # we are not running a new test right now, serve_once() might run it
-        # some time later, just decide what to do with the current remote
-
-        if self.remotes_requested >= len(self.to_run):
-            # we have enough remotes in the pipe to run every test,
-            # we don't need a new one - just release the current one
+        else:
             logger.debug(f"{finfo.remote} no longer useful, releasing it")
             self.release_queue.start_thread(
                 finfo.remote.release,
                 remote=finfo.remote,
             )
-        else:
-            # we need more remotes and the last test was destructive,
-            # get a new one and let serve_once() run a test later
-            logger.debug(f"{remote_with_test} was destructive, getting a new Remote")
-            self.release_queue.start_thread(
-                finfo.remote.release,
-                remote=finfo.remote,
-            )
-            finfo.provisioner.provision(1)
 
     def serve_once(self):
         # all done
         if not self.to_run and not self.running_tests:
+            # TODO: .stop() all provisioners for cases when our own .stop()
+            #       isn't called right away?
             return False
 
         # process all finished tests, potentially reusing remotes for executing
@@ -254,15 +242,13 @@ class AdHocOrchestrator(Orchestrator):
             )
             self._process_finished_test(finfo)
 
-        # process any remotes with finished plan setup (uploaded tests,
-        # plan-defined pkgs / prepare scripts), start executing tests on them
+        # process any remotes with finished setup, start executing tests on them
         while self.to_run:
             try:
                 treturn = self.setup_queue.get_raw(block=False)
             except util.ThreadReturnQueue.Empty:
                 break
 
-            self.remotes_requested -= 1
             sinfo = treturn.sinfo
 
             if treturn.exception:
@@ -276,27 +262,40 @@ class AdHocOrchestrator(Orchestrator):
                     logger.warning(f"{msg}, re-trying ({retries_left} setup retries left)")
                     self.failed_setups_left -= 1
                     sinfo.provisioner.provision(1)
-                    self.remotes_requested += 1
                 else:
-                    logger.warning(f"{msg}, setup retries exceeded, giving up")
+                    logger.error(f"{msg}, setup retries exceeded, giving up")
                     raise FailedSetupError("setup retries limit exceeded, broken infra?")
             else:
                 self._run_new_test(sinfo)
 
-        # release any extra Remotes being held as set-up when we know we won't
-        # use them for any tests (because to_run is empty)
-        else:
-            while self.setup_queue.qsize() > self.max_spares:
-                try:
-                    treturn = self.setup_queue.get_raw(block=False)
-                except util.ThreadReturnQueue.Empty:
-                    break
-                logger.debug(f"releasing extraneous set-up {treturn.sinfo.remote}")
-                self.release_queue.start_thread(
-                    treturn.sinfo.remote.release,
-                    remote=treturn.sinfo.remote,
-                )
-                self.remotes_requested -= 1
+        # everything is either finished, running, or about to be re-run,
+        # and we have a healthy buffer of spare Remotes,
+        #
+        # so exit the "get as many Remotes as possible" mode, and enter
+        # the "provision only replacements for destroyed Remotes" mode
+        if (
+            not self.to_run and
+            not self.finishing_up and
+            self.setup_queue.qsize() >= self.max_spares
+        ):
+            self.finishing_up = True
+            logger.info("switching to finishing-up mode, sending .clear() to provisioners")
+            for prov in self.provisioners:
+                prov.clear()
+
+        # release any extra Remotes being held as set-up beyond what we need
+        # for re-runs + self.max_spares
+        # (may happen due to reservation batching in a Provisioner)
+        while self.setup_queue.qsize() > len(self.to_run) + self.max_spares:
+            try:
+                treturn = self.setup_queue.get_raw(block=False)
+            except util.ThreadReturnQueue.Empty:
+                break
+            logger.info(f"releasing extraneous set-up {treturn.sinfo.remote}")
+            self.release_queue.start_thread(
+                treturn.sinfo.remote.release,
+                remote=treturn.sinfo.remote,
+            )
 
         # try to get new Remotes from Provisioners - if we get some, start
         # running setup on them
@@ -339,29 +338,28 @@ class AdHocOrchestrator(Orchestrator):
             else:
                 if treturn.exception:
                     exc_str = f"{type(treturn.exception).__name__}({treturn.exception})"
-                    logger.warning(f"'{treturn.test_name}' ingesting failed: {exc_str}")
+                    logger.error(f"'{treturn.test_name}' ingesting failed: {exc_str}")
                 else:
                     logger.debug(f"'{treturn.test_name}' ingesting completed")
 
         return True
 
     def start(self):
-        # start all provisioners
+        # start all provisioners separately - avoid .provision() on any one
+        # in case one of them fails to start
         for prov in self.provisioners:
             prov.start()
 
-        # just the base remotes, no spares
-        self.remotes_requested = min(self.max_remotes, len(self.fmf_tests.tests))
-
-        # start up initial reservations, balanced evenly across all available
-        # provisioner instances
-        count = self.remotes_requested + self.max_spares
-        provisioners = self.provisioners[:count]
-        for idx, prov in enumerate(provisioners):
-            if count % len(provisioners) > idx:
-                prov.provision((count // len(provisioners)) + 1)
-            else:
-                prov.provision(count // len(provisioners))
+        # start up initial reservations - the idea is to request as much as
+        # len(self.fmf_tests.tests) remotes (worst possible case where Remotes
+        # are not reused) from EACH provisioner, allowing any one of them
+        # to supply the Remotes - any destructive tests do .provision(1) anyway
+        #
+        # after self.to_run is exhausted, we do .clear() on all of these
+        # and let just the destructive .provision(1) logic get new Remotes
+        remotes = len(self.fmf_tests.tests)
+        for prov in self.provisioners:
+            prov.provision(remotes)
 
     def stop(self):
         # cancel all running tests and wait for them to clean up (up to 0.1sec)
@@ -371,6 +369,7 @@ class AdHocOrchestrator(Orchestrator):
 
         # wait for all running ingestions to finish, print exceptions
         # (we would rather stop provisioners further below than raise here)
+        self.ingest_queue.join()
         while True:
             try:
                 treturn = self.ingest_queue.get_raw(block=False)
@@ -379,10 +378,9 @@ class AdHocOrchestrator(Orchestrator):
             else:
                 if treturn.exception:
                     exc_str = f"{type(treturn.exception).__name__}({treturn.exception})"
-                    logger.warning(f"'{treturn.test_name}' ingesting failed: {exc_str}")
+                    logger.error(f"'{treturn.test_name}' ingesting failed: {exc_str}")
                 else:
                     logger.debug(f"'{treturn.test_name}' ingesting completed")
-        self.ingest_queue.join()
 
         # stop all provisioners, also releasing all remotes
         # - parallelize up to 10 provisioners at a time

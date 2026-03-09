@@ -4,7 +4,7 @@ import logging
 from .. import util
 from .adhoc import AdHocOrchestrator
 
-logger = logging.getLogger("atex.provisioner.contest")
+logger = logging.getLogger("atex.orchestrator.contest")
 
 
 # copy/pasted from the Contest repo, lib/virt.py

@@ -113,9 +113,6 @@ class ThreadReturnQueue:
         queue, as enqueued by a finished callable started by the
         `.start_thread()` method.
         """
-        with self.lock:
-            if block and timeout is None and not self.threads:
-                raise AssertionError("no threads are running, would block forever")
         treturn = self.queue.get(block=block, timeout=timeout)
         with self.lock:
             try:

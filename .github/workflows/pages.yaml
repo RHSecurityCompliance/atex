@@ -24,103 +24,17 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Post-process .md and __init__.py files
-        run: |
-          set -e
-
-          # move any *.md from the repo root to atex/, so it gets processed
-          # by the code below under the python module root
-          while IFS= read -r -d '' path; do
-            dest="atex/$path"
-            if [[ -e $dest ]]; then
-              echo "error: '$dest' already exists"
-              exit 1
-            fi
-            # but remove any atex/ prefix in links, since we're moving the files
-            # inside the atex/ dir
-            sed -r 's/\[(.+)\]\(atex\/(.+)\)/[\1](\2)/g' "$path" > "$dest"
-          done < <(find . -maxdepth 1 -name '*.md' -print0)
-
-          # transform any .md files to .py ones, putting their content into
-          # a raw docstring
-          while IFS= read -r -d '' path; do
-            name=${path##*/}
-            parent=${path%/*}
-            py="$parent/${name%.md}.py"
-            if [[ -e $py ]]; then
-              echo "error: '$py' already exists"
-              exit 1
-            fi
-            echo "transforming '$parent/$name' -> '$py'"
-            {
-              echo "r'''"
-              # [SOME_FOO.md](SOME_FOO.md) --> [SOME_FOO](SOME_FOO)
-              # .. and also [some foo](SOME_FOO.md) --> [some foo](SOME_FOO)
-              # .. but not [see url](https://external/SOME_FOO.md)
-              #
-              # additionally, remove backticks in headers (pdoc parser bugs)
-              sed -r \
-                -e 's/\[(.+).md\]\(([^:\]+).md\)/[\1](\2)/g ; s/\[(.+)\]\(([^:\)]+).md\)/[\1](\2)/g' \
-                -e '/^#/s/`//g' \
-                "$path"
-              echo "'''"
-            } > "$py"
-          done < <(find atex -name '*.md' -print0)
-
-          # for every __init__.py, look for README.md in the same directory
-          # and if it exists, include it as a docstring inside __init__.py
-          # if it itself doesn't have one
-          while IFS= read -r -d '' path; do
-            if grep -E -q "^r?(\"\"\"|''')" "$path"; then
-              echo "skipping '$path', has a docstring already"
-              continue
-            fi
-
-            parent=${path%/*}
-            readme="$parent/README.py"
-            [[ -e $readme ]] || continue
-
-            # post-process the README docstring, add module-name/ to all relative
-            # Markdown links (pdoc treats __init__.py as if it was in the parent)
-            module_name=${parent##*/}
-            contents=$(sed -r "s/\[(.+)\]\(([^:\]+)\)/[\1](${module_name}\/\2)/g" "$readme")
-
-            # prepend the README to __init__.py
-            echo "prepending '$readme' to '$path'"
-            {
-              printf '%s\n' "$contents"
-              cat "$path"
-            } > "$path.new"
-            mv -f "$path.new" "$path"
-          done < <(find atex -name '__init__.py' -print0)
+        run: ./.github/scripts/pdoc/post_process_repo.sh
 
       # also install '.' to get all dependencies from pip
       - name: Install pdoc
         run: python3 -m pip install pdoc==16.0.0 .
 
       - name: Prepare pdoc templates
-        run: |
-          mkdir -p pdoc_templates
-          cat > pdoc_templates/module.html.jinja2 <<'EOF'
-          {% extends "default/module.html.jinja2" %}
-
-          {% block style %}
-          {{ super() }}
-          <style>
-              /* Hide all class and module variables that do not have a docstring */
-              .variable:not(:has(.docstring)) {
-                  display: none !important;
-              }
-          </style>
-          {% endblock %}
-          EOF
+        run: ./.github/scripts/pdoc/prepare_templates.sh pdoc_templates
 
       - name: Patch pdoc
-        run: |
-          # don't add automatic hyperlinks because of bugs like
-          # `results.json` --> `resultsatex.aggregator.json.json`
-          render_helpers_py=$(python -c 'import pdoc.render_helpers; print(pdoc.render_helpers.__file__)')
-          sed '/^    def linkify_repl(/i\ \ \ \ return Markup(code)\n' \
-            -i "$render_helpers_py"
+        run: ./.github/scripts/pdoc/patch_pdoc.sh
 
       # generate HTML pages inside docs/
       - name: Generate docs

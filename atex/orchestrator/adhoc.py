@@ -1,7 +1,6 @@
 import concurrent.futures
 import logging
 import tempfile
-from pathlib import Path
 
 from .. import executor, util
 from . import Orchestrator, OrchestratorError
@@ -53,24 +52,28 @@ class AdHocOrchestrator(Orchestrator):
         pass
 
     def __init__(
-        self, platform, fmf_tests, provisioners, aggregator, tmp_dir, *,
-        max_spares=0, max_failed_setups=10, env=None,
+        self, platform, fmf_tests, provisioners, aggregator, *,
+        old_aggregator=None, max_spares=0, max_failed_setups=10, env=None,
     ):
         """
-        - `platform` is a string with platform name.
+        - `platform` is a string with platform name, an arbitrary string
+          that identifies this Orchestrator in the aggregated outputs.
 
         - `fmf_tests` is a class FMFTests instance of the tests to run.
 
-        - `provisioners` is an iterable of class Provisioner instances.
+        - `provisioners` is an iterable of class Provisioner instances to
+          source Remotes from, for test execution.
 
-        - `aggregator` is a class Aggregator instance.
+        - `aggregator` is a class Aggregator instance for ingesting final
+          test results (without old results from tests that were re-run).
 
-        - `tmp_dir` is a string/Path to a temporary directory, to be used for
-          storing per-test results and uploaded files before being ingested
-          by the aggregator. Can be safely shared by Orchestrator instances.
+        - `old_aggregator` is a class Aggregator instance for ingesting
+          "old" test results (from tests that were later re-run). If left
+          as None, these results are discarded.
 
-          TODO: rename to old_results or so, =None by default, don't offload
-          the creation of temp dirs onto the caller
+          Collecting these may be useful for debugging why tests fail randomly.
+          Note that the Aggregator needs to support ingesting duplicated
+          test names.
 
         - `max_spares` is how many set-up Remotes to hold reserved and unused,
           ready to replace a Remote destroyed by test. Values above 0 can
@@ -90,7 +93,7 @@ class AdHocOrchestrator(Orchestrator):
         self.fmf_tests = fmf_tests
         self.provisioners = tuple(provisioners)
         self.aggregator = aggregator
-        self.tmp_dir = tmp_dir
+        self.old_aggregator = old_aggregator
         self.failed_setups_left = max_failed_setups
         self.max_spares = max_spares
         self.env = env
@@ -126,10 +129,9 @@ class AdHocOrchestrator(Orchestrator):
 
         self.to_run.remove(next_test_name)
 
+        # let __del__ take care of it in case we don't
         artifacts = tempfile.TemporaryDirectory(
-            prefix=next_test_name.strip("/").replace("/","-") + "-",
-            dir=self.tmp_dir,
-            delete=False,
+            prefix="atex-" + str(util.normalize_path(next_test_name)).replace("/","-") + "-",
         )
 
         rinfo = self.RunningInfo._from(
@@ -147,11 +149,12 @@ class AdHocOrchestrator(Orchestrator):
             rinfo=rinfo,
         )
 
-        # TODO: is it necessary once we're always calling Aggregator
-        # and not re-using the tmpdir for old runs?
-        Path(artifacts.name).chmod(0o755)
-
         self.running_tests[next_test_name] = rinfo
+
+    @staticmethod
+    def _ingest_and_cleanup(ingest, args, cleanup):
+        ingest(*args)
+        cleanup()
 
     def _process_finished_test(self, finfo):
         """
@@ -160,9 +163,6 @@ class AdHocOrchestrator(Orchestrator):
         test_data = self.fmf_tests.tests[finfo.test_name]
         remote_destroyed = finfo.exception or self.destructive(finfo, test_data)
         remote_with_test = f"{finfo.remote}: '{finfo.test_name}'"
-
-        # TODO: deal with artifacts dir, don't just leave previous runs there,
-        #       possibly have another Aggregator for old results
 
         if not self.was_successful(finfo, test_data) and self.should_be_rerun(finfo, test_data):
             # re-run the test
@@ -174,19 +174,30 @@ class AdHocOrchestrator(Orchestrator):
                 logger.debug(f"{remote_with_test} was destructive, getting a new Remote")
                 finfo.provisioner.provision(1)
 
-#        elif any(Path(finfo.artifacts.name).iterdir()):
-#            logger.error(f"{remote_with_test} produced empty artifacts, skipping")
+            if self.old_aggregator:
+                # ingest the test artifacts into old_aggregator (will be rerun)
+                self.ingest_queue.start_thread(
+                    self._ingest_and_cleanup,
+                    target_args=(
+                        # ingest func itself
+                        self.old_aggregator.ingest,
+                        # args for ingest
+                        (self.platform, finfo.test_name, finfo.artifacts.name),
+                        # cleanup func itself
+                        finfo.artifacts.cleanup,
+                    ),
+                    test_name=finfo.test_name,
+                )
+            else:
+                # discard the test artifacts
+                finfo.artifacts.cleanup()
 
         else:
             logger.info(f"{remote_with_test} completed, ingesting result")
 
-            def ingest_and_cleanup(ingest, args, cleanup):
-                ingest(*args)
-                # also delete the tmpdir housing these
-                cleanup()
-
+            # ingest the artifacts into the main aggregator
             self.ingest_queue.start_thread(
-                ingest_and_cleanup,
+                self._ingest_and_cleanup,
                 target_args=(
                     # ingest func itself
                     self.aggregator.ingest,
@@ -198,8 +209,8 @@ class AdHocOrchestrator(Orchestrator):
                 test_name=finfo.test_name,
             )
 
-            # ingesting destroys artifacts
-            finfo = self.FinishedInfo._from(finfo, artifacts=None)
+        # ingested (destroyed) or removed, artifacts are invalid either way
+        finfo = self.FinishedInfo._from(finfo, artifacts=None)
 
         # if there are still tests to run and the Remote is still valid,
         # run the next test on it (possibly a rerun)

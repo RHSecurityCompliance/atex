@@ -38,7 +38,7 @@ jobs:
 
       # generate HTML pages inside docs/
       - name: Generate docs
-        run: pdoc -n -d markdown -t pdoc_templates -o docs ./atex !atex.cli
+        run: pdoc -n -d markdown -t pdoc_templates -o docs ./atex '!atex.cli'
 
       - uses: actions/upload-pages-artifact@v4
         with:

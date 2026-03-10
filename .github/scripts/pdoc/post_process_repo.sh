@@ -18,14 +18,15 @@ done < <(find . -maxdepth 1 -name '*.md' -print0)
 # transform any .md files to .py ones, putting their content into
 # a raw docstring
 while IFS= read -r -d '' path; do
-  name=${path##*/}
+  file=${path##*/}
+  name=${file%.md}
   parent=${path%/*}
-  py="$parent/${name%.md}.py"
+  py="$parent/$name.py"
   if [[ -e $py ]]; then
     echo "error: '$py' already exists"
     exit 1
   fi
-  echo "transforming '$parent/$name' -> '$py'"
+  echo "transforming '$parent/$file' -> '$py'"
   {
     echo "r'''"
     # [SOME_FOO.md](SOME_FOO.md) --> [SOME_FOO](SOME_FOO)
@@ -39,6 +40,21 @@ while IFS= read -r -d '' path; do
       "$path"
     echo "'''"
   } > "$py"
+
+  # include the new .py inside __init__.py if it exists in the same
+  # directory
+  init_py="$parent/__init__.py"
+  if [[ -f "$init_py" ]]; then
+    echo "including '$name' in '$init_py'"
+    printf '\nfrom . import %s  # only for pdoc, not in ATEX\n' "$name" \
+      >> "$init_py"
+    # if it has __all__, include it in there
+    # (don't use += in case it's a non-mutable sequence)
+    if grep -q '^__all__' "$init_py"; then
+      printf '__all__ = (*__all__, "%s")\n' "$name" \
+        >> "$init_py"
+    fi
+  fi
 done < <(find atex -name '*.md' -print0)
 
 # for every __init__.py, look for README.md in the same directory

@@ -7,7 +7,7 @@ import threading
 from pathlib import Path
 
 from ... import util
-from .. import Aggregator
+from .. import Aggregator, AggregatorError
 
 
 def _verbatim_move(src, dst):
@@ -17,17 +17,23 @@ def _verbatim_move(src, dst):
 
 
 class JSONAggregator(Aggregator):
-    def __init__(self, target, files):
+    def __init__(self, target, files, *, allow_duplicate=False):
         """
         - `target` is a string/Path to a `.json` file for all ingested
           results to be aggregated (written) to.
 
         - `files` is a string/Path of the top-level parent for all per-platform
           / per-test files uploaded by tests.
+
+        - `allow_duplicate` permits any one test name to be ingested more than
+          once, appending ` (1)` to the second test name entry, ` (2)` to the
+          third, etc.
         """
         self.lock = threading.RLock()
         self.target = Path(target)
         self.files = Path(files)
+        self.allow_duplicate = allow_duplicate
+        self.seen_tests = {}
         self.target_fobj = None
 
     def start(self):
@@ -87,6 +93,14 @@ class JSONAggregator(Aggregator):
             yield json.dumps(output_line, indent=None)
 
     def ingest(self, platform, test_name, artifacts):
+        if test_name in self.seen_tests:
+            if not self.allow_duplicate:
+                raise AggregatorError(f"'{test_name}' was already ingested once")
+            test_name = f"{test_name} ({self.seen_tests[test_name]})"
+            self.seen_tests[test_name] += 1
+        else:
+            self.seen_tests[test_name] = 1
+
         artifacts = Path(artifacts)
         # TODO: define these as TestArtifacts namedtuple in Executor?
         artifacts_results = artifacts / "results"
@@ -187,15 +201,13 @@ class GzipJSONAggregator(CompressedJSONAggregator):
         return gzip.open(*args, compresslevel=self.level, **kwargs)
 
     def __init__(
-        self, target, files, *, compress_level=9,
+        self, *args,
+        compress_level=9,
         compress_files=True, compress_files_suffix=".gz", compress_files_exclude=None,
+        **kwargs,
     ):
         """
-        - `target` is a string/Path to a `.json.gz` file for all ingested
-          results to be aggregated (written) to.
-
-        - `files` is a string/Path of the top-level parent for all per-platform
-          / per-test files uploaded by tests.
+        - `args` and `kwargs` are passed to JSONAggregator().
 
         - `compress_level` specifies how much effort should be spent compressing,
           (1 = fast, 9 = slow).
@@ -212,7 +224,7 @@ class GzipJSONAggregator(CompressedJSONAggregator):
         - `compress_files_exclude` is a tuple/list of strings (input `files`
           names) to skip when compressing. Their names also won't be modified.
         """
-        super().__init__(target, files)
+        super().__init__(*args, **kwargs)
         self.level = compress_level
         self.compress_files = compress_files
         self.suffix = compress_files_suffix
@@ -229,15 +241,13 @@ class LZMAJSONAggregator(CompressedJSONAggregator):
         return lzma.open(*args, preset=self.preset, **kwargs)
 
     def __init__(
-        self, target, files, *, compress_preset=9,
-        compress_files=True, compress_files_suffix=".xz", compress_files_exclude=None,
+        self, *args,
+        compress_preset=9, compress_files=True, compress_files_suffix=".xz",
+        compress_files_exclude=None,
+        **kwargs,
     ):
         """
-        - `target` is a string/Path to a `.json.xz` file for all ingested
-          results to be aggregated (written) to.
-
-        - `files` is a string/Path of the top-level parent for all per-platform
-          / per-test files uploaded by tests.
+        - `args` and `kwargs` are passed to JSONAggregator().
 
         - `compress_preset` specifies how much effort should be spent
           compressing (1 = fast, 9 = slow). Optionally ORed with
@@ -255,7 +265,7 @@ class LZMAJSONAggregator(CompressedJSONAggregator):
         - `compress_files_exclude` is a tuple/list of strings (input `files`
           names) to skip when compressing. Their names also won't be modified.
         """
-        super().__init__(target, files)
+        super().__init__(*args, **kwargs)
         self.preset = compress_preset
         self.compress_files = compress_files
         self.suffix = compress_files_suffix

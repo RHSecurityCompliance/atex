@@ -37,16 +37,14 @@ class Executor:
 
 
 class ExecutorError(Exception):
-    """
-    Raised by an Executor.
-    """
+    pass
 
 
 _submodules = tuple(
     info.name for info in _pkgutil.iter_modules(__spec__.submodule_search_locations)
 )
 
-__all__ = (Executor.__name__, ExecutorError.__name__, *_submodules)  # noqa: PLE0604
+__all__ = (Executor.__name__, *_submodules)  # noqa: PLE0604
 
 
 def __dir__():

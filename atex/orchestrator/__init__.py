@@ -4,10 +4,6 @@ import pkgutil as _pkgutil
 import time as _time
 
 
-class OrchestratorError(Exception):
-    pass
-
-
 class Orchestrator:
     @_abc.abstractmethod
     def serve_once(self):
@@ -50,6 +46,10 @@ class Orchestrator:
 
     def __exit__(self, exc_type, exc_value, traceback):
         self.stop()
+
+
+class OrchestratorError(Exception):
+    pass
 
 
 _submodules = tuple(

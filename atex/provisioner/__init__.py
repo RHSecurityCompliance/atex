@@ -66,6 +66,10 @@ class Provisioner:
         self.stop()
 
 
+class ProvisionerError(Exception):
+    pass
+
+
 _submodules = tuple(
     info.name for info in _pkgutil.iter_modules(__spec__.submodule_search_locations)
 )

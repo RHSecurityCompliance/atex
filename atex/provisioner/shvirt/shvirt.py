@@ -10,7 +10,7 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 
 from ... import connection
-from .. import Provisioner, Remote
+from .. import Provisioner, ProvisionerError, Remote
 
 logger = logging.getLogger("atex.provisioner.shvirt")
 
@@ -240,7 +240,7 @@ class SharedVirtProvisioner(Provisioner):
             self.helper.stdin.flush()
             response = self.helper.stdout.readline()
             if not response:
-                raise ConnectionError("empty response from helper")
+                raise ProvisionerError("empty response from helper")
             return json.loads(response)
 
     def _reserve_wrapper(self):
@@ -259,7 +259,7 @@ class SharedVirtProvisioner(Provisioner):
     def _reserve(self):
         while self.to_reserve > 0:
             if (exit_code := self.helper.poll()) is not None:
-                raise RuntimeError(f"helper not running, exited with {exit_code}")
+                raise ProvisionerError(f"helper not running, exited with {exit_code}")
 
             reserve_cmd = {"cmd": "reserve"}
             if self.domain_filter:
@@ -275,7 +275,7 @@ class SharedVirtProvisioner(Provisioner):
                         return
                     continue
                 else:
-                    raise RuntimeError(f"failed reserve: {reply}")
+                    raise ProvisionerError(f"failed reserve: {reply}")
 
             domain = response["domain"]
             logger.debug(f"reserved domain {domain}")
@@ -298,7 +298,7 @@ class SharedVirtProvisioner(Provisioner):
             })
             if not response["success"]:
                 reply = response["reply"]
-                raise RuntimeError(f"failed vol-copy: {reply}")
+                raise ProvisionerError(f"failed vol-copy: {reply}")
 
             logger.debug(f"vol-copied {self.image} to {domain}")
 
@@ -312,7 +312,7 @@ class SharedVirtProvisioner(Provisioner):
             })
             output = response["reply"]
             if not response["success"]:
-                raise RuntimeError(f"'virsh dumpxml {domain}' failed: {output}")
+                raise ProvisionerError(f"'virsh dumpxml {domain}' failed: {output}")
 
             first_range, _, _ = output.partition("\n")  # first <range> only
             logger.debug(f"found portForward range {first_range}")
@@ -324,7 +324,7 @@ class SharedVirtProvisioner(Provisioner):
             response = self._helper_query({"cmd": "virsh", "args": ["start", domain]})
             output = response["reply"]
             if not response["success"]:
-                raise RuntimeError(f"'virsh start {domain}' failed: {output}")
+                raise ProvisionerError(f"'virsh start {domain}' failed: {output}")
             logger.debug(f"started up {domain}")
 
             # create a remote and connect it
@@ -400,7 +400,7 @@ class SharedVirtProvisioner(Provisioner):
         with self.lock:
             # launch the helper on the remote host
             if self.helper:
-                raise RuntimeError("helper already launched")
+                raise ProvisionerError("helper already launched")
             self.helper = self.host.cmd(
                 self.helper_command,
                 func=subprocess.Popen,
@@ -415,12 +415,12 @@ class SharedVirtProvisioner(Provisioner):
                 response.get("cmd") != "ping"
                 or response.get("reply") != "atex-virt-helper v1 pong"
             ):
-                raise RuntimeError(f"bad pong from remote helper (wrong version?): {response}")
+                raise ProvisionerError(f"bad pong from remote helper (wrong version?): {response}")
 
             if self.reserve_name:
                 response = self._helper_query({"cmd": "setname", "name": self.reserve_name})
                 if not response["success"]:
-                    raise RuntimeError(f"failed to 'setname': {response}")
+                    raise ProvisionerError(f"failed to 'setname': {response}")
 
             # re-zero the event counter, in case we're re-starting
             # and it was set to math.inf previously
@@ -464,7 +464,7 @@ class SharedVirtProvisioner(Provisioner):
         if exc := self.reserving_exc:
             raise exc from None
         if not self.started:
-            raise RuntimeError("the provisioner is stopped")
+            raise ProvisionerError("the provisioner is stopped")
 
     def provision(self, count=1):
         self._sanity_check()

@@ -14,6 +14,7 @@ from pathlib import Path
 import urllib3
 
 from ... import util
+from .. import ProvisionerError
 
 logger = logging.getLogger("atex.provisioner.testingfarm")
 
@@ -50,7 +51,7 @@ _http = urllib3.PoolManager(
 )
 
 
-class TestingFarmError(Exception):
+class TestingFarmError(ProvisionerError):
     def __init__(self, message, reply=None):
         super().__init__(message)
         self.reply = reply

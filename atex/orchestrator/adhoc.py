@@ -14,10 +14,6 @@ class FailedSetupError(OrchestratorError):
 
 
 class AdHocOrchestrator(Orchestrator):
-    """
-    TODO: document function specific to this reference, ie. run_setup(), etc.
-    """
-
     class SetupInfo(
         util.NamedMapping,
         required=(

@@ -8,16 +8,12 @@ that control the execution and result processing of your tests.
 
 Its main building blocks are:
 
-TODO fix links when built with pdoc:
-
 - [**Provisioners**](atex/provisioner) that give you systems to run tests on
 - [**Executors**](atex/executor) that prepare and run the tests on them
 - [**Aggregators**](atex/aggregator) that collect results from multiple tests
 - [**Orchestrators**](atex/orchestrator) that string everything up together,
   using Provisioners to get systems for Executors to run tests on, calling
   an Aggregator to ingest all test results
-
-... TODO image ...
 
 ATEX is **not a linear pipeline** like `Provision -> Execute -> Report`,
 the building blocks can be used **independently** and **at any time**.

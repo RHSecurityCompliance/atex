@@ -1,6 +1,6 @@
 import atexit
 import getpass
-import importlib
+import importlib.resources
 import json
 import logging
 import re

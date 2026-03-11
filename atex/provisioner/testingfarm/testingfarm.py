@@ -204,6 +204,7 @@ class TestingFarmProvisioner(Provisioner):
 
     def get_remote(self, block=True):
         while True:
+            self._schedule_new_reservations()
             # otherwise wait on a queue of Remotes being provisioned
             try:
                 return self.queue.get(block=block)  # thread-safe
@@ -220,7 +221,6 @@ class TestingFarmProvisioner(Provisioner):
                         )
                         self.retries -= 1
                         self.to_reserve += 1
-                        self._schedule_new_reservations()
                         if block:
                             continue
                         else:

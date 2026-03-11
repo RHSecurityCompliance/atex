@@ -88,13 +88,10 @@ class _SettableCounter:
 
 
 class PodmanProvisioner(Provisioner):
-    def __init__(self, image, *, max_remotes=10, run_options=None, run_command=("sleep", "inf")):
+    def __init__(self, image, *, run_options=None, run_command=("sleep", "inf")):
         """
         - `image` is a string of image tag/ID to create containers from.
           It can be a local identifier or an URL.
-
-        - `max_remotes` is the maximum number of containers to keep running
-          at any one time.
 
         - `run_options` is an iterable with additional CLI options passed
           to `podman container run`.
@@ -104,7 +101,6 @@ class PodmanProvisioner(Provisioner):
         """
         self.lock = threading.RLock()
         self.image = image
-        self.max_remotes = max_remotes
         self.run_options = run_options or ()
         self.run_command = run_command
 

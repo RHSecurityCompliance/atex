@@ -33,12 +33,16 @@ An Aggregator can be started/stopped using a context manager, or manually via
 
 ```python
 a = Aggregator()
-a.start()
 
-a.ingest(...)
-a.ingest(...)
+try:
+    a.start()
 
-a.stop()
+    a.ingest(...)
+    a.ingest(...)
+    ...
+
+finally:
+    a.stop()
 ```
 
 ## Semantics

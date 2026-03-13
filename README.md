@@ -45,7 +45,8 @@ You don't need to write a "plugin for ATEX", you just write Python code.
 
 ## How it works
 
-Each building block defines one or more abstract base classes:
+Each building block defines one or more abstract base classes, forming a sort-of
+stable reference API for everyone to use:
 
 ```python
 class Brewer:
@@ -57,8 +58,10 @@ class Brewer:
 ```
 
 Note that **only the function names and their positional arguments are part
-of the API**. That means `__init__()`, any other functions and keyword arguments
-(with default values) to the standard functions are left to the implementation.
+of the API**. Any other functions and or keyword arguments to the API functions
+are left to the implementation.  
+Similarly, return values are part of the API only where explicitly stated, and
+up to the implementation otherwise.
 
 ```python
 class CoffeeBrewer(Brewer):
@@ -84,6 +87,15 @@ and `.brew()` available, no matter the implementation.
 b = CoffeeBrewer("espresso", 1000)
 serve_to_employees(brewer=b)
 ```
+
+### `__init__` is not special
+
+Note that `__init__` is subject to the statements above too:
+
+- If the base API class defines it, an implementation can only extend it
+  via keyword arguments.
+- If it doesn't (as above), `__init__` of the implementation class can have
+  any arguments possible.
 
 ---
 

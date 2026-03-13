@@ -38,19 +38,12 @@ or manually via `.connect()` and `.disconnect()`:
 ```python
 c = Connection()
 
-c.connect()
-proc = c.cmd(["ls", "/"])
-c.disconnect()
-```
-
-Or via `try`/`finally` to guard against exceptions:
-
-```python
-c = Connection()
-
 try:
     c.connect()
+
+    proc = c.cmd(["ls", "/"])
     ...
+
 finally:
     c.disconnect()
 ```

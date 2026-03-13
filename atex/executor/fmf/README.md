@@ -1,5 +1,29 @@
 # FMFExecutor
 
+
+
+
+TODO
+
+
+```python
+tests_repo = "cloned_tests"
+tests = [
+    "fs_racer.sh",
+    "fs_racer_dir_create.sh",
+    "fs_racer_file_create.sh",
+]
+
+with ManagedSSHConnection({"Hostname": ..., ...}) as conn:
+    with SomeSpecificExecutor(conn, upload=tests_repo) as e:
+        for test in tests:
+            with tempfile.TemporaryDirectory() as tmp:
+                e.run_test(test, tmp.name)
+                # process test results from 'tmp.name' here
+```
+
+
+
 This is a minimalistic re-implementation of some of the features of
 [tmt](https://github.com/teemtee/tmt), without re-inventing the test metadata
 ([fmf](https://github.com/teemtee/fmf/) parsing part, which we simply import

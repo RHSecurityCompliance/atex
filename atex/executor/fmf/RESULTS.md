@@ -1,4 +1,4 @@
-# Custom results reporting
+# Results reporting
 
 Note that this format is designed to be used via a special "test control"
 file descriptor, as specified by [TEST_CONTROL.md](TEST_CONTROL.md).
@@ -6,62 +6,40 @@ file descriptor, as specified by [TEST_CONTROL.md](TEST_CONTROL.md).
 Specifically, this format is meant to be used as an argument to the `result`
 _control word_.
 
-## Basic format
-
-Each test can report between 0 and many "results", specified as a dictionary
-(a.k.a. JSON Object):
-
-- `name` (as string)
-- `status` (as string): `pass`, `fail`, `info`, `warn`, `skip`, `error`
-- `files` (as array/list)
-- `partial` (as boolean)
-- `testout` (as string)
-
-(This is somewhat similar to tmt's internal YAML results.)  
-This structure is called a "result".
-
-Ie.
-```
-{"status": "pass"}
-
-{"status": "pass", "name": "my-first-result"}
-
-{"status": "skip", "name": "some/nested/result"}
-```
-
-### JSON format details
-
-For the sake of understandability, this document puts one result on one line,
-leading to potentially long line examples, but clearly separating results
-from each other.  
-Note, however, that this is an artificial limitation - a result is any valid
-JSON object, even a multi-line one.
-
-Given the [TEST_CONTROL.md](TEST_CONTROL.md) syntax, this JSON object is sent
-as binary data following a `result <bytes>\n` _control line_, and the JSON
-object must be exactly `<bytes>` long.
-
 Note that only one result may be sent using one `result` _control word_,
 eg. no top-level arrays/lists or multiple `{...}` objects allowed.
 
-## Name
+## Basic format
 
-Any `name` specified in a result is appended to the test name automatically.
+This protocol is **heavily** based on [Test Artifacts](../README.md),
+specifically the `results` file line-JSON format.
 
-Ie.
+- `status`, `name`, `note` are exactly the same
+- `files` here contains nested dics/objects specifying file name + size (length)
+  instead of strings as file names
+- `partial` and `testout` keys are added extra (see below)
+
+### JSON format details
+
+Any examples here presume running FMF tests, so test names are adjusted from the
+generic ones in [Test Artifacts](../README.md).
+
+## Status, Name and Note
+
+These works the same as in [Test Artifacts](../README.md), so that
+
+```json
+{"status": "fail", "name": "my-first-result"}
+{"status": "error", "name": "second-result", "note": "service start failed"}
+{"status": "error"}
 ```
-{"status": "pass", "name": "my-first-result"}
-```
-becomes `/path/to/test/my-first-result`.
 
-A `name`-less result is meant for the test itself (no "sub" result).
+for a test named `/real/test` could be rendered as ie.
 
-A test can therefore report multiple results under its namespace before,
-ultimately, reporting its own result:
 ```
-{"status": "pass", "name": "my-first-result"}
-{"status": "fail", "name": "my-second-result"}
-{"status": "fail"}
+FAIL    /real/test/my-first-result
+ERROR   /real/test/second-result    (service start failed)
+ERROR   /real/test
 ```
 
 ### Fallback result
@@ -238,15 +216,3 @@ of them. (Probably not super useful, though.)
     for temporary files.
   - OTOH this can be used as a feature with a test uploading logs gradually,
     with an unfinished/`error` status, only switching to `pass` at the very end.
-
-### Custom result keys
-
-Any JSON keys other than those specified in [Basic format](#basic-format) are
-ignored - your test can freely add custom keys to the results, ie.
-
-- `note` for adding extra details about a result (like tmt has)
-- `rerun` if a test tries to run its logic several times before `pass`-ing
-- `group` for result grouping by a tag/name, in a 3rd party software
-
-Note however that it's a good idea to prefix keys with something unique to you,
-to prevent conflicts with future changes to this spec.

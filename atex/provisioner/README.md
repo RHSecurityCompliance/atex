@@ -37,14 +37,17 @@ A Provisioner can be started/stopped using a context manager, or manually via
 
 ```python
 p = Provisioner()
-p.start()
 
-p.provision(count=1)
-remote = p.get_remote()
-remote.cmd(["ls", "/"])
-remote.release()
+try:
+    p.start()
 
-p.stop()
+    p.provision(count=1)
+    remote = p.get_remote()
+    remote.cmd(["ls", "/"])
+    remote.release()
+
+finally:
+    p.stop()
 ```
 
 ## Remote

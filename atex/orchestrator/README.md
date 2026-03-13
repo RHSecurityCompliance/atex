@@ -34,9 +34,8 @@ An Orchestrator can be started/stopped using a context manager, or manually via
 
 ```python
 o = Orchestrator()
-o.start()
-
 try:
+    o.start()
     o.serve_forever()
 finally:
     o.stop()

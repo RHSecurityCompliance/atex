@@ -102,6 +102,9 @@ class FMFTests:
                 raise ValueError(f"plan {plan_name} not found in {tree.root}")
             if "test" in plan.data:
                 raise ValueError(f"plan {plan_name} appears to be a test")
+            if plan.children:
+                children = ", ".join(plan.children)
+                raise ValueError(f"'{plan_name}' matches multiple plans: {children}")
         # fall back to a dummy plan
         else:
             class plan:  # noqa: N801

@@ -1,6 +1,6 @@
 import pytest
 
-from atex.fmf import FMFTests
+from atex.executor.fmf import FMFTests
 
 fmf_tests = None
 
@@ -8,7 +8,7 @@ fmf_tests = None
 @pytest.fixture(scope="module", autouse=True)
 def setup_parse_global_tests():
     global fmf_tests
-    fmf_tests = FMFTests("fmf_tree")
+    fmf_tests = FMFTests("fmf_trees/metadata")
 
 
 def test_simple():
@@ -56,7 +56,7 @@ def test_inherit():
 
 
 def test_listlike():
-    fmf_tests = FMFTests("fmf_tree", "/plans/listlike")
+    fmf_tests = FMFTests("fmf_trees/metadata", "/plans/listlike")
     assert "foo bar" in fmf_tests.prepare_scripts
     data = fmf_tests.tests["/listlike"]
     assert "require" in data
@@ -64,7 +64,7 @@ def test_listlike():
 
 
 def test_filter_plan():
-    fmf_tests = FMFTests("fmf_tree", "/plans/filtered")
+    fmf_tests = FMFTests("fmf_trees/metadata", "/plans/filtered")
     assert "/filters/filter1" not in fmf_tests.tests
     assert "/filters/filter2" not in fmf_tests.tests
     assert "/filters/filter3" not in fmf_tests.tests
@@ -75,7 +75,7 @@ def test_filter_plan():
 
 def test_filter_args():
     fmf_tests = FMFTests(
-        "fmf_tree",
+        "fmf_trees/metadata",
         filters=("tag:-tagged",),
         names=("/filters/filter3", "/filters/filter4"),
         excludes=("/filters/filter3",),
@@ -92,7 +92,7 @@ def test_filter_args():
 def test_filter_priority():
     # args override plan
     fmf_tests = FMFTests(
-        "fmf_tree",
+        "fmf_trees/metadata",
         "/plans/filtered",
         names=("/filter1", "/filter2"),
     )
@@ -107,7 +107,7 @@ def test_filter_priority():
 
 def test_adjust():
     fmf_tests = FMFTests(
-        "fmf_tree",
+        "fmf_trees/metadata",
         context={"distro": "fedora-2", "arch": "x86_64"},
     )
     no_foobar = fmf_tests.tests["/adjusted/no_foobar"]
@@ -123,7 +123,7 @@ def test_adjust():
 
 
 def test_environment():
-    fmf_tests = FMFTests("fmf_tree", "/plans/with_env")
+    fmf_tests = FMFTests("fmf_trees/metadata", "/plans/with_env")
     # no test: defined in the parent
     assert "/environment" in fmf_tests.tests
     data = fmf_tests.tests["/environment"]
@@ -137,7 +137,7 @@ def test_environment():
 
 
 def test_plan_scripts():
-    fmf_tests = FMFTests("fmf_tree", "/plans/scripts")
+    fmf_tests = FMFTests("fmf_trees/metadata", "/plans/scripts")
     assert fmf_tests.prepare_pkgs == ["pkg1", "pkg2", "pkg3"]
     assert fmf_tests.prepare_scripts == ["foo bar", "baz"]
     assert fmf_tests.finish_scripts == ["finish bar"]
@@ -146,6 +146,6 @@ def test_plan_scripts():
 def test_existing_tree():
     # external fmf module
     import fmf  # noqa: PLC0415
-    tree = fmf.Tree("fmf_tree")
+    tree = fmf.Tree("fmf_trees/metadata")
     fmf_tests = FMFTests(tree)
     assert "/simple" in fmf_tests.tests

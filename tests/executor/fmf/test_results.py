@@ -3,19 +3,18 @@ import os
 import sys
 from pathlib import Path
 
-from atex.executor.fmf import FMFExecutor
+from atex.executor.fmf import FMFExecutor, FMFTests
 from atex.executor.fmf.testcontrol import BadControlError, BadReportJSONError
-from atex.fmf import FMFTests
 
 
 def run_fmf_test(provisioner, tmp_dir, *, read_results=True):
     test = sys._getframe(1).f_code.co_name  # same as parent func name
-    fmf_tests = FMFTests("fmf_tree", plan_name="/results/plan")
+    fmf_tests = FMFTests("fmf_trees/results", plan_name="/plan")
     provisioner.provision(1)
     remote = provisioner.get_remote()
     with FMFExecutor(fmf_tests, remote) as e:
         e.upload_tests()
-        e.run_test(f"/results/{test}", tmp_dir)
+        e.run_test(f"/{test}", tmp_dir)
     if read_results:
         results = (tmp_dir / "results").read_text()
         print(f"=== RESULTS ===\n{results}\n===============")
@@ -123,7 +122,7 @@ def test_files(provisioner, tmp_dir):
 
 def test_files_upload(provisioner, tmp_dir):
     """Round-trip of a binary file via test transfer + result upload."""
-    rand_file_bytes = Path("fmf_tree/results/randfile").read_bytes()
+    rand_file_bytes = Path("fmf_trees/results/randfile").read_bytes()
     results = run_fmf_test(provisioner, tmp_dir)
     assert results.count("\n") == 1
     assert json.loads(results) == {

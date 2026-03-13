@@ -1,0 +1,14 @@
+/plan:
+  execute:
+    how: tmt
+  environment:
+    VAR_FROM_PLAN: foo bar
+  prepare:
+    how: shell
+    script: env > /tmp/plan_env
+
+/test_env:
+  test: env
+
+/test_write_env:
+  test: echo 'VAR_FROM_TEST="foo bar"' >> "$TMT_PLAN_ENVIRONMENT_FILE"

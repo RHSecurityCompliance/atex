@@ -1,7 +1,7 @@
 import pprint
 import sys
 
-from .. import fmf
+from ..executor.fmf import FMFTests, all_pkg_requires
 
 
 def _fatal(msg):
@@ -19,7 +19,7 @@ def _get_context(args):
 
 
 def make_fmftests(args):
-    return fmf.FMFTests(
+    return FMFTests(
         args.root,
         args.plan,
         names=args.test or None,
@@ -33,8 +33,8 @@ def make_fmftests(args):
 def requires(args):
     result = make_fmftests(args)
     all_pkgs = set()
-    all_pkgs.update(fmf.all_pkg_requires(result, key="require"))
-    all_pkgs.update(fmf.all_pkg_requires(result, key="recommend"))
+    all_pkgs.update(all_pkg_requires(result, key="require"))
+    all_pkgs.update(all_pkg_requires(result, key="recommend"))
     for pkg in sorted(all_pkgs):
         print(pkg)
 

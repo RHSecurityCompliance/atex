@@ -4,7 +4,8 @@ from pathlib import Path
 
 import yaml
 
-from ... import fmf, util
+from ... import util
+from .metadata import test_pkg_requires
 
 # name: fmf path to the test as string, ie. /some/test
 # data: dict of the parsed fmf metadata (ie. {'tag': ... , 'environment': ...})
@@ -122,13 +123,13 @@ def test_setup(*, test, wrapper_exec, test_exec, test_yaml, **kwargs):
 
     # install test dependencies
     # - only strings (package names) in require/recommend are supported
-    if require := list(fmf.test_pkg_requires(test.data, "require")):
+    if require := list(test_pkg_requires(test.data, "require")):
         pkgs_str = " ".join(require)
         out += util.dedent(fr"""
             not_installed=$(rpm -q --qf '' {pkgs_str} | sed -nr 's/^package ([^ ]+) is not installed$/\1/p')
             [[ $not_installed ]] && dnf -y --setopt=install_weak_deps=False install $not_installed
         """) + "\n"  # noqa: E501
-    if recommend := list(fmf.test_pkg_requires(test.data, "recommend")):
+    if recommend := list(test_pkg_requires(test.data, "recommend")):
         pkgs_str = " ".join(recommend)
         out += util.dedent(fr"""
             have_dnf5=$(command -v dnf5) || true

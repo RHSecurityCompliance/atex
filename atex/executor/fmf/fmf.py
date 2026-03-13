@@ -7,9 +7,10 @@ import threading
 import time
 from pathlib import Path
 
-from ... import fmf, util
+from ... import util
 from .. import Executor, ExecutorError
 from . import scripts
+from .metadata import listlike
 from .duration import Duration
 from .reporter import Reporter
 from .testcontrol import BadReportJSONError, TestControl
@@ -33,7 +34,7 @@ class FMFExecutor(Executor):
     and uploaded files by those tests.
 
         tests_repo = "path/to/cloned/tests"
-        fmf_tests = atex.fmf.FMFTests(tests_repo, "/plans/default")
+        fmf_tests = atex.executor.fmf.FMFTests(tests_repo, "/plans/default")
 
         with Executor(fmf_tests, conn) as e:
             e.upload_tests()
@@ -242,7 +243,7 @@ class FMFExecutor(Executor):
             "TMT_TEST_METADATA": f"{self.work_dir}/metadata.yaml",
         }
         # append fmf-test-defined environment into it
-        for item in fmf.listlike(test_data, "environment"):
+        for item in listlike(test_data, "environment"):
             env_vars.update(item)
         # append the Executor-wide environment passed to __init__()
         env_vars.update(self.env)

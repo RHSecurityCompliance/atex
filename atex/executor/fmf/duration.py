@@ -1,6 +1,6 @@
 import time
 
-from ... import fmf
+from .metadata import duration_to_seconds
 
 
 class Duration:
@@ -13,7 +13,7 @@ class Duration:
         """
         - `fmf_duration` is the string specified as 'duration' in FMF metadata.
         """
-        duration = fmf.duration_to_seconds(fmf_duration)
+        duration = duration_to_seconds(fmf_duration)
         self.end = time.monotonic() + duration
         # keep track of only the first 'save' and the last 'restore',
         # ignore any nested ones (as tracked by '_count')
@@ -21,13 +21,13 @@ class Duration:
         self.saved_count = 0
 
     def set(self, to):
-        self.end = time.monotonic() + fmf.duration_to_seconds(to)
+        self.end = time.monotonic() + duration_to_seconds(to)
 
     def increment(self, by):
-        self.end += fmf.duration_to_seconds(by)
+        self.end += duration_to_seconds(by)
 
     def decrement(self, by):
-        self.end -= fmf.duration_to_seconds(by)
+        self.end -= duration_to_seconds(by)
 
     def save(self):
         if self.saved_count == 0:

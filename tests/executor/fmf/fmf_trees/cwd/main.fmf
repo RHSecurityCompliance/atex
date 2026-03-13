@@ -1,0 +1,9 @@
+/plan:
+  execute:
+    how: tmt
+  prepare:
+    how: shell
+    script: cat file_in_fmfdir > /tmp/file_contents
+
+/test_cwd:
+  test: cat file_in_fmfdir

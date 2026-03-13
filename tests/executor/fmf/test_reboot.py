@@ -1,8 +1,7 @@
 import json
 import time
 
-from atex.executor.fmf import FMFExecutor, TestAbortedError
-from atex.fmf import FMFTests
+from atex.executor.fmf import FMFExecutor, FMFTests, TestAbortedError
 
 
 def wait_for_systemd(remote):
@@ -22,13 +21,13 @@ def wait_for_systemd(remote):
 
 
 def test_reboot(provisioner_systemd, tmp_dir):
-    fmf_tests = FMFTests("fmf_tree", plan_name="/reboot/plan")
+    fmf_tests = FMFTests("fmf_trees/reboot", plan_name="/plan")
     provisioner_systemd.provision(1)
     remote = provisioner_systemd.get_remote()
     wait_for_systemd(remote)
     with FMFExecutor(fmf_tests, remote) as e:
         e.upload_tests()
-        e.run_test("/reboot/test_reboot", tmp_dir)
+        e.run_test("/test_reboot", tmp_dir)
     results = (tmp_dir / "results").read_text()
     assert json.loads(results).get("status") == "pass"
     output = (tmp_dir / "files" / "output.txt").read_text()
@@ -36,13 +35,13 @@ def test_reboot(provisioner_systemd, tmp_dir):
 
 
 def test_reboot_count(provisioner_systemd, tmp_dir):
-    fmf_tests = FMFTests("fmf_tree", plan_name="/reboot/plan")
+    fmf_tests = FMFTests("fmf_trees/reboot", plan_name="/plan")
     provisioner_systemd.provision(1)
     remote = provisioner_systemd.get_remote()
     wait_for_systemd(remote)
     with FMFExecutor(fmf_tests, remote) as e:
         e.upload_tests()
-        e.run_test("/reboot/test_reboot_count", tmp_dir)
+        e.run_test("/test_reboot_count", tmp_dir)
     results = (tmp_dir / "results").read_text()
     assert json.loads(results).get("status") == "pass"
     output = (tmp_dir / "files" / "output.txt").read_text()
@@ -50,14 +49,14 @@ def test_reboot_count(provisioner_systemd, tmp_dir):
 
 
 def test_reboot_unexpected(provisioner_systemd, tmp_dir):
-    fmf_tests = FMFTests("fmf_tree", plan_name="/reboot/plan")
+    fmf_tests = FMFTests("fmf_trees/reboot", plan_name="/plan")
     provisioner_systemd.provision(1)
     remote = provisioner_systemd.get_remote()
     wait_for_systemd(remote)
     with FMFExecutor(fmf_tests, remote) as e:
         e.upload_tests()
         try:
-            e.run_test("/reboot/test_reboot_unexpected", tmp_dir)
+            e.run_test("/test_reboot_unexpected", tmp_dir)
             raise AssertionError("TestAbortedError should have triggered")
         except TestAbortedError as e:
             if "disconnect was not sent via test control" not in str(e):

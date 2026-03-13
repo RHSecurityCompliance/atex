@@ -1,29 +1,28 @@
 import json
 
-from atex.executor.fmf import FMFExecutor, TestSetupError
-from atex.fmf import FMFTests
+from atex.executor.fmf import FMFExecutor, FMFTests, TestSetupError
 
 
 def test_prepare(provisioner, tmp_dir):
-    fmf_tests = FMFTests("fmf_tree", plan_name="/pkgs/plan")
+    fmf_tests = FMFTests("fmf_trees/pkgs", plan_name="/plan")
     provisioner.provision(1)
     remote = provisioner.get_remote()
     with FMFExecutor(fmf_tests, remote) as e:
         e.upload_tests()
         e.plan_prepare()
-        e.run_test("/pkgs/test_prepare", tmp_dir)
+        e.run_test("/test_prepare", tmp_dir)
     output = (tmp_dir / "files" / "output.txt").read_text()
     assert output.startswith("bsd-games-")
 
 
 def test_require(provisioner, tmp_dir):
-    fmf_tests = FMFTests("fmf_tree", plan_name="/pkgs/plan")
+    fmf_tests = FMFTests("fmf_trees/pkgs", plan_name="/plan")
     provisioner.provision(1)
     remote = provisioner.get_remote()
     with FMFExecutor(fmf_tests, remote) as e:
         e.upload_tests()
         e.plan_prepare()
-        e.run_test("/pkgs/test_require", tmp_dir)
+        e.run_test("/test_require", tmp_dir)
     output = (tmp_dir / "files" / "output.txt").read_text()
     assert output.startswith("rogue-")
     results = (tmp_dir / "results").read_text()
@@ -34,14 +33,14 @@ def test_require(provisioner, tmp_dir):
 
 
 def test_require_fail(provisioner, tmp_dir):
-    fmf_tests = FMFTests("fmf_tree", plan_name="/pkgs/plan")
+    fmf_tests = FMFTests("fmf_trees/pkgs", plan_name="/plan")
     provisioner.provision(1)
     remote = provisioner.get_remote()
     with FMFExecutor(fmf_tests, remote) as e:
         e.upload_tests()
         try:
             e.plan_prepare()
-            e.run_test("/pkgs/test_require_fail", tmp_dir)
+            e.run_test("/test_require_fail", tmp_dir)
             raise AssertionError("TestSetupError was not raised")
         except TestSetupError as e:
             if "No match for argument: nonexistent_pkg" not in str(e):
@@ -54,13 +53,13 @@ def test_require_fail(provisioner, tmp_dir):
 
 
 def test_recommend(provisioner, tmp_dir):
-    fmf_tests = FMFTests("fmf_tree", plan_name="/pkgs/plan")
+    fmf_tests = FMFTests("fmf_trees/pkgs", plan_name="/plan")
     provisioner.provision(1)
     remote = provisioner.get_remote()
     with FMFExecutor(fmf_tests, remote) as e:
         e.upload_tests()
         e.plan_prepare()
-        e.run_test("/pkgs/test_recommend", tmp_dir)
+        e.run_test("/test_recommend", tmp_dir)
     output = (tmp_dir / "files" / "output.txt").read_text()
     assert output.startswith("rogue-")
     results = (tmp_dir / "results").read_text()

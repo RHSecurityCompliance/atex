@@ -14,7 +14,7 @@ It uses one more more [Provisioners](../provisioner) to get resources
 any test results via an [Aggregator](../aggregator) common to all.
 
 ```python
-with Orchestrator() as o:
+with Orchestrator(...) as o:
     o.serve_forever()  # until all tests are executed
 ```
 
@@ -22,7 +22,7 @@ One Python program (thread) can process multiple Orchestrators by using the
 non-blocking `.serve_once()` instead of `.serve_forever()`:
 
 ```python
-with Orchestrator() as o1, Orchestrator() as o2:
+with Orchestrator(...) as o1, Orchestrator(...) as o2:
     alive = [o1, o2]
     while alive:
         alive = [o for o in alive if o.serve_once()]
@@ -33,10 +33,47 @@ An Orchestrator can be started/stopped using a context manager, or manually via
 `.start()` and `.stop()`:
 
 ```python
-o = Orchestrator()
+o = Orchestrator(...)
 try:
     o.start()
     o.serve_forever()
 finally:
     o.stop()
 ```
+
+## Use pattern
+
+```python
+Orchestrator(platform, tests, provisioners, aggregator, executor)
+
+Orchestrator(
+    "cs10@x86_64",
+    ["first test", "second test"],
+    [SomeProvisioner(...)],
+    SomeAggregator(...),
+    lambda conn: SomeExecutor(conn, other_args=123, ...),
+)
+```
+
+Orchestrators take a list of tests as any iterator (or set/list/etc.) and
+gradually pick tests from it to be run on [Remotes](../provisioner) provided
+by one of the [Provisioners](../provisioner) given.
+
+For each new Remote, they create a new Executor instance (using the factory
+callable specified), passing the Remote to the callable as a Connection
+(each Remote inherits from Connection), expecting a fully initialized Executor
+instance on return.
+
+This Executor instance is then used to run tests on the Remote.
+
+Any other logic like
+
+- test ordering,
+- test re-running,
+- subdividing tests into matrices,
+- division of tests between Remotes,
+- synchronizing two or more Remotes+tests to be run in tandem ("multihost"),
+- prioritizing some Provisioners over others,
+- etc.
+
+is up to the implementation of a given Orchestrator.

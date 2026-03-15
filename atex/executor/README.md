@@ -14,8 +14,8 @@ individual tests over it.
 
 ```python
 with Executor(conn) as e:
-    e.run_test("some_test", artifacts_dir1)
-    e.run_test("another_test", artifacts_dir2)
+    ret1 = e.run_test("some_test", artifacts_dir1)
+    ret2 = e.run_test("another_test", artifacts_dir2)
 ```
 
 - The test names (identifiers) are specific to Executor implementations.
@@ -23,6 +23,7 @@ with Executor(conn) as e:
   are stored (one artifacts dir per one test executed).
   - These must exist as empty directories before `.run_test()` is called,
     ie. from `tempfile.TemporaryDirectory()` or `os.mkdir()`.
+- The return values are exit codes from the test scripts, or their equivalent.
 
 (See [FMFExecutor](fmf) for a more complete example.)
 

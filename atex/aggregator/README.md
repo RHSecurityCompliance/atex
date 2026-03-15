@@ -25,8 +25,8 @@ with Aggregator() as a:
   is commonly used for OS version, HW architecture, or CI service name,
   ie. `9.6` or `rhel-9.6` or `9@x86_64` or `centos-10 Gitlab`.
 
-- The `test_name` given to `.ingest()` may similarly be any arbitrary string,
-  identifying the test within the `platform`.
+- The `test_name` given to `.ingest()` may similarly be any arbitrary string
+  or `str()`-capable object, identifying the test within the `platform`.
 
 An Aggregator can be started/stopped using a context manager, or manually via
 `.start()` and `.stop()`:

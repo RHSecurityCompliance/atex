@@ -13,7 +13,6 @@ def run_fmf_test(provisioner, tmp_dir, *, read_results=True):
     provisioner.provision(1)
     remote = provisioner.get_remote()
     with FMFExecutor(fmf_tests, remote) as e:
-        e.upload_tests()
         e.run_test(f"/{test}", tmp_dir)
     if read_results:
         results = (tmp_dir / "results").read_text()

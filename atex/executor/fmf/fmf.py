@@ -10,8 +10,8 @@ from pathlib import Path
 from ... import util
 from .. import Executor, ExecutorError
 from . import scripts
-from .metadata import listlike
 from .duration import Duration
+from .metadata import listlike
 from .reporter import Reporter
 from .testcontrol import BadReportJSONError, TestControl
 
@@ -34,127 +34,85 @@ class FMFExecutor(Executor):
     and uploaded files by those tests.
 
         tests_repo = "path/to/cloned/tests"
-        fmf_tests = atex.executor.fmf.FMFTests(tests_repo, "/plans/default")
+        fmf_tests = FMFTests(tests_repo, "/plans/default")
 
-        with Executor(fmf_tests, conn) as e:
-            e.upload_tests()
-            e.plan_prepare()
+        with Executor(conn, fmf_tests=fmf_tests) as e:
             Path("output_here").mkdir()
             e.run_test("/some/test", "output_here")
             e.run_test(...)
-            e.plan_finish()
-
-    One Executor instance may be used to run multiple tests sequentially.
-    In addition, multiple Executor instances can run in parallel on the same
-    host, provided each receives a unique class Connection instance to it.
-
-        conn.cmd(["mkdir", "-p", "/shared"])
-
-        with Executor(fmf_tests, conn, state_dir="/shared") as e:
-            e.upload_tests()
-            e.plan_prepare()
-
-        # in parallel (ie. threading or multiprocessing)
-        with Executor(fmf_tests, unique_conn, state_dir="/shared") as e:
-            e.run_test(...)
     """
 
-    def __init__(self, fmf_tests, connection, *, env=None, state_dir=None):
+    def __init__(self, connection, *, fmf_tests, env=None):
         """
-        - `fmf_tests` is a class FMFTests instance with (discovered) tests.
+        Positional arguments are the same as class Executor.
 
-        - `connection` is a class Connection instance, already fully connected.
+        - `fmf_tests` is a class FMFTests instance with (discovered) tests.
 
         - `env` is a dict of extra environment variables to pass to the
           plan prepare/finish scripts and to all tests.
-
-        - `state_dir` is a string or Path specifying path on the remote system
-          for storing additional data, such as tests, execution wrappers,
-          temporary plan-exported variables, etc.
-
-          If left as `None`, a tmpdir is used.
         """
         self.lock = threading.RLock()
         self.fmf_tests = fmf_tests
         self.conn = connection
         self.env = env or {}
-        self.state_dir = state_dir
         self.work_dir = None
         self.tests_dir = None
         self.plan_env_file = None
         self.cancelled = False
 
     def start(self):
-        with self.lock:
-            state_dir = self.state_dir
-
-        # if user defined a state dir, have shared tests, but use per-instance
-        # work_dir for test wrappers, etc., identified by this instance's id(),
-        # which should be unique as long as this instance exists
-        if state_dir:
-            state_dir = Path(state_dir)
-            work_dir = state_dir / f"atex-{id(self)}"
-            self.conn.cmd(("mkdir", work_dir), check=True)
-            with self.lock:
-                self.tests_dir = state_dir / "tests"
-                self.plan_env_file = state_dir / "plan_env"
-                self.work_dir = work_dir
-
-        # else just create a tmpdir
-        else:
-            tmp_dir = self.conn.cmd(
-                # /var is not cleaned up by bootc, /var/tmp is
-                ("mktemp", "-d", "-p", "/var", "atex-XXXXXXXXXX"),
-                func=util.subprocess_output,
-            )
-            tmp_dir = Path(tmp_dir)
-            with self.lock:
-                self.tests_dir = tmp_dir / "tests"
-                self.plan_env_file = tmp_dir / "plan_env"
-                # use the tmpdir as work_dir, avoid extra mkdir over conn
-                self.work_dir = tmp_dir
+        tmp_dir = self.conn.cmd(
+            # /var is not cleaned up by bootc, /var/tmp is
+            ("mktemp", "-d", "-p", "/var", "atex-XXXXXXXXXX"),
+            func=util.subprocess_output,
+        )
+        tmp_dir = Path(tmp_dir)
+        self.work_dir = tmp_dir
+        self.tests_dir = tmp_dir / "tests"
+        self.plan_env_file = tmp_dir / "plan_env"
 
         # create / truncate the TMT_PLAN_ENVIRONMENT_FILE
         self.conn.cmd(("truncate", "-s", "0", self.plan_env_file), check=True)
 
-    def stop(self):
-        with self.lock:
-            work_dir = self.work_dir
-
-        if work_dir:
-            self.conn.cmd(("rm", "-rf", work_dir), check=True)
-
-        with self.lock:
-            self.work_dir = None
-            self.tests_dir = None
-            self.plan_env_file = None
-
-    def __enter__(self):
-        try:
-            self.start()
-            return self
-        except Exception:
-            self.stop()
-            raise
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        self.stop()
-
-    def cancel(self):
-        with self.lock:
-            self.cancelled = True
-
-    def upload_tests(self):
-        """
-        Upload a directory of all tests, the location of which was provided to
-        `__init__()` inside `fmf_tests`, to the remote host.
-        """
+        # upload tests to the remote
         self.conn.rsync(
             "-r", "--delete", "--exclude=.git/",
             f"{self.fmf_tests.root}/",
             f"remote:{self.tests_dir}",
             func=util.subprocess_log,
         )
+
+        # install packages from the plan on the remote
+        if self.fmf_tests.prepare_pkgs:
+            self.conn.cmd(
+                (
+                    "dnf", "-y", "--setopt=install_weak_deps=False",
+                    "install", *self.fmf_tests.prepare_pkgs,
+                ),
+                func=util.subprocess_log,
+                stderr=subprocess.STDOUT,
+                check=True,
+            )
+
+        # run 'prepare' scripts from the plan on the remote
+        if scripts := self.fmf_tests.prepare_scripts:
+            self._run_prepare_scripts(scripts)
+
+    def stop(self):
+        # run 'finish' scripts from the plan on the remote
+        if scripts := self.fmf_tests.finish_scripts:
+            self._run_prepare_scripts(scripts)
+
+        if self.work_dir:
+            self.conn.cmd(("rm", "-rf", self.work_dir), check=True)
+
+        self.work_dir = None
+        self.tests_dir = None
+        self.plan_env_file = None
+
+    def cancel(self):
+        with self.lock:
+            self.cancelled = True
 
     def _run_prepare_scripts(self, scripts):
         # make envionment for 'prepare' scripts
@@ -173,38 +131,6 @@ class FMFExecutor(Executor):
                 input=script,
                 check=True,
             )
-
-    def plan_prepare(self):
-        """
-        Install packages and run scripts extracted from a TMT plan by a FMFTests
-        instance given during class initialization.
-
-        Also run additional scripts specified under the 'prepare' step inside
-        the fmf metadata of a plan.
-        """
-        # install packages from the plan
-        if self.fmf_tests.prepare_pkgs:
-            self.conn.cmd(
-                (
-                    "dnf", "-y", "--setopt=install_weak_deps=False",
-                    "install", *self.fmf_tests.prepare_pkgs,
-                ),
-                func=util.subprocess_log,
-                stderr=subprocess.STDOUT,
-                check=True,
-            )
-
-        # run 'prepare' scripts from the plan
-        if scripts := self.fmf_tests.prepare_scripts:
-            self._run_prepare_scripts(scripts)
-
-    def plan_finish(self):
-        """
-        Run any scripts specified under the 'finish' step inside
-        the fmf metadata of a plan.
-        """
-        if scripts := self.fmf_tests.finish_scripts:
-            self._run_prepare_scripts(scripts)
 
     class State(enum.Enum):
         STARTING_TEST = enum.auto()

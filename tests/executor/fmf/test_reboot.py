@@ -26,7 +26,6 @@ def test_reboot(provisioner_systemd, tmp_dir):
     remote = provisioner_systemd.get_remote()
     wait_for_systemd(remote)
     with FMFExecutor(fmf_tests, remote) as e:
-        e.upload_tests()
         e.run_test("/test_reboot", tmp_dir)
     results = (tmp_dir / "results").read_text()
     assert json.loads(results).get("status") == "pass"
@@ -40,7 +39,6 @@ def test_reboot_count(provisioner_systemd, tmp_dir):
     remote = provisioner_systemd.get_remote()
     wait_for_systemd(remote)
     with FMFExecutor(fmf_tests, remote) as e:
-        e.upload_tests()
         e.run_test("/test_reboot_count", tmp_dir)
     results = (tmp_dir / "results").read_text()
     assert json.loads(results).get("status") == "pass"
@@ -54,7 +52,6 @@ def test_reboot_unexpected(provisioner_systemd, tmp_dir):
     remote = provisioner_systemd.get_remote()
     wait_for_systemd(remote)
     with FMFExecutor(fmf_tests, remote) as e:
-        e.upload_tests()
         try:
             e.run_test("/test_reboot_unexpected", tmp_dir)
             raise AssertionError("TestAbortedError should have triggered")

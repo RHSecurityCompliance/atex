@@ -2,8 +2,8 @@ import concurrent.futures
 import logging
 import tempfile
 
-from .. import executor, util
-from . import Orchestrator, OrchestratorError
+from ... import util
+from .. import Orchestrator, OrchestratorError
 
 logger = logging.getLogger("atex.orchestrator.adhoc")
 
@@ -41,31 +41,24 @@ class AdHocOrchestrator(Orchestrator):
     class FinishedInfo(
         RunningInfo,
         required=(
-            # integer with exit code of the test
+            # return value of the .run_test() Executor method
             # (None if exception happened)
             "exit_code",
             # exception class instance if running the test failed
-            # (None if no exception happened (exit_code is defined))
+            # (None if no exception happened (return is defined))
             "exception",
         ),
     ):
         pass
 
     def __init__(
-        self, platform, fmf_tests, provisioners, aggregator, *,
-        old_aggregator=None, max_spares=0, max_failed_setups=10, env=None,
+        self, platform, tests, provisioners, aggregator, executor, *,
+        old_aggregator=None, max_spares=0, max_failed_setups=10,
     ):
         """
-        - `platform` is a string with platform name, an arbitrary string
-          that identifies this Orchestrator in the aggregated outputs.
+        Positional arguments are the same as class Orchestrator.
 
-        - `fmf_tests` is a class FMFTests instance of the tests to run.
-
-        - `provisioners` is an iterable of class Provisioner instances to
-          source Remotes from, for test execution.
-
-        - `aggregator` is a class Aggregator instance for ingesting final
-          test results (without old results from tests that were re-run).
+        Keyword arguments:
 
         - `old_aggregator` is a class Aggregator instance for ingesting
           "old" test results (from tests that were later re-run). If left
@@ -80,25 +73,23 @@ class AdHocOrchestrator(Orchestrator):
           greatly speed up test reruns for Provisioners that take a long time
           to reserve a Remote.
 
-        - `max_failed_setups` is an integer of how many times an Executor's
-          plan setup (uploading tests, running prepare scripts, etc.) may fail
-          before FailedSetupError is raised.
-
-        - `env` is a dict of extra environment variables to pass to Executor.
+        - `max_failed_setups` is an integer of how many times a setup (preparing
+          a reserved Remote for test execution) may fail before FailedSetupError
+          is raised.
         """
-        if not fmf_tests.tests:
-            raise ValueError("'fmf_tests' has no tests (bad discover params?)")
-
         self.platform = platform
-        self.fmf_tests = fmf_tests
+        self.to_run = set(tests)
         self.provisioners = tuple(provisioners)
         self.aggregator = aggregator
+        self.executor = executor
+
+        if not self.to_run:
+            raise ValueError("no tests were passed to run, 'tests' is empty")
+
         self.old_aggregator = old_aggregator
-        self.failed_setups_left = max_failed_setups
         self.max_spares = max_spares
-        self.env = env
-        # tests still waiting to be run
-        self.to_run = set(fmf_tests.tests)
+        self.failed_setups_left = max_failed_setups
+
         # True if empty self.to_run was seen at least once;
         # needed because re-runs add the test back to self.to_run
         self.finishing_up = False
@@ -122,7 +113,7 @@ class AdHocOrchestrator(Orchestrator):
           - FinishedInfo instance of a previously executed test
             (reusing Remote/Executor for a new test).
         """
-        next_test_name = self.next_test(self.to_run, self.fmf_tests.tests, info)
+        next_test_name = self.next_test(self.to_run, info)
         assert next_test_name in self.to_run, "next_test() returned valid test name"
 
         logger.info(f"{info.remote}: starting '{next_test_name}'")
@@ -160,11 +151,12 @@ class AdHocOrchestrator(Orchestrator):
         """
         `finfo` is a FinishedInfo instance.
         """
-        test_data = self.fmf_tests.tests[finfo.test_name]
-        remote_destroyed = finfo.exception or self.destructive(finfo, test_data)
+        # TODO: always treat the test as failed+destroyed on exception,
+        #       move that logic to here, from was_successful()
+        remote_destroyed = finfo.exception or self.destructive(finfo)
         remote_with_test = f"{finfo.remote}: '{finfo.test_name}'"
 
-        if not self.was_successful(finfo, test_data) and self.should_be_rerun(finfo, test_data):
+        if (finfo.exception or not self.was_successful(finfo)) and self.should_be_rerun(finfo):
             # re-run the test
             logger.info(f"{remote_with_test} failed, re-running")
             self.to_run.add(finfo.test_name)
@@ -308,7 +300,7 @@ class AdHocOrchestrator(Orchestrator):
         # running setup on them
         for provisioner in self.provisioners:
             while (remote := provisioner.get_remote(block=False)) is not None:
-                ex = executor.fmf.FMFExecutor(self.fmf_tests, remote, env=self.env)
+                ex = self.executor(remote)
                 sinfo = self.SetupInfo(
                     provisioner=provisioner,
                     remote=remote,
@@ -357,21 +349,21 @@ class AdHocOrchestrator(Orchestrator):
         for prov in self.provisioners:
             prov.start()
 
-        # start up initial reservations - the idea is to request as much as
-        # len(self.fmf_tests.tests) remotes (worst possible case where Remotes
-        # are not reused) from EACH provisioner, allowing any one of them
-        # to supply the Remotes - any destructive tests do .provision(1) anyway
+        # start up initial reservations - the idea is to request as much remotes
+        # as there are tests (worst possible case where Remotes are not reused)
+        # from EACH provisioner, allowing any one of them to supply the Remotes
+        # - any destructive tests do .provision(1) anyway
         #
         # after self.to_run is exhausted, we do .clear() on all of these
         # and let just the destructive .provision(1) logic get new Remotes
-        remotes = len(self.fmf_tests.tests)
+        remotes = len(self.to_run)
         for prov in self.provisioners:
             prov.provision(remotes)
 
     def stop(self):
         # cancel all running tests and wait for them to clean up (up to 0.1sec)
         for rinfo in self.running_tests.values():
-            rinfo.executor.cancel()
+            rinfo.executor.cancel()  # TODO: .cancel() is nonstandard
         self.test_queue.join()    # also ignore any exceptions raised
 
         # wait for all running ingestions to finish, print exceptions
@@ -397,37 +389,29 @@ class AdHocOrchestrator(Orchestrator):
                 for provisioner in self.provisioners:
                     ex.submit(provisioner.stop)
 
-    @staticmethod
-    def run_setup(sinfo):
+    def run_setup(self, info, /):  # noqa: ARG002, PLR6301
         """
         Set up a newly acquired class Remote instance for test execution.
 
-        - `sinfo` is a SetupInfo instance with the (fully connected) remote.
+        - `info` is a SetupInfo instance with the (fully connected) remote.
         """
-        sinfo.executor.start()
-        sinfo.executor.upload_tests()
-        sinfo.executor.plan_prepare()
-        # NOTE: we never run executor.plan_finish() or even executor.stop()
-        #       anywhere - instead, we assume the remote (and its connection)
-        #       was invalidated by the test, so we just rely on remote.release()
-        #       destroying the system
+        info.executor.start()
+        # NOTE: we never run executor.stop() because we assume the remote
+        #       (and its connection) was invalidated by the testing, so we just
+        #       rely on remote.release() destroying the system
 
-    @staticmethod
-    def next_test(to_run, all_tests, previous):  # noqa: ARG004
+    def next_test(self, to_run, previous, /):  # noqa: ARG002, PLR6301
         """
         Return a test name (string) to be executed next.
 
         - `to_run` is a set of test names to pick from. The returned test name
           must be chosen from this set.
 
-        - `all_tests` is a dict indexed by test name (string), with values being
-          fully resolved fmf test metadata (dicts) of all possible tests.
-
         - `previous` can be either
 
-          - Orchestrator.SetupInfo instance (first test to be run)
+          - AdHocOrchestrator.SetupInfo instance (first test to be run)
 
-          - Orchestrator.FinishedInfo instance (previous executed test)
+          - AdHocOrchestrator.FinishedInfo instance (previous executed test)
 
         This method must not modify any of its arguments, it must treat them
         as read-only, eg. don't remove the returned test name from `to_run`.
@@ -435,16 +419,13 @@ class AdHocOrchestrator(Orchestrator):
         # default to simply picking any available test
         return next(iter(to_run))
 
-    @staticmethod
-    def destructive(info, test_data):  # noqa: ARG004
+    def destructive(self, info, /):  # noqa: ARG002, PLR6301
         """
         Return a boolean result whether a finished test was destructive
         to a class Remote instance, indicating that the Remote instance
         should not be used for further test execution.
 
-        - `info` is Orchestrator.FinishedInfo namedtuple of the test.
-
-        - `test_data` is a dict of fully resolved fmf test metadata of that test.
+        - `info` is Orchestrator.FinishedInfo of the test.
         """
         # if Executor ended with an exception (ie. duration exceeded),
         # consider the test destructive
@@ -458,15 +439,12 @@ class AdHocOrchestrator(Orchestrator):
         # otherwise we good
         return False
 
-    @staticmethod
-    def was_successful(info, test_data):  # noqa: ARG004
+    def was_successful(self, info, /):  # noqa: ARG002, PLR6301
         """
         Return a boolean result whether a finished test was successful.
         Returning `False` might cause it to be re-run (per `should_be_rerun()`).
 
-        - `info` is Orchestrator.FinishedInfo namedtuple of the test.
-
-        - `test_data` is a dict of fully resolved fmf test metadata of that test.
+        - `info` is Orchestrator.FinishedInfo of the test.
         """
         remote_with_test = f"{info.remote}: '{info.test_name}'"
         # executor (or test) threw exception
@@ -481,16 +459,13 @@ class AdHocOrchestrator(Orchestrator):
         # otherwise we good
         return True
 
-    @staticmethod
-    def should_be_rerun(info, test_data):  # noqa: ARG004
+    def should_be_rerun(self, info, /):  # noqa: ARG002, PLR6301
         """
         Return a boolean result whether a finished test failed in a way
         that another execution attempt might succeed, due to race conditions
         in the test or other non-deterministic factors.
 
-        - `info` is Orchestrator.FinishedInfo namedtuple of the test.
-
-        - `test_data` is a dict of fully resolved fmf test metadata of that test.
+        - `info` is Orchestrator.FinishedInfo of the test.
         """
         # never rerun by default
         return False

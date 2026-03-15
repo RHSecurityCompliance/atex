@@ -6,6 +6,34 @@ import time as _time
 
 class Orchestrator:
     @_abc.abstractmethod
+    def __init__(self, platform, tests, provisioners, aggregator, executor):
+        """
+        Initialize the Orchestrator.
+
+        - `platform` is an arbitrary name that identifies this Orchestrator
+          in the aggregated outputs.
+
+          Ie. `9.6` or `rhel-9.6` or `9@x86_64` or `centos-10 Gitlab`.
+
+        - `tests` may be any `str()`-capable objects, typically strings,
+          for the Orchestrator to iterate and pass to an Executor as test
+          names.
+
+        - `provisioners` are initialized Provisioner instances to source
+          Remotes from, for test execution.
+
+        - `aggregator` is an initialized Aggregator instance for ingesting
+          final test results from test artifacts produced by an Executor.
+
+        - `executor` is a factory (function or class) that, when given
+          a connected Connection, produces an initialized Executor instance,
+          to be used for running tests.
+
+          This could be an Executor class itself (as a type) or ie. a wrapper
+          for instatiating the class with extra arguments.
+        """
+
+    @_abc.abstractmethod
     def serve_once(self):
         """
         Run the orchestration logic, processing any outstanding requests
@@ -21,7 +49,7 @@ class Orchestrator:
         Run the orchestration logic, blocking until all testing is concluded.
         """
         while self.serve_once():
-            _time.sleep(1)
+            _time.sleep(0.1)
 
     @_abc.abstractmethod
     def start(self):

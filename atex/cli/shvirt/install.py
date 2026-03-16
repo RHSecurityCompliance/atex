@@ -131,22 +131,18 @@ def install(args):
 
     # -------------------------------------------------------------------------
 
-    logging.info(f"removing existing {temp_image} if it exists")
-    helper_query({"cmd": "virsh", "args": ["vol-delete", temp_image, args.pool]})
-
-    # virt-install doesn't let you specify a volume name different from --name,
-    # so we pre-create one and tell v-i to just re-use it
     logging.info(f"pre-creating new {temp_image}")
     response = helper_query({
-        "cmd": "virsh",
-        "args": [
-            "vol-create-as", args.pool, temp_image,
-            f"{args.size}G", "--format", args.format,
-        ],
+        "cmd": "create-volume",
+        "pool": args.pool,
+        "name": temp_image,
+        "format": args.format,
+        "size": args.size * 1024**3,
+        "remove_existing": True,
     })
     if not response["success"]:
         output = response["reply"]
-        raise RuntimeError(f"vol-create-as failed: {output}")
+        raise RuntimeError(f"create-volume failed: {output}")
 
     logging.info("uploading kickstart")
     ks_bytes = ks_contents.encode()
@@ -202,7 +198,7 @@ def install(args):
 
     logging.info(f"moving {temp_image} --> {args.name}")
     response = helper_query({
-        "cmd": "vol-copy",
+        "cmd": "copy-volume",
         "pool": args.pool,
         "from": temp_image,
         "to": args.name,
@@ -210,7 +206,7 @@ def install(args):
     })
     if not response["success"]:
         output = response["reply"]
-        raise RuntimeError(f"vol-copy failed: {output}")
+        raise RuntimeError(f"copy-volume failed: {output}")
 
     # -------------------------------------------------------------------------
 
@@ -232,7 +228,7 @@ def add_install_args(parser):
     grp.add_argument("--name", "-n", help="image name", required=True)
     grp.add_argument("--pool", help="storage pool name for the image", default="default")
     grp.add_argument("--location", "-l", help="URL to install from", required=True)
-    grp.add_argument("--format", help="image format", default="qcow2", choices=("qcow2","raw"))
+    grp.add_argument("--format", help="image format", default="raw", choices=("qcow2","raw"))
     grp.add_argument("--size", help="maximum image size in GB", default=40, type=int)
     grp.add_argument("--bios", help="create old BIOS image instead of UEFI", action="store_true")
 

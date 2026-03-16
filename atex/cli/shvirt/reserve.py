@@ -104,14 +104,14 @@ def reserve(args):
 
     logging.info(f"cloning {args.image} for {domain}")
     response = helper_query({
-        "cmd": "vol-copy",
+        "cmd": "copy-volume",
         "pool": args.pool,
         "from": args.image,
         "to_domain": domain,
     })
     if not response["success"]:
         output = response["reply"]
-        raise RuntimeError(f"vol-copy failed: {output}")
+        raise RuntimeError(f"copy-volume failed: {output}")
 
     logging.info(f"starting up {domain}")
     helper_query({"cmd": "virsh", "args": ["start", domain]})

@@ -149,7 +149,30 @@ channel.
   S (stdout): {"success": false, "args": ["asds"], "reply": "virt-install exited with 2"}
   ```
 
-- `vol-copy`
+- `create-volume`
+  - An alternative to `virsh vol-create-as` which has notable missing features:
+    - It doesn't allow creating sparse `raw` images.
+    - Its `--prealloc-metadata` actually makes `qcow2` with
+      `preallocation=falloc`, NOT `preallocation=metadata`, causing the full
+      image to be allocated, not just metadata.
+  - Useful mainly for `virt-install`, to prepare an empty image to install to.
+    - Because `virt-install` otherwise cannot create an image with name
+      different to domain name (weirdly), but it can take an existing one as
+      `--disk vol=pool_name/volume_name,format=...`.
+  - The created `raw` images are always sparse, `qcow2` ones are always with
+    `preallocation=metadata` (consumes a few extra MBs, but is faster).
+  - Pass `remove_existing` to replace an existing volume if one exists with
+    the same name.
+
+  ```json
+  C: {"cmd": "create-volume", "pool": "default", "name": "volname.img", "format": "raw", "size": 42949672960}
+  C: {"cmd": "create-volume", "success": true, "pool": "default", "name": "volname.img", "format": "raw", "size": 42949672960}
+
+  C: {"cmd": "create-volume", "pool": "default", "name": "volname.qcow2", "format": "qcow2", "size": 42949672960, "remove_existing": true}
+  C: {"cmd": "create-volume", "success": true, "pool": "default", "name": "volname.qcow2", "format": "qcow2", "size": 42949672960, "remove_existing": true}
+  ```
+
+- `copy-volume`
   - An alternative to `virsh vol-clone` that is actually fast and atomic.
   - Useful for keeping a set of volumes with pre-installed OSes (installed via
     `virt-install`) and copying them as domain-backing volumes instead of
@@ -174,11 +197,11 @@ channel.
       are not supported (it's hard to associate the file with a storage pool).
 
   ```json
-  C: {"cmd": "vol-copy", "pool": "default", "from": "abc", "to": "xyz"}
-  S: {"cmd": "vol-copy", "success": true, "pool": "default", "from": "abc", "to": "xyz"}
+  C: {"cmd": "copy-volume", "pool": "default", "from": "abc", "to": "xyz"}
+  S: {"cmd": "copy-volume", "success": true, "pool": "default", "from": "abc", "to": "xyz"}
 
-  C: {"cmd": "vol-copy", "pool": "default", "from": "9.6.qcow2", "to_domain": "vmname"}
-  S: {"cmd": "vol-copy", "success": true, "pool": "default", "from": "9.6.qcow2", "to_domain": "vmname"}
+  C: {"cmd": "copy-volume", "pool": "default", "from": "9.6", "to_domain": "vmname"}
+  S: {"cmd": "copy-volume", "success": true, "pool": "default", "from": "9.6", "to_domain": "vmname"}
   ```
 
 ## Final notes

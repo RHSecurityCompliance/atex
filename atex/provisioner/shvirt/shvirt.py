@@ -290,16 +290,16 @@ class SharedVirtProvisioner(Provisioner):
                 logger.debug(f"destroyed domain {domain}")
 
             response = self._helper_query({
-                "cmd": "vol-copy",
+                "cmd": "copy-volume",
                 "pool": self.pool,
                 "from": self.image,
                 "to_domain": domain,
             })
             if not response["success"]:
                 reply = response["reply"]
-                raise ProvisionerError(f"failed vol-copy: {reply}")
+                raise ProvisionerError(f"failed copy-volume: {reply}")
 
-            logger.debug(f"vol-copied {self.image} to {domain}")
+            logger.debug(f"copied volume {self.image} to {domain}")
 
             # find the forwarded port via virsh over atex-virt-helper
             response = self._helper_query({

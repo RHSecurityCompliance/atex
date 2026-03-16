@@ -48,3 +48,5 @@ replacing (updating) the original template image would corrupt any domains
 that were using the original one. Theoretically, this would work as long as
 the domains wouldn't shutdown, but QEMU sometimes re-opens the original file
 path during runtime, so it wouldn't be bullet-proof.
+
+Using `raw` sparse images + XFS CoW is also superior in write performance.

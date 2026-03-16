@@ -313,7 +313,82 @@ def cmd_virt_install(logger, reply, args):
         reply(True)
 
 
-def cmd_vol_copy(logger, reply, args):
+def cmd_create_volume(logger, reply, args):
+    pool = args["pool"]
+    name = args["name"]
+    size = int(args["size"])
+    fmt = args["format"]
+    remove_existing = bool(args["remove_existing"]) if "remove_existing" in args else False
+
+    if fmt not in ("raw", "qcow2"):
+        reply(False, f"invalid format: {fmt}")
+        return
+
+    # look up the pool, ensure it's type=dir
+    code, output = virsh("pool-dumpxml", pool)
+    if code != 0:
+        reply(False, f"failed getting pool '{pool}': {output}")
+        return
+    xml_root = ET.fromstring(output)
+    if xml_root.get("type") != "dir":
+        reply(False, "only type=dir storage pools are supported")
+        return
+
+    # find the on-disk pool directory
+    pool_dir = None
+    if (target := xml_root.find("target")) is not None:
+        if (path := target.find("path")) is not None:
+            pool_dir = path.text
+    if not pool_dir:
+        reply(False, f"could not find on-disk location of pool {pool}")
+        return
+
+    vol_path = Path(pool_dir) / name
+    if vol_path.exists():
+        if remove_existing:
+            vol_path.unlink()
+        else:
+            reply(False, f"'{name}' already exists: {str(vol_path)}")
+            return
+
+    # create the image
+    if fmt == "raw":
+        # always use sparse
+        vol_path.touch(mode=0o600)
+        os.truncate(vol_path, size)
+    else:
+        # always use preallocation=metadata (has a small size impact)
+        proc = subprocess.run(
+            (
+                "qemu-img", "create", "-f", "qcow2", "-o", "preallocation=metadata",
+                vol_path, str(size),
+            ),
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            timeout=3600,
+        )
+        if proc.returncode != 0:
+            msg = f"failed 'qemu-img': {proc.stdout}"
+            reply(False, msg)
+            logger.error(msg)
+            return
+
+    # refresh the storage pool to register the new volume
+    # - try a few times to account for race conditions in type=dir pools
+    for _ in range(10):
+        code, output = virsh("pool-refresh", pool)
+        if code == 0 or "has asynchronous jobs running" not in output:
+            break
+        time.sleep(0.1)
+    else:
+        reply(False, f"failed refreshing pool '{pool}': {output}")
+        return
+
+    reply(True)
+
+
+def cmd_copy_volume(logger, reply, args):
     pool = args["pool"]
 
     # look up the pool, ensure it's type=dir
@@ -396,7 +471,7 @@ def cmd_vol_copy(logger, reply, args):
         fd, tmpf = tempfile.mkstemp(dir=to_path.parent.absolute())
         os.close(fd)
         proc = subprocess.run(
-            ("cp", "-f", "--reflink=auto", from_path.absolute(), tmpf),
+            ("cp", "-f", "--reflink=always", from_path.absolute(), tmpf),
             stdin=subprocess.DEVNULL,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
@@ -420,13 +495,9 @@ def cmd_vol_copy(logger, reply, args):
     # - try a few times to account for race conditions in type=dir pools
     for _ in range(10):
         code, output = virsh("pool-refresh", pool)
-        if code == 0:
+        if code == 0 or "has asynchronous jobs running" not in output:
             break
-        if "has asynchronous jobs running" in output:
-            time.sleep(0.1)
-            continue
-        reply(False, f"failed refreshing pool '{pool}': {output}")
-        return
+        time.sleep(0.1)
     else:
         reply(False, f"failed refreshing pool '{pool}': {output}")
         return
@@ -502,14 +573,19 @@ def handle_cmd(cmd, args):
         valid_args |= pop_args("destroy_on_error", optional=True)
         func = cmd_virt_install
 
-    elif cmd == "vol-copy":
+    elif cmd == "create-volume":
+        valid_args = dict(pop_args("pool", "name", "size", "format"))
+        valid_args |= pop_args("remove_existing", optional=True)
+        func = cmd_create_volume
+
+    elif cmd == "copy-volume":
         valid_args = dict(pop_args("pool", "from"))
         valid_args |= pop_args("to", "to_domain", "move", optional=True)
         if "to" not in valid_args and "to_domain" not in valid_args:
             arg_error(f"one of 'to' or 'to_domain' needed for '{cmd}'")
         elif "to" in valid_args and "to_domain" in valid_args:
             arg_error(f"only one of 'to' or 'to_domain' allowed for '{cmd}'")
-        func = cmd_vol_copy
+        func = cmd_copy_volume
 
     else:
         reply(False, f"invalid cmd: '{cmd}'")

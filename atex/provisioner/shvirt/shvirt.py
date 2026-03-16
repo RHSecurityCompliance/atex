@@ -84,12 +84,12 @@ class SharedVirtRemote(Remote, connection.ssh.ManagedSSHConnection):
         """
         - `ssh_options` are a dict, passed to ManagedSSHConnection `__init__()`.
 
-        - `host` is a str of libvirt host name (used for `repr()`).
+        - `host` is a str of libvirt host name (used for `str(self)`).
 
         - `domain` is a str of libvirt domain name.
 
         - `source_image` is a str of libvirt volume name that was cloned
-          for the domain to boot from (used for `repr()`).
+          for the domain to boot from (used for `str(self)`).
 
         - `release_hook` is a callable called on `.release()` in addition
           to disconnecting the connection.
@@ -117,8 +117,7 @@ class SharedVirtRemote(Remote, connection.ssh.ManagedSSHConnection):
                 raise ConnectionError("remote released, cannot connect")
         super().connect(block=block)
 
-    # not /technically/ a valid repr(), but meh
-    def __repr__(self):
+    def __str__(self):
         class_name = self.__class__.__name__
         port = self.options["Port"]
         return f"{class_name}({self.host}, {self.domain} ({port}), {self.source_image})"
@@ -501,8 +500,7 @@ class SharedVirtProvisioner(Provisioner):
         with self.lock:
             self.to_reserve = 0
 
-    # not /technically/ a valid repr(), but meh
-    def __repr__(self):
+    def __str__(self):
         class_name = self.__class__.__name__
         return (
             f"{class_name}({self.domain_host}, {self.domain_filter}, "

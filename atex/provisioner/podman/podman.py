@@ -13,7 +13,7 @@ class PodmanRemote(Remote, connection.podman.PodmanConnection):
 
     def __init__(self, image, container, *, release_hook):
         """
-        - `image` is an image tag (used for `repr()`).
+        - `image` is an image tag (used for `str(self)`).
 
         - `container` is a podman container ID / name.
 
@@ -41,8 +41,7 @@ class PodmanRemote(Remote, connection.podman.PodmanConnection):
             stdout=subprocess.DEVNULL,
         )
 
-    # not /technically/ a valid repr(), but meh
-    def __repr__(self):
+    def __str__(self):
         class_name = self.__class__.__name__
 
         if "/" in self.image:
@@ -156,8 +155,7 @@ class PodmanProvisioner(Provisioner):
     def clear(self):
         self.to_create.zero()
 
-    # not /technically/ a valid repr(), but meh
-    def __repr__(self):
+    def __str__(self):
         class_name = self.__class__.__name__
         return (
             f"{class_name}({self.image}, {len(self.remotes)} remotes, {hex(id(self))})"

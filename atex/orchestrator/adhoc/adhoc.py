@@ -90,6 +90,8 @@ class AdHocOrchestrator(Orchestrator):
         self.max_spares = max_spares
         self.failed_setups_left = max_failed_setups
 
+        # just for str(self)
+        self.total_tests = len(self.to_run)
         # True if empty self.to_run was seen at least once;
         # needed because re-runs add the test back to self.to_run
         self.finishing_up = False
@@ -388,6 +390,17 @@ class AdHocOrchestrator(Orchestrator):
             with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as ex:
                 for provisioner in self.provisioners:
                     ex.submit(provisioner.stop)
+
+    def __str__(self):
+        class_name = self.__class__.__name__
+        running = len(self.running_tests)
+        queued = len(self.to_run)
+        total = self.total_tests
+        set_up = self.setup_queue.qsize()
+        return (
+            f"{class_name}({self.platform}, {queued}/{total} queued, {running} running, "
+            f"{set_up} set up, {hex(id(self))})"
+        )
 
     def run_setup(self, info, /):  # noqa: ARG002, PLR6301
         """

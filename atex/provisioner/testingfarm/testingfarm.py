@@ -42,8 +42,7 @@ class TestingFarmRemote(Remote, connection.ssh.ManagedSSHConnection):
         self.disconnect()
         self.release_hook(self)
 
-    # not /technically/ a valid repr(), but meh
-    def __repr__(self):
+    def __str__(self):
         class_name = self.__class__.__name__
         ssh_user = self.options.get("User", "unknown")
         ssh_host = self.options.get("Hostname", "unknown")
@@ -152,7 +151,7 @@ class TestingFarmProvisioner(Provisioner):
                 return
             self.to_reserve -= will_reserve
 
-        logger.info(f"{repr(self)}: reserving {will_reserve} new remotes")
+        logger.info(f"{self}: reserving {will_reserve} new remotes")
         for i in range(will_reserve):
             tf_reserve = api.Reserve(
                 compose=self.compose,
@@ -243,8 +242,7 @@ class TestingFarmProvisioner(Provisioner):
         #         and cancel the rest cleanly, once we get rid of daemon=True
         #         and switch TF API to threading.Event waits
 
-    # not /technically/ a valid repr(), but meh
-    def __repr__(self):
+    def __str__(self):
         class_name = self.__class__.__name__
         reserving = len(self.reserving)
         remotes = len(self.remotes)

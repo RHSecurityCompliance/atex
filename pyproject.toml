@@ -28,7 +28,10 @@ atex = "atex:cli.main"
 
 [tool.hatch.build.targets.wheel]
 only-include = ["atex"]
-exclude = ["*.md"]
+exclude = [
+    "*.md",
+    "tests/*",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

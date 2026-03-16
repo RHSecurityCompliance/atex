@@ -141,7 +141,7 @@ def install(args):
         "cmd": "virsh",
         "args": [
             "vol-create-as", args.pool, temp_image,
-            f"{args.size}G", "--format", args.format, "--prealloc-metadata",
+            f"{args.size}G", "--format", args.format,
         ],
     })
     if not response["success"]:

@@ -153,13 +153,17 @@ class AdHocOrchestrator(Orchestrator):
         """
         `finfo` is a FinishedInfo instance.
         """
-        # TODO: always treat the test as failed+destroyed on exception,
-        #       move that logic to here, from was_successful()
-        remote_destroyed = finfo.exception or self.destructive(finfo)
         remote_with_test = f"{finfo.remote}: '{finfo.test_name}'"
 
-        if (finfo.exception or not self.was_successful(finfo)) and self.should_be_rerun(finfo):
-            # re-run the test
+        if finfo.exception:
+            exc_str = f"{type(finfo.exception).__name__}({finfo.exception})"
+            logger.warning(f"{remote_with_test} threw {exc_str} during test runtime")
+            remote_destroyed = True
+        else:
+            logger.debug(f"{remote_with_test} exited with: {finfo.exit_code}")
+            remote_destroyed = self.destructive(finfo)
+
+        if (finfo.exception or finfo.exit_code != 0) and self.should_be_rerun(finfo):
             logger.info(f"{remote_with_test} failed, re-running")
             self.to_run.add(finfo.test_name)
 
@@ -440,10 +444,6 @@ class AdHocOrchestrator(Orchestrator):
 
         - `info` is Orchestrator.FinishedInfo of the test.
         """
-        # if Executor ended with an exception (ie. duration exceeded),
-        # consider the test destructive
-        if info.exception:
-            return True
         # if the test returned non-0 exit code, it could have thrown
         # a python exception of its own, or (if bash) aborted abruptly
         # due to 'set -e', don't trust the remote, consider it destroyed
@@ -451,26 +451,6 @@ class AdHocOrchestrator(Orchestrator):
             return True
         # otherwise we good
         return False
-
-    def was_successful(self, info, /):  # noqa: ARG002, PLR6301
-        """
-        Return a boolean result whether a finished test was successful.
-        Returning `False` might cause it to be re-run (per `should_be_rerun()`).
-
-        - `info` is Orchestrator.FinishedInfo of the test.
-        """
-        remote_with_test = f"{info.remote}: '{info.test_name}'"
-        # executor (or test) threw exception
-        if info.exception:
-            exc_str = f"{type(info.exception).__name__}({info.exception})"
-            logger.info(f"{remote_with_test} threw {exc_str} during test runtime")
-            return False
-        # the test exited as non-0
-        if info.exit_code != 0:
-            logger.info(f"{remote_with_test} exited with non-zero: {info.exit_code}")
-            return False
-        # otherwise we good
-        return True
 
     def should_be_rerun(self, info, /):  # noqa: ARG002, PLR6301
         """

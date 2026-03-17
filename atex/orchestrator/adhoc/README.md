@@ -51,7 +51,6 @@ Namely,
   destroyed the Remote (made it unsuitable for use by more tests).
 - **`should_be_rerun()`** which returns a boolean whether a finished failing
   test should be re-run or not.
-- **`was_successful()`** which evaluates whether a test succeeded or failed.
 
 TODO: document SetupInfo / RunningInfo / FinishedInfo
 

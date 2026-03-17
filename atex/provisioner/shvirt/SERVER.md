@@ -161,7 +161,7 @@ The UEFI / Secure Boot version (modern VM):
   <on_crash>restart</on_crash>
   <devices>
     <disk type='volume' device='disk'>
-      <driver name='qemu' type='raw' cache='none' io='native'/>
+      <driver name='qemu' type='raw' cache='none' io='native' discard='unmap'/>
       <source pool='default' volume='vmname1'/>
       <target dev='vda' bus='virtio'/>
     </disk>
@@ -211,7 +211,7 @@ BIOS-using version (older VMs):
   <on_crash>restart</on_crash>
   <devices>
     <disk type='volume' device='disk'>
-      <driver name='qemu' type='raw' cache='none' io='native'/>
+      <driver name='qemu' type='raw' cache='none' io='native' discard='unmap'/>
       <source pool='default' volume='vmname1'/>
       <target dev='vda' bus='virtio'/>
     </disk>

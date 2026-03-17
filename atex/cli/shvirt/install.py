@@ -163,7 +163,10 @@ def install(args):
         "--location", args.location,
         "--name", f"installing-{args.name}",
         "--memory", "4096",
-        "--disk", f"vol={args.pool}/{temp_image},format={args.format}",
+        "--disk", (
+            f"vol={args.pool}/{temp_image},format={args.format},"
+            "cache=none,io=native,discard=unmap"
+        ),
         "--network", "passt",
         "--cpu", "host-passthrough,cache.mode=passthrough",
         "--graphics", "none",

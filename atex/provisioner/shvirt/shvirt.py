@@ -502,7 +502,8 @@ class SharedVirtProvisioner(Provisioner):
 
     def __str__(self):
         class_name = self.__class__.__name__
+        dfilter = f", {self.domain_filter}" if self.domain_filter is not None else ""
         return (
-            f"{class_name}({self.domain_host}, {self.domain_filter}, "
+            f"{class_name}({self.domain_host}{dfilter}, "
             f"{len(self.remotes)} remotes, {hex(id(self))})"
         )

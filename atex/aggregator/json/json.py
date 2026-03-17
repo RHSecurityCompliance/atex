@@ -1,4 +1,5 @@
 import abc
+import collections
 import gzip
 import json
 import lzma
@@ -33,7 +34,7 @@ class JSONAggregator(Aggregator):
         self.target = Path(target)
         self.files = Path(files)
         self.allow_duplicate = allow_duplicate
-        self.seen_tests = {}
+        self.seen_tests = collections.Counter()
         self.target_fobj = None
 
     def start(self):
@@ -93,13 +94,13 @@ class JSONAggregator(Aggregator):
             yield json.dumps(output_line, indent=None)
 
     def ingest(self, platform, test_name, artifacts):
-        if test_name in self.seen_tests:
+        unique_id = (platform, test_name)
+        if unique_id in self.seen_tests:
             if not self.allow_duplicate:
-                raise AggregatorError(f"'{test_name}' was already ingested once")
-            test_name = f"{test_name} ({self.seen_tests[test_name]})"
-            self.seen_tests[test_name] += 1
-        else:
-            self.seen_tests[test_name] = 1
+                raise AggregatorError(f"'{test_name}' was already ingested once for '{platform}'")
+            else:
+                test_name = f"{test_name} ({self.seen_tests[unique_id]})"
+        self.seen_tests[unique_id] += 1
 
         artifacts = Path(artifacts)
         # TODO: define these as TestArtifacts namedtuple in Executor?

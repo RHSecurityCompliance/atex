@@ -26,16 +26,6 @@ For example, imagine running 10 tests on 3 Remotes (A,B,C):
 1. Test 10 finishes on A, no more tests to run, we release Remote A
 1. Test 2 (rerun) finally finishes B, fails again destructively, but its reruns were exhausted, so we just release Remote B and finish
 
-## Basic use
-
-```python
-
-o = AdHocOrchestrator(
-    "
-
-```
-
-
 ## Customization
 
 There are several subclass-overridable functions you can use to customize what
@@ -52,104 +42,84 @@ Namely,
 - **`should_be_rerun()`** which returns a boolean whether a finished failing
   test should be re-run or not.
 
-TODO: document SetupInfo / RunningInfo / FinishedInfo
+All these receive `info` as one of their (positional-only) arguments, which
+is a namespace that holds information about the Provisioner, Remote, the test
+and anything else that might be useful for the functions.
+
+Depending on the state of the testing, the `info` argument is one of:
+
+- `AdHocOrchestrator.SetupInfo`
+  - Has `.provisioner`, `.remote` and `.executor` attrs.
+- `AdHocOrchestrator.RunningInfo`
+  - Extends `SetupInfo` with `.test_name` and `.artifacts`.
+- `AdHocOrchestrator.FinishedInfo`
+  - Extends `RunningInfo` with `.exit_code` and `.exception`.
+
+Some functions receive only one type (ie. `run_setup()` only ever gets
+`SetupInfo`), some get any of these. Check `type(info)` if you need to access
+specific namespace.
 
 ## Mixin features
 
-TODO
+There are several Mixins available to easily customize the behavior of the
+orchestrator, typically overriding the functions mentioned above.
 
-- LimitedRerunsMixin
-- FMFDestructiveMixin
-- FMFDurationMixin
-- FMFPriorityMixin
+All of these can be combined (chained) together, see their docstrings.
 
+- **`LimitedRerunsMixin`** to provide N retries for every test name.
+  - By default, AdHocOrchestrator assumes you might want a custom retry logic
+    (hence `should_be_rerun()` and not a number), but most users just want
+    "if it fails, try it 2 more times".
+  - Use the `cond` argument to specify what a "failure" means (all non-zero
+    exit codes by default).
 
-...
-
-
-These Aggregators collect reported results in a line-JSON output file and
-uploaded files (logs) from multiple test runs under a shared directory.
-
-For example
-
-- `aggregated/results.json`
-
-  ```json
-  ["9.8@x86_64", "pass", "/some/test", null, [], null]
-
-  ["10.2@s390x", "pass", "/unit/syscalls", "accept", ["test.txt"], null]
-  ["10.2@s390x", "fail", "/unit/syscalls", "connect", ["test.txt"], "Got errno: ECONNABORTED"]
-  ["10.2@s390x", "warn", "/unit/syscalls", "open", ["test.txt"], null]
-  ["10.2@s390x", "fail", "/unit/syscalls", null, ["full_output.txt"], null]
-
-  ["11.0@x86_64", "pass", "/ltp", "syscalls/alarm01", ["test.out"], null]
-  ["11.0@x86_64", "pass", "/ltp", "syscalls/socketpair02", ["server/test.out", "client/test.out"], null]
+  ```python
+  class CustomOrchestrator(LimitedRerunsMixin(2), AdHocOrchestrator):
+      pass
+  ```
+  ```python
+  class CustomOrchestrator(
+      LimitedRerunsMixin(reruns=2, cond=lambda code: code not in [0,2]),
+      AdHocOrchestrator,
+  ):
+      pass
   ```
 
-- `aggregated/uploaded_files/`
+- **`FMFDurationMixin`** to run longer-running tests sooner.
+  - The idea is that, with multiple parallel test executions, you can dedicate
+    some of the Remotes to very-long-running tests while the short ones finish
+    (and maybe are re-run) in parallel on other Remotes.  
+    Basically - you don't want to leave a 12h test toward the end of your test
+    run and then it fails, and you need another 12h to rerun it, waiting on the
+    one single test running on one Remote the whole time.
+  - It takes `fmf_tests` so it can inspect discovered test metadata.
 
+  ```python
+  class CustomOrchestrator(FMFDurationMixin(fmf_tests), AdHocOrchestrator):
+      pass
   ```
-  /10.2@s390x/unit/syscalls/accept/test.txt
-  /10.2@s390x/unit/syscalls/connect/test.txt
-  /10.2@s390x/unit/syscalls/open/test.txt
-  /10.2@s390x/unit/syscalls/full_output.txt
 
-  /11.0@x86_64/ltp/syscalls/alarm01/test.out
-  /11.0@x86_64/ltp/syscalls/socketpair02/server/test.out
-  /11.0@x86_64/ltp/syscalls/socketpair02/client/test.out
+- **`FMFPriorityMixin`** to prioritize some tests over others.
+  - You know your tests best. Some fail (and need reruns) way more frequently.
+    So give them `extra-priority` as metadata and this mixin will prioritize
+    them above/below other tests.
+  - Default priority (if not specified) is `0`, larger number = higher priority
+    = runs sooner.
+  - It takes `fmf_tests` so it can inspect discovered test metadata.
+
+  ```python
+  class CustomOrchestrator(FMFPriorityMixin(fmf_tests), AdHocOrchestrator):
+      pass
   ```
 
-The primary class is `JSONAggregator`, but there are additional variants that
-store the results in a compressed JSON file, and optionally can also compress
-the uploaded files.
+- **`FMFDestructiveMixin`** to throw away a Remote after a destructive test.
+  - If a test has 'destructive' as a tag in its metadata, the Remote it ran on
+    will the released and a new one provisioned in its place.
+  - Useful for tests that need to "destroy" the OS in order to exercise the
+    functionality under test (ie. tools that "harden" the OS).
+  - It takes `fmf_tests` so it can inspect discovered test metadata.
 
-## Format
-
-The results uses a top-level array (on each line) with a fixed item order:
-
-```
-[platform, status, test name, subtest name, files, note]
-```
-
-All these are strings except `files`, which is another (nested) array
-of strings.
-
-Note that test name is explicitly given to `ingest()`, and subtest name comes
-from test artifacts (the `name` result key, which may be non-existent,
-indicating the result is relevant to the test itself, not a subtest).  
-See also [RESULTS.md](../../executor/RESULTS.md).
-
-Further:
-- If subtest name or note missing in test artifacts, a `null` item is used.
-- If `testout` is present inside test artifacts (in the result for the test
-  itself), it is prepended to the list of `files`.
-
-Also note that the aggregated JSON file **is not related** to any JSON usage
-inside test artifacts - both might use JSON as a data format, but for
-different purposes.
-
-## Examples
-
-```python
-with JSONAggregator("results.json", "uploaded_files") as aggr:
-    aggr.ingest("9.8@x86_64", "/some/test", test_artifacts_dir)
-
-
-aggr_lzma = LZMAJSONAggregator(
-    "results.json.xz",
-    "uploaded_files",
-    compress_files=False,  # do not compress uploaded files
-)
-with aggr_lzma:
-    ...
-
-
-aggr_gzip = GzipJSONAggregator(
-    "results.json.gz",
-    "uploaded_files",
-    compress_level=5,
-    compress_files_suffix="",  # transparent compression
-)
-with aggr_gzip:
-    ...
-```
+  ```python
+  class CustomOrchestrator(FMFDestructiveMixin(fmf_tests), AdHocOrchestrator):
+      pass
+  ```

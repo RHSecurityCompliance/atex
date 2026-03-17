@@ -115,17 +115,6 @@ def virsh(*args):
     return (proc.returncode, proc.stdout)
 
 
-def lock_domain(pattern=None):
-    _, domain_list = virsh("list", "--all", "--name")
-    domains = domain_list.rstrip("\n").split("\n")
-    for domain in domains:
-        if pattern is not None and not re.fullmatch(pattern, domain):
-            continue
-        if lock(domain):
-            return domain
-    return None
-
-
 def cmd_ping(_logger, reply, _args):
     reply(True, "atex-virt-helper v1 pong")
 
@@ -145,7 +134,7 @@ def cmd_virsh(_logger, reply, args):
 
 
 def cmd_reserve(logger, reply, args):
-    code, output = virsh("list", "--all", "--name")
+    code, output = virsh("list", "--all", "--persistent", "--name")
     if code != 0:
         msg = f"virsh list failed with {code}: {output}"
         logger.error(msg)
@@ -182,7 +171,7 @@ def cmd_release(_logger, reply, args):
 
 
 def cmd_reservations(logger, reply, _args):
-    code, output = virsh("list", "--all", "--name")
+    code, output = virsh("list", "--all", "--persistent", "--name")
     if code != 0:
         msg = f"virsh list failed with {code}: {output}"
         logger.error(msg)

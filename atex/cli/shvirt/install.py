@@ -36,25 +36,23 @@ def install(args):
                 ks_contents += f"\n{cmd}\n"
 
         if args.ks_packages:
-            with open(args.ks_packages) as f:
-                ks_contents += (
-                    "\n%packages --ignoremissing\n" +
-                    f.read().strip("\n") +
-                    "\n%end\n"
-                )
+            ks_contents += (
+                "\n%packages --ignoremissing\n" +
+                args.ks_packages.strip("\n") +
+                "\n%end\n"
+            )
 
         if args.ks_sshkeys:
-            with open(args.ks_sshkeys) as f:
-                ks_contents += (
-                    "\n%post --erroronfail\n"
-                    "mkdir -p /root/.ssh\n"
-                    "cat > /root/.ssh/authorized_keys <<'EOF'\n"
-                ) + f.read().strip("\n") + (
-                    "\nEOF\n"
-                    "chmod go-rwx -R /root/.ssh\n"
-                    "chown root:root -R /root/.ssh\n"
-                    "%end\n"
-                )
+            ks_contents += (
+                "\n%post --erroronfail\n"
+                "mkdir -p /root/.ssh\n"
+                "cat > /root/.ssh/authorized_keys <<'EOF'\n"
+            ) + args.ks_sshkeys.strip("\n") + (
+                "\nEOF\n"
+                "chmod go-rwx -R /root/.ssh\n"
+                "chown root:root -R /root/.ssh\n"
+                "%end\n"
+            )
 
         for extra in args.ks_append:
             ks_contents += f"\n{extra}\n"
@@ -233,8 +231,8 @@ def add_install_args(parser):
     grp.add_argument("--bios", help="create old BIOS image instead of UEFI", action="store_true")
 
     grp = parser.add_argument_group("Kickstart")
-    grp.add_argument("--ks-packages", help=r"file with \n-separated extra RPMs to install")
-    grp.add_argument("--ks-sshkeys", help=r"file with \n-separated ssh keys for root")
+    grp.add_argument("--ks-packages", help=r"string with \n-separated extra RPMs to install")
+    grp.add_argument("--ks-sshkeys", help=r"string with \n-separated ssh keys for root")
     grp.add_argument(
         "--ks-cmd",
         help="kickstart cmd with args, replaces built-in one",

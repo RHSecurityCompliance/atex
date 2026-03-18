@@ -504,6 +504,7 @@ class SharedVirtProvisioner(Provisioner):
         class_name = self.__class__.__name__
         dfilter = f", {self.domain_filter}" if self.domain_filter is not None else ""
         return (
-            f"{class_name}({self.domain_host}{dfilter}, "
-            f"{len(self.remotes)} remotes, {hex(id(self))})"
+            f"{class_name}({self.domain_host}{dfilter}, {self.image}, "
+            f"{len(self.remotes)} remotes, {self.to_reserve} to reserve, "
+            f"{hex(id(self))})"
         )

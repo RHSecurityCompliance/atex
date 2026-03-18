@@ -141,7 +141,12 @@ def cmd_reserve(logger, reply, args):
         reply(False, msg)
         return
 
-    domains = output.rstrip("\n").split("\n")
+    if not (domain_list := output.rstrip("\n")):
+        reply(False, "no persistent domains found")
+        return
+
+    domains = domain_list.split("\n")
+
     if (regex := args.get("filter")) is not None:
         domains = [name for name in domains if re.fullmatch(regex, name)]
         if not domains:

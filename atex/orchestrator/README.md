@@ -49,8 +49,8 @@ Orchestrator(platform, tests, provisioners, aggregator, executor)
 Orchestrator(
     "cs10@x86_64",
     ["first test", "second test"],
-    [SomeProvisioner(...)],
-    SomeAggregator(...),
+    [some_provisioner_instance, another_one],
+    some_aggregator_instance,
     lambda conn: SomeExecutor(conn, other_args=123, ...),
 )
 ```

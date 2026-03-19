@@ -1,4 +1,3 @@
-import concurrent.futures
 import logging
 import tempfile
 
@@ -60,7 +59,7 @@ class AdHocOrchestrator(Orchestrator):
 
         Keyword arguments:
 
-        - `old_aggregator` is a class Aggregator instance for ingesting
+        - `old_aggregator` is a started class Aggregator instance for ingesting
           "old" test results (from tests that were later re-run). If left
           as None, these results are discarded.
 
@@ -225,8 +224,6 @@ class AdHocOrchestrator(Orchestrator):
     def serve_once(self):
         # all done
         if not self.to_run and not self.running_tests:
-            # TODO: .stop() all provisioners for cases when our own .stop()
-            #       isn't called right away?
             return False
 
         # process all finished tests, potentially reusing remotes for executing
@@ -350,11 +347,6 @@ class AdHocOrchestrator(Orchestrator):
         return True
 
     def start(self):
-        # start all provisioners separately - avoid .provision() on any one
-        # in case one of them fails to start
-        for prov in self.provisioners:
-            prov.start()
-
         # start up initial reservations - the idea is to request as much remotes
         # as there are tests (worst possible case where Remotes are not reused)
         # from EACH provisioner, allowing any one of them to supply the Remotes
@@ -386,14 +378,6 @@ class AdHocOrchestrator(Orchestrator):
                     logger.error(f"'{treturn.test_name}' ingesting failed: {exc_str}")
                 else:
                     logger.debug(f"'{treturn.test_name}' ingesting completed")
-
-        # stop all provisioners, also releasing all remotes
-        # - parallelize up to 10 provisioners at a time
-        if self.provisioners:
-            workers = min(len(self.provisioners), 10)
-            with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as ex:
-                for provisioner in self.provisioners:
-                    ex.submit(provisioner.stop)
 
     def __str__(self):
         class_name = self.__class__.__name__

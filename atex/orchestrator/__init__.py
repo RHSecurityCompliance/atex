@@ -19,11 +19,12 @@ class Orchestrator:
           for the Orchestrator to iterate and pass to an Executor as test
           names.
 
-        - `provisioners` are initialized Provisioner instances to source
-          Remotes from, for test execution.
+        - `provisioners` are initialized and started Provisioner instances
+          to source Remotes from, for test execution.
 
-        - `aggregator` is an initialized Aggregator instance for ingesting
-          final test results from test artifacts produced by an Executor.
+        - `aggregator` is an initialized and started Aggregator instance
+          for ingesting final test results from test artifacts produced
+          by an Executor.
 
         - `executor` is a factory (function or class) that, when given
           a connected Connection, produces an initialized Executor instance,

@@ -284,11 +284,24 @@ class SharedVirtProvisioner(Provisioner):
             # rather than risking cmd:release over what might be corrupted
             # helper stdio channel
 
-            # destroy and clone the requested image to it
-            response = self._helper_query({"cmd": "virsh", "args": ["destroy", domain]})
-            if response["success"]:
-                logger.debug(f"destroyed domain {domain}")
+            # destroy the domain if running
+            response = self._helper_query({"cmd": "virsh", "args": ["domstate", domain]})
+            if not response["success"]:
+                raise ProvisionerError(f"failed domstate {domain}: {response['reply']}")
+            if response["reply"] != "shut off\n":
+                logger.debug(f"domain {domain} running, destroying it")
+                response = self._helper_query({"cmd": "virsh", "args": ["destroy", domain]})
+                if not response["success"]:
+                    raise ProvisionerError(f"failed destroy {domain}: {response['reply']}")
+                while True:
+                    response = self._helper_query({"cmd": "virsh", "args": ["domstate", domain]})
+                    if not response["success"]:
+                        raise ProvisionerError(f"failed domstate {domain}: {response['reply']}")
+                    if response["reply"] == "shut off\n":
+                        logger.debug(f"destroyed domain {domain}")
+                        break
 
+            # clone the requested image to the domain
             response = self._helper_query({
                 "cmd": "copy-volume",
                 "pool": self.pool,

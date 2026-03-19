@@ -12,7 +12,7 @@ def run_fmf_test(provisioner, tmp_dir, *, read_results=True):
     fmf_tests = FMFTests("fmf_trees/results", plan="/plan")
     provisioner.provision(1)
     remote = provisioner.get_remote()
-    with FMFExecutor(fmf_tests, remote) as e:
+    with FMFExecutor(remote, fmf_tests=fmf_tests) as e:
         e.run_test(f"/{test}", tmp_dir)
     if read_results:
         results = (tmp_dir / "results").read_text()

@@ -7,7 +7,7 @@ def test_prepare(provisioner, tmp_dir):
     fmf_tests = FMFTests("fmf_trees/pkgs", plan="/plan")
     provisioner.provision(1)
     remote = provisioner.get_remote()
-    with FMFExecutor(fmf_tests, remote) as e:
+    with FMFExecutor(remote, fmf_tests=fmf_tests) as e:
         e.run_test("/test_prepare", tmp_dir)
     output = (tmp_dir / "files" / "output.txt").read_text()
     assert output.startswith("bsd-games-")
@@ -17,7 +17,7 @@ def test_require(provisioner, tmp_dir):
     fmf_tests = FMFTests("fmf_trees/pkgs", plan="/plan")
     provisioner.provision(1)
     remote = provisioner.get_remote()
-    with FMFExecutor(fmf_tests, remote) as e:
+    with FMFExecutor(remote, fmf_tests=fmf_tests) as e:
         e.run_test("/test_require", tmp_dir)
     output = (tmp_dir / "files" / "output.txt").read_text()
     assert output.startswith("rogue-")
@@ -32,7 +32,7 @@ def test_require_fail(provisioner, tmp_dir):
     fmf_tests = FMFTests("fmf_trees/pkgs", plan="/plan")
     provisioner.provision(1)
     remote = provisioner.get_remote()
-    with FMFExecutor(fmf_tests, remote) as e:
+    with FMFExecutor(remote, fmf_tests=fmf_tests) as e:
         try:
             e.run_test("/test_require_fail", tmp_dir)
             raise AssertionError("TestSetupError was not raised")
@@ -50,7 +50,7 @@ def test_recommend(provisioner, tmp_dir):
     fmf_tests = FMFTests("fmf_trees/pkgs", plan="/plan")
     provisioner.provision(1)
     remote = provisioner.get_remote()
-    with FMFExecutor(fmf_tests, remote) as e:
+    with FMFExecutor(remote, fmf_tests=fmf_tests) as e:
         e.run_test("/test_recommend", tmp_dir)
     output = (tmp_dir / "files" / "output.txt").read_text()
     assert output.startswith("rogue-")

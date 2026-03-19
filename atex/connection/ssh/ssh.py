@@ -1,19 +1,3 @@
-"""
-Connection API implementation using the OpenSSH `ssh(1)` client.
-
-Any SSH options are passed via dictionaries of options, and later translated
-to `-o` client CLI options, incl. Hostname, User, Port, IdentityFile, etc.
-No "typical" ssh CLI switches are used.
-
-This allows for a nice flexibility from Python code - this module provides
-some sensible option defaults (for scripted use), but you are free to
-overwrite any options via class or function arguments (where appropriate).
-
-Note that `.cmd()` quotes arguments to really execute individual arguments
-as individual arguments in the remote shell, so you need to give it a proper
-iterable (like for other Connections), not a single string with spaces.
-"""
-
 import logging
 import os
 import shlex
@@ -23,8 +7,8 @@ import threading
 import time
 from pathlib import Path
 
-from .. import util
-from . import Connection
+from ... import util
+from .. import Connection
 
 logger = logging.getLogger("atex.connection.ssh")
 
@@ -136,17 +120,6 @@ def _rsync_host_cmd(*args, options, password=None, sudo=None):
 
 
 class StatelessSSHConnection(Connection):
-    """
-    Implements the Connection API using a `ssh(1)` client using "standalone"
-    (stateless) logic - `connect()` and `disconnect()` are no-op, `.cmd()`
-    simply executes the ssh client and `.rsync()` executes `rsync -e ssh`.
-
-    Compared to ManagedSSHConnection, this may be slow for many `.cmd()` calls,
-    but every call is stateless, there is no persistent connection.
-
-    For only one `.cmd()`, this class is faster than ManagedSSHConnection.
-    """
-
     def __init__(self, options, *, password=None, sudo=None):
         """
         Prepare to connect to an SSH server specified in `options`.
@@ -212,16 +185,6 @@ class StatelessSSHConnection(Connection):
 # when it gets DisconnectedError from it.
 
 class ManagedSSHConnection(Connection):
-    """
-    Implements the Connection API using one persistently-running `ssh(1)` client
-    started in a ControlMaster mode, with additional ssh clients using that
-    session to execute remote commands. Similarly, `.rsync()` uses it too.
-
-    This is much faster than StatelessSSHConnection when executing multiple
-    commands, but contains a complex internal state (what if ControlMaster
-    disconnects?).
-    """
-
     # TODO: thread safety and locking via self.lock ?
 
     def __init__(self, options, *, password=None, sudo=None):

@@ -1,11 +1,7 @@
-"""
-Dummy Connection for running commands locally.
-"""
-
 import subprocess
 
-from .. import util
-from . import Connection
+from ... import util
+from .. import Connection
 
 
 class LocalConnection(Connection):

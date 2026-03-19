@@ -1,11 +1,7 @@
-"""
-Connection API implementation using the `podman` CLI client.
-"""
-
 import subprocess
 
-from .. import util
-from . import Connection
+from ... import util
+from .. import Connection
 
 
 class PodmanConnectionError(ConnectionError):
@@ -13,11 +9,6 @@ class PodmanConnectionError(ConnectionError):
 
 
 class PodmanConnection(Connection):
-    """
-    Implements the Connection API via `podman container exec` on an
-    already-running container, it does not handle any image pulling,
-    container creation, starting or stopping.
-    """
     def __init__(self, container):
         self.container = container
 

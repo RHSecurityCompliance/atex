@@ -1,4 +1,16 @@
-# Shared virtual host provisioner
+# Shared Virtual host provisioner
+
+```python
+# connection to the VM host
+conn = StatelessSSHConnection(...)
+
+with SharedVirtProvisioner(conn, "9.6", domain_sshkey="key_file") as p:
+    p.provision(3)
+    for _ in range(3):
+        remote = p.get_remote()
+        remote.cmd(["cat", "/etc/passwd"])
+        remote.release()
+```
 
 This uses a set of pre-configured domains (VMs) that sit permanently on the
 server. Ie. `vmname1` through `vmname20`. These are ideally XML-defined via

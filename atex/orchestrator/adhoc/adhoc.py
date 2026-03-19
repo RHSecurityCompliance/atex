@@ -77,7 +77,8 @@ class AdHocOrchestrator(Orchestrator):
           is raised.
         """
         self.platform = platform
-        self.to_run = set(tests)
+        # dict() instead of set() to preserve order
+        self.to_run = dict.fromkeys(tests)
         self.provisioners = tuple(provisioners)
         self.aggregator = aggregator
         self.executor = executor
@@ -114,12 +115,12 @@ class AdHocOrchestrator(Orchestrator):
           - FinishedInfo instance of a previously executed test
             (reusing Remote/Executor for a new test).
         """
-        next_test_name = self.next_test(self.to_run, info)
+        next_test_name = self.next_test(self.to_run.keys(), info)
         assert next_test_name in self.to_run, "next_test() returned valid test name"
 
         logger.info(f"{info.remote}: starting '{next_test_name}'")
 
-        self.to_run.remove(next_test_name)
+        del self.to_run[next_test_name]
 
         # let __del__ take care of it in case we don't
         artifacts = tempfile.TemporaryDirectory(
@@ -164,7 +165,7 @@ class AdHocOrchestrator(Orchestrator):
 
         if (finfo.exception or finfo.exit_code != 0) and self.should_be_rerun(finfo):
             logger.info(f"{remote_with_test} failed, re-running")
-            self.to_run.add(finfo.test_name)
+            self.to_run[finfo.test_name] = None  # add it
 
             # provision a replacement for a destroyed Remote
             if remote_destroyed:
@@ -405,8 +406,8 @@ class AdHocOrchestrator(Orchestrator):
         """
         Return a test name (string) to be executed next.
 
-        - `to_run` is a set of test names to pick from. The returned test name
-          must be chosen from this set.
+        - `to_run` is a list of test names to pick from. The returned test name
+          must be chosen from these names.
 
         - `previous` can be either
 

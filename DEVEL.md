@@ -148,7 +148,3 @@ to guarantee that a `dup()` of `stdout` (to a higher `fd` number), followed by
 (A malicious test could write bogus data to `ATEX_TEST_CONTROL` anyway, that's
 beside the point.)
 
-
-## Upcoming API breakages
-
-- rename `FMFTests` argument `plan_name` to `plan`

@@ -38,7 +38,7 @@ class FMFTests:
     # TODO: usage example ^^^^
 
     def __init__(
-        self, fmf_tree, plan_name=None, *,
+        self, fmf_tree, plan=None, *,
         names=None, filters=None, conditions=None, excludes=None,
         context=None,
     ):
@@ -46,7 +46,7 @@ class FMFTests:
         - `fmf_tree` is filesystem path somewhere inside fmf metadata tree,
           or a root fmf.Tree instance.
 
-        - `plan_name` is fmf identifier (like `/some/thing`) of a tmt plan
+        - `plan` is fmf identifier (like `/some/thing`) of a tmt plan
           to use for discovering tests. If None, a dummy (empty) plan is used.
 
         - `names`, `filters`, `conditions` and `exclude` (all tuple/list)
@@ -96,26 +96,26 @@ class FMFTests:
         self.root = Path(tree.root)
 
         # lookup the plan first
-        if plan_name:
-            plan = tree.find(plan_name)
-            if not plan:
-                raise ValueError(f"plan {plan_name} not found in {tree.root}")
-            if "test" in plan.data:
-                raise ValueError(f"plan {plan_name} appears to be a test")
-            if plan.children:
-                children = ", ".join(plan.children)
-                raise ValueError(f"'{plan_name}' matches multiple plans: {children}")
-        # fall back to a dummy plan
+        if plan:
+            plan_node = tree.find(plan)
+            if not plan_node:
+                raise ValueError(f"plan {plan} not found in {tree.root}")
+            if "test" in plan_node.data:
+                raise ValueError(f"plan {plan} appears to be a test")
+            if plan_node.children:
+                children = ", ".join(plan_node.children)
+                raise ValueError(f"'{plan}' matches multiple plans: {children}")
+            plan_data = plan_node.data
+        # fall back to dummy plan data
         else:
-            class plan:  # noqa: N801
-                data = {}
+            plan_data = {}
 
         # gather and merge plan-defined environment variables
         #
         # environment:
         #  - FOO: BAR
         #    BAR: BAZ
-        for entry in listlike(plan.data, "environment"):
+        for entry in listlike(plan_data, "environment"):
             self.plan_env.update(entry)
 
         # gather all prepare scripts / packages
@@ -127,14 +127,14 @@ class FMFTests:
         #   - how: shell
         #     script:
         #       - some-command
-        for entry in listlike(plan.data, "prepare"):
+        for entry in listlike(plan_data, "prepare"):
             if entry.get("how") == "install":
                 self.prepare_pkgs += listlike(entry, "package")
             elif entry.get("how") == "shell":
                 self.prepare_scripts += listlike(entry, "script")
 
         # gather all finish scripts, same as prepare scripts
-        for entry in listlike(plan.data, "finish"):
+        for entry in listlike(plan_data, "finish"):
             if entry.get("how") == "shell":
                 self.finish_scripts += listlike(entry, "script")
 
@@ -149,7 +149,7 @@ class FMFTests:
         #     exclude:
         #       - some-test-regex
         plan_filters = collections.defaultdict(list)
-        for entry in listlike(plan.data, "discover"):
+        for entry in listlike(plan_data, "discover"):
             if entry.get("how") != "fmf":
                 continue
             for meta_name in ("filter", "test", "exclude"):

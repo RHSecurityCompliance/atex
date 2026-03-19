@@ -3,7 +3,7 @@ from atex.executor.fmf import FMFExecutor, FMFTests
 
 
 def test_prepare_cwd(provisioner):
-    fmf_tests = FMFTests("fmf_trees/cwd", plan_name="/plan")
+    fmf_tests = FMFTests("fmf_trees/cwd", plan="/plan")
     provisioner.provision(1)
     remote = provisioner.get_remote()
     with FMFExecutor(fmf_tests, remote):
@@ -13,7 +13,7 @@ def test_prepare_cwd(provisioner):
 
 
 def test_test_cwd(provisioner, tmp_dir):
-    fmf_tests = FMFTests("fmf_trees/cwd", plan_name="/plan")
+    fmf_tests = FMFTests("fmf_trees/cwd", plan="/plan")
     provisioner.provision(1)
     remote = provisioner.get_remote()
     with FMFExecutor(fmf_tests, remote) as e:

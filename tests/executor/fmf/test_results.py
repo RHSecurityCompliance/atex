@@ -9,7 +9,7 @@ from atex.executor.fmf.testcontrol import BadControlError, BadReportJSONError
 
 def run_fmf_test(provisioner, tmp_dir, *, read_results=True):
     test = sys._getframe(1).f_code.co_name  # same as parent func name
-    fmf_tests = FMFTests("fmf_trees/results", plan_name="/plan")
+    fmf_tests = FMFTests("fmf_trees/results", plan="/plan")
     provisioner.provision(1)
     remote = provisioner.get_remote()
     with FMFExecutor(fmf_tests, remote) as e:

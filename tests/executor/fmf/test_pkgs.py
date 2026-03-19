@@ -4,7 +4,7 @@ from atex.executor.fmf import FMFExecutor, FMFTests, TestSetupError
 
 
 def test_prepare(provisioner, tmp_dir):
-    fmf_tests = FMFTests("fmf_trees/pkgs", plan_name="/plan")
+    fmf_tests = FMFTests("fmf_trees/pkgs", plan="/plan")
     provisioner.provision(1)
     remote = provisioner.get_remote()
     with FMFExecutor(fmf_tests, remote) as e:
@@ -14,7 +14,7 @@ def test_prepare(provisioner, tmp_dir):
 
 
 def test_require(provisioner, tmp_dir):
-    fmf_tests = FMFTests("fmf_trees/pkgs", plan_name="/plan")
+    fmf_tests = FMFTests("fmf_trees/pkgs", plan="/plan")
     provisioner.provision(1)
     remote = provisioner.get_remote()
     with FMFExecutor(fmf_tests, remote) as e:
@@ -29,7 +29,7 @@ def test_require(provisioner, tmp_dir):
 
 
 def test_require_fail(provisioner, tmp_dir):
-    fmf_tests = FMFTests("fmf_trees/pkgs", plan_name="/plan")
+    fmf_tests = FMFTests("fmf_trees/pkgs", plan="/plan")
     provisioner.provision(1)
     remote = provisioner.get_remote()
     with FMFExecutor(fmf_tests, remote) as e:
@@ -47,7 +47,7 @@ def test_require_fail(provisioner, tmp_dir):
 
 
 def test_recommend(provisioner, tmp_dir):
-    fmf_tests = FMFTests("fmf_trees/pkgs", plan_name="/plan")
+    fmf_tests = FMFTests("fmf_trees/pkgs", plan="/plan")
     provisioner.provision(1)
     remote = provisioner.get_remote()
     with FMFExecutor(fmf_tests, remote) as e:

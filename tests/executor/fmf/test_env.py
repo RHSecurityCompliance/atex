@@ -6,7 +6,7 @@ from atex.executor.fmf import FMFExecutor, FMFTests
 
 
 def test_prepare_env(provisioner):
-    fmf_tests = FMFTests("fmf_trees/env", plan_name="/plan")
+    fmf_tests = FMFTests("fmf_trees/env", plan="/plan")
     provisioner.provision(1)
     remote = provisioner.get_remote()
     with FMFExecutor(fmf_tests, remote):
@@ -16,7 +16,7 @@ def test_prepare_env(provisioner):
 
 
 def test_test_env(provisioner, tmp_dir):
-    fmf_tests = FMFTests("fmf_trees/env", plan_name="/plan")
+    fmf_tests = FMFTests("fmf_trees/env", plan="/plan")
     provisioner.provision(1)
     remote = provisioner.get_remote()
     with FMFExecutor(fmf_tests, remote) as e:
@@ -27,7 +27,7 @@ def test_test_env(provisioner, tmp_dir):
 
 
 def test_envfile(provisioner, tmp_dir):
-    fmf_tests = FMFTests("fmf_trees/env", plan_name="/plan")
+    fmf_tests = FMFTests("fmf_trees/env", plan="/plan")
     provisioner.provision(1)
     remote = provisioner.get_remote()
     with FMFExecutor(fmf_tests, remote) as e:
@@ -39,7 +39,7 @@ def test_envfile(provisioner, tmp_dir):
 
 
 def test_envfile_shared(provisioner, tmp_dir):
-    fmf_tests = FMFTests("fmf_trees/env", plan_name="/plan")
+    fmf_tests = FMFTests("fmf_trees/env", plan="/plan")
     provisioner.provision(1)
     remote = provisioner.get_remote()
     with FMFExecutor(fmf_tests, remote) as e:

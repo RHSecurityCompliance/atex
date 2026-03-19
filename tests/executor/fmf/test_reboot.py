@@ -21,7 +21,7 @@ def wait_for_systemd(remote):
 
 
 def test_reboot(provisioner_systemd, tmp_dir):
-    fmf_tests = FMFTests("fmf_trees/reboot", plan_name="/plan")
+    fmf_tests = FMFTests("fmf_trees/reboot", plan="/plan")
     provisioner_systemd.provision(1)
     remote = provisioner_systemd.get_remote()
     wait_for_systemd(remote)
@@ -34,7 +34,7 @@ def test_reboot(provisioner_systemd, tmp_dir):
 
 
 def test_reboot_count(provisioner_systemd, tmp_dir):
-    fmf_tests = FMFTests("fmf_trees/reboot", plan_name="/plan")
+    fmf_tests = FMFTests("fmf_trees/reboot", plan="/plan")
     provisioner_systemd.provision(1)
     remote = provisioner_systemd.get_remote()
     wait_for_systemd(remote)
@@ -47,7 +47,7 @@ def test_reboot_count(provisioner_systemd, tmp_dir):
 
 
 def test_reboot_unexpected(provisioner_systemd, tmp_dir):
-    fmf_tests = FMFTests("fmf_trees/reboot", plan_name="/plan")
+    fmf_tests = FMFTests("fmf_trees/reboot", plan="/plan")
     provisioner_systemd.provision(1)
     remote = provisioner_systemd.get_remote()
     wait_for_systemd(remote)

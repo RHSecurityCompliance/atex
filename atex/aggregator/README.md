@@ -9,9 +9,8 @@
 
 A test result collector and organizer.
 
-It collects test artifacts, as specified in ... TODO ...
-for archival, logging, or further post-processing, using one algorithm,
-implemented by the Aggregator.
+It collects [Test Artifacts](../executor), for archival, logging, or further
+post-processing, using one algorithm, implemented by the Aggregator.
 
 ```python
 with Aggregator() as a:

@@ -1,35 +1,46 @@
 # FMFExecutor
 
-
-
-
-TODO
-
+This Executor is built around [fmf](https://github.com/teemtee/fmf/), the
+Flexible Metadata Format used by some test repositories. It **does not**
+use [tmt](https://github.com/teemtee/tmt) to execute tests, but does emulate
+several tmt features (see further below).
 
 ```python
-tests_repo = "cloned_tests"
-tests = [
-    "fs_racer.sh",
-    "fs_racer_dir_create.sh",
-    "fs_racer_file_create.sh",
-]
+# discover tests
+fmf_tests = FMFTests(
+    "path/to/repo_with_tests",
+    plan="/plans/sanity",
+    context={"distro": "rhel-9.6", "arch": "x86_64"},
+)
 
-with ManagedSSHConnection({"Hostname": ..., ...}) as conn:
-    with SomeSpecificExecutor(conn, upload=tests_repo) as e:
-        for test in tests:
-            with tempfile.TemporaryDirectory() as tmp:
-                e.run_test(test, tmp.name)
-                # process test results from 'tmp.name' here
+# run them
+with FMFExecutor(conn, fmf_tests=fmf_tests) as e:
+    e.run_test(...)
 ```
 
+You are free to modify the discovered FMFTests prior to passing them to
+the Executor. See FMFTests instance attributes (commented in code).  
+Ie. to double allowed 'duration':
 
+```python
+from atex.executor.fmf import duration_to_seconds
 
-This is a minimalistic re-implementation of some of the features of
-[tmt](https://github.com/teemtee/tmt), without re-inventing the test metadata
-([fmf](https://github.com/teemtee/fmf/) parsing part, which we simply import
-and use as-is.
+for data in fmf_tests.tests.values():
+    duration = data.get("duration", "5m")
+    secs = duration_to_seconds(duration)
+    data["duration"] = str(secs * 2)
+```
 
-## Scope
+## Test Control channel
+
+Tests run under this Executor have access to a "test control" stream, for
+communicating with the Executor - reporting results, modifying duration limits,
+safely rebooting, and others.
+
+See [TEST_CONTROL.md](TEST_CONTROL.md) for details, including how results are
+supposed to be reported by tests (there's a fallback for simple tests too).
+
+## FMF/TMT features supported
 
 ### fmf
 
@@ -41,6 +52,9 @@ Everything supported by fmf should work, incl.
 
 ### Plans
 
+Plans are a tmt, not fmf feature. As such, FMFExecutor reimplements only *some*
+of tmt features on top of what fmf already provides.
+
 - `environment`
   - Supported as dict or list, exported for prepare scripts and tests
 - `discover`
@@ -51,9 +65,9 @@ Everything supported by fmf should work, incl.
   - No remote git repo (aside from what fmf supports natively), no `check`,
     no `modified-only`, no `adjust-tests`, etc.
   - Tests from multiple `discover` sections are added together, eg. any order
-    of the `discover` sections in the fmf is (currently) not honored.
+    of the `discover` sections in the fmf is (currently) not honored
 - `provision`
-  - Ignored (custom provisioning logic used)
+  - Ignored (not relevant to an ATEX Executor)
 - `prepare`
   - Only `-h install` and `-h shell` supported
   - `install` reads just `package` as string/list of RPMs to install from
@@ -62,18 +76,18 @@ Everything supported by fmf should work, incl.
 - `execute`
   - Ignored (might support `-h shell` in the future)
 - `report`
-  - Ignored (custom reporting logic used)
+  - Ignored (not relevant to an ATEX Executor)
 - `finish`
   - Only `-h shell` supported
 - `login` and `reboot`
   - Ignored (at least for now)
-- `plans` and `tests`
-  - Ignored (CLI option used for plan, choose tests via `discover`)
+- `plans` and `tests` (as tmt plan YAML keywords)
+  - Ignored (discover is done via FMFTests and its fmf-based filters)
 - `context`
   - Ignored (at least for now), I'm not sure what it is useful for if it doesn't
     apply to `adjust`ing tests, per tmt docs. Would require double test
     discovery / double adjust as the plan itself would need to be `adjust`ed
-    using CLI context first
+    with the FMFTests-provided context
 
 ### Tests
 
@@ -84,26 +98,30 @@ Everything supported by fmf should work, incl.
   - Supported as a string/list of RPM packages to install via `dnf`
   - No support for beakerlib libraries, path requires, etc
     - Non-string elements (ie. dict) are silently ignored to allow the test
-      to be full-tmt-compatible
+      to be tmt-compatible
 - `recommend`
   - Same as `require`, but the `dnf` transaction is run with `--skip-broken`
 - `duration`
   - Supported, the command used to execute the test (wrapper) is SIGKILLed
-    upon reaching it and the entire machine is discarded (for safety)
+    upon reaching it and a TestAbortedError is raised
   - See [TEST_CONTROL.md](TEST_CONTROL.md) on how to adjust it during runtime
 - `environment`
   - Supported as dict or list, exported for `test`
 - `check`
-  - Ignored, we don't fail your test because of unrelated AVCs
-  - If you need dmesg grepping or coredump handling, use a test library
+  - Ignored, it falls outside of the scope of a simple Executor
+  - If you need dmesg grepping or coredump handling, use a test library or
+    do it yourself via `.cmd()` of the Connection before/after `.run_test()`
 - `framework`
   - Ignored
 - `result`
-  - Ignored, intentionally, see [RESULTS.md](RESULTS.md) below
-  - The intention is for you to be able to use **both** tmt and atex
-    reporting if you want to, so `result` is for when you want full tmt
+  - Ignored, intentionally, see [RESULTS.md](RESULTS.md)
+  - The intention is for you to be able to use **both** tmt and ATEX
+    reporting if you want to, so `result` is for when you run under tmt
 - `restart`
   - Ignored, restart how many times you want until `duration`
+  - The only requirement is that you `disconnect` the control channel cleanly
+    before the connection disconnects (due to a OS reboot).
+    - See `disconnect` and `noop` in [TEST_CONTROL.md](TEST_CONTROL.md)
 - `path`
   - Currently not implemented, may be supported in the future
 - `manual`
@@ -116,11 +134,3 @@ Everything supported by fmf should work, incl.
 ### Stories
 
 Not supported, but the `story` key exists, the fmf node is skipped/ignored.
-
-### Test interface
-
-A test has write-only access to a "test control" stream, as a feature currently
-unsupported by tmt, for adjusting external test environment, reporting results,
-uploading logs and otherwise communicating with the test runner.
-
-The details are in [TEST_CONTROL.md](TEST_CONTROL.md).

@@ -1,6 +1,6 @@
 # Test Control
 
-A way to communicate with test runner from inside the test.
+A way to communicate with the runner (FMFExecutor) from inside the test.
 
 ## File Descriptor
 
@@ -15,10 +15,10 @@ It should never read from it, the stream is one-directional.
 
 ## Format
 
-The stream consists of _control lines_, consisting of ASCII characters (0-127),
+The stream consists of *control lines*, consisting of ASCII characters (0-127),
 terminated by a newline (`0x0a`).
 
-Each _control line_ starts with a _control word_, optionally followed by a space
+Each *control line* starts with a *control word*, optionally followed by a space
 (`0x20`) and argument(s) in an undefined control-word-specific format.
 
 ```
@@ -27,8 +27,8 @@ word2 arg1 arg2\n
 word3 any arbitrary <data>12345</data> here\n
 ```
 
-There is a parser specific to each _control word_, and, when called, is given
-the remainder of the _control line_, without the _control word_`, the
+There is a parser specific to each *control word*, and, when called, is given
+the remainder of the *control line*, without the *control word*`, the
 optional space after it, and the terminating newline.
 
 This parser is also given full (binary!) access to the stream, allowing it to
@@ -37,13 +37,15 @@ the global stream handler.
 
 ### Example
 
+(Imaginary example for illustration, doesn't actually work.)
+
 ```
 write_file /tmp/foobar 21\n
 some!@#$%^binary_dataword2 arg1 arg2\n
 ```
 
 In this example, the global stream handler read `write_file /tmp/foobar 21\n`
-and recognized `write_file` as a _control word_, calling its parser.  
+and recognized `write_file` as a *control word*, calling its parser.  
 This parser then received `/tmp/foobar 21` as arguments, along with the open
 stream handle.
 
@@ -52,7 +54,7 @@ and `21` to mean "read 21 more bytes". It then read further 21 (binary) bytes,
 `some!@#$%^binary_data` and wrote them to `/tmp/foobar`, before handing control
 back to the parent global stream handler.
 
-The parent then read `word2 arg1 arg2\n` as another _control line_, calling
+The parent then read `word2 arg1 arg2\n` as another *control line*, calling
 `word2` parser, etc., etc.
 
 ## Supported control words
@@ -69,10 +71,10 @@ The parent then read `word2 arg1 arg2\n` as another _control line_, calling
     file contents), which is handled internally by the `result` parser.
 - **`exitcode`**
   - ie. `exitcode 1\n`
-  - Typically used by a remote test wrapper (runner), setting the exit code
-    returned by the (real) test.
+  - Typically used by a remote test wrapper, setting the exit code returned by
+    the (real) test.
   - This exists to differentiate between a test returning 255 and the ssh client
-    on the controller returning 255 due to a connection issue. For this reason,
+    on the runner returning 255 due to a connection issue. For this reason,
     the controler **always** expects the remote command (wrapper) to return 0,
     and treats anything else as a non-test failure.
   - If a remote test wrapper does not write this control word, that is also
@@ -100,13 +102,19 @@ The parent then read `word2 arg1 arg2\n` as another _control line_, calling
       own save/restore commands while already running in a saved context.
 - **`disconnect`**
   - ie. `disconnect\n`
-  - Signals to the controller that an upcoming ssh disconnect is intentionally
-    caused by the test (ie. due to a reboot or temporary firewall change),
-    instructing it to reconnect and restart the test.
-  - If ssh disconnect happens without this flag, the controller treats it as
-    an abnormal situation and will abort the testing on that remote.
-  - The flag is automatically cleared on new reconnect and needs to be issued
-    before every disconnect.
+  - Signals the runner to disconnect the control channel and wait for test
+    wrapper exit, ignoring its exit code (likely non-zero due to OS reboot).
+    The runner then disconnects the whole Connection and keeps trying to connect
+    until the test duration expires, re-starting the test upon successful
+    connection.
+  - `TMT_REBOOT_COUNT` and `TMT_TEST_RESTART_COUNT` are incremented after
+    such reconnect.
+    - These are provided for compatibility only, the test should ideally use its
+      own stateful logic using on-disk files to track if it was run before.
+  - If the Connection used by the runner is disconnected without `disconnect`
+    sent over test control, a TestAbortedError is raised.
+  - Note that `disconnect` needs to be issued before **every** reboot, the flag
+    is cleared after a successful Connection disconnect.
   - Note that `duration save` + `restore` can be used to subtract the disconnect
     time from test run time (as long as the test starts up again and does
     `restore`). Useful for reboots that might take up to 30 minutes on some HW.
@@ -120,34 +128,14 @@ The parent then read `word2 arg1 arg2\n` as another _control line_, calling
     - `disconnect\n`
     - `noop\n`
     - `noop\n`
-    - `noop\n` - write returns `EPIPE`
-- **`setenv`** (IDEA ONLY)
-  - ie. `setenv FOO=some value\n`
-  - Exports one KEY=VALUE environment variable to the test environment.
-    - These are applied *after* FMF-defined env variables, potentially
-      overriding them.
-  - Note that this does not impact the currently running test, but does impact
-    any test restarts caused by disconnects.
-  - Useful to keep track of test state across reboots, ie.
-    - FMF-defined metadata have `environment: PHASE: setup`
-    - Setup-related test code sends `setenv PHASE=exec\n` and reboots
-    - Exec-related test code sends `setenv PHASE=cleanup\n` and reboots
-    - Cleanup-related test code cleans up and exits cleanly with 0
-- **`abort`** (IDEA ONLY)
-  - ie. `abort\n`
-  - Forcibly terminate test execution from the runner (and potentially destroy
-    or release the OS environment).
-- **`addtest`** (IDEA ONLY)
-  - ie. `addtest /some/fmf/test VAR1=abc VAR2=123`
-  - Schedule a new fmf-defined test to be run, with the specified env vars.
-  - Useful for dynamically-created tests
-    - Some setup test that downloads test suite, creates 1000 tests based on
-      running some code to list test cases.
-    - Unlike one test reporting 1000 results, this allows true parallelization.
+    - `noop\n` - write returns `EPIPE`, the channel is now disconnected
 
 ## Limitations
 
-A _control line_ is at most 4096 bytes long, incl. the terminating newline.
+A *control line* is at most 4096 bytes long, incl. the terminating newline.
 An implementation may therefore limit the memory used for an internal buffer
 (for repeated `read()` calls) to 4096 bytes before it starts discarding data,
-potentially reading (discarding) a corrupted _control line_.
+potentially reading (discarding) a corrupted *control line*.
+
+Obviously, this does not apply to other binary data sent over the test control
+channel. Just *control lines* with words and arguments.

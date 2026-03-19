@@ -4,15 +4,15 @@ Note that this format is designed to be used via a special "test control"
 file descriptor, as specified by [TEST_CONTROL.md](TEST_CONTROL.md).
 
 Specifically, this format is meant to be used as an argument to the `result`
-_control word_.
+*control word*.
 
-Note that only one result may be sent using one `result` _control word_,
+Note that only one result may be sent using one `result` *control word*,
 eg. no top-level arrays/lists or multiple `{...}` objects allowed.
 
 ## Basic format
 
-This protocol is **heavily** based on [Test Artifacts](../README.md),
-specifically the `results` file line-JSON format.
+This protocol is **heavily** based on [Test Artifacts](..), specifically the
+`results` file line-JSON format.
 
 - `status`, `name`, `note` are exactly the same
 - `files` here contains nested dics/objects specifying file name + size (length)
@@ -22,11 +22,11 @@ specifically the `results` file line-JSON format.
 ### JSON format details
 
 Any examples here presume running FMF tests, so test names are adjusted from the
-generic ones in [Test Artifacts](../README.md).
+generic ones in [Test Artifacts](..).
 
 ## Status, Name and Note
 
-These works the same as in [Test Artifacts](../README.md), so that
+These works the same as in [Test Artifacts](..), so that
 
 ```json
 {"status": "fail", "name": "my-first-result"}
@@ -85,7 +85,7 @@ However, this does not extend across results - a second result with the same
 ### Full binary stream example
 
 An example of reporting two results, first with two files `A` and `B`, using
-full [TEST_CONTROL.md](TEST_CONTROL.md) syntax, incl. _control lines_, **exactly
+full [TEST_CONTROL.md](TEST_CONTROL.md) syntax, incl. *control lines*, **exactly
 as they would appear in the binary stream** (any newlines are part of the data,
 not for readability here):
 
@@ -97,8 +97,8 @@ result 109
 
 Explaining the example:
 
-1. `result 109\n` _control line_ is read, `result` is identified as a
-   _control word_
+1. `result 109\n` *control line* is read, `result` is identified as a
+   *control word*
 1. The `result`-specific parser is called, with `109` passed via arguments,
    and given control over the input.
 1. The parser reads the next 109 bytes (JSON with first result) and parses them
@@ -109,7 +109,7 @@ Explaining the example:
 1. The parser then handles the result how it sees fit (write to CSV?).
 1. No more files were specified, nothing more for the `result` parser to read,
    it exits, giving control back.
-1. `result 43\n` _control line_ is read, `result` identified as a _control word_
+1. `result 43\n` *control line* is read, `result` identified as a *control word*
 1. The `result`-specific parser is called, with `43` passed via arguments,
    and given control over the input.
 1. The parser reads the next 43 bytes (JSON with second result) and parses them

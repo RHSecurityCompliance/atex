@@ -7,8 +7,21 @@ class Executor:
     @_abc.abstractmethod
     def run_test(self, test_name, artifacts):
         """
-        Request that `count` machines be provisioned (reserved) for use,
-        to be returned at a later point by `.get_remote()`.
+        Run one test on the remote system.
+
+        - `test_name` is a string with test name.
+
+        - `artifacts` is a destination dir (string or Path) for results reported
+          and files uploaded by the test.
+
+          Results are always stored in a line-JSON format in a file named
+          `results`, files are always uploaded to directory named `files`,
+          both inside `artifacts`.
+
+          The path for `artifacts` must already exist and be an empty directory
+          (ie. typically a tmpdir).
+
+        Returns an integer exit code of the test script.
         """
 
     @_abc.abstractmethod

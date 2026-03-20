@@ -29,19 +29,6 @@ class TestAbortedError(ExecutorError):
 
 
 class FMFExecutor(Executor):
-    """
-    Logic for running tests on a remote system and processing results
-    and uploaded files by those tests.
-
-        tests_repo = "path/to/cloned/tests"
-        fmf_tests = FMFTests(tests_repo, "/plans/default")
-
-        with Executor(conn, fmf_tests=fmf_tests) as e:
-            Path("output_here").mkdir()
-            e.run_test("/some/test", "output_here")
-            e.run_test(...)
-    """
-
     def __init__(self, connection, *, fmf_tests, env=None):
         """
         Positional arguments are the same as class Executor.
@@ -90,6 +77,7 @@ class FMFExecutor(Executor):
                     "install", *self.fmf_tests.prepare_pkgs,
                 ),
                 func=util.subprocess_log,
+                stdin=subprocess.DEVNULL,
                 stderr=subprocess.STDOUT,
                 check=True,
             )
@@ -127,8 +115,8 @@ class FMFExecutor(Executor):
             self.conn.cmd(
                 ("env", "-C", self.tests_dir, *env_args, "bash"),
                 func=util.subprocess_log,
-                stderr=subprocess.STDOUT,
                 input=script,
+                stderr=subprocess.STDOUT,
                 check=True,
             )
 
@@ -140,23 +128,9 @@ class FMFExecutor(Executor):
 
     def run_test(self, test_name, artifacts, *, env=None):
         """
-        Run one test on the remote system.
-
-        - `test_name` is a string with test name.
-
-        - `artifacts` is a destination dir (string or Path) for results reported
-          and files uploaded by the test.
-
-          Results are always stored in a line-JSON format in a file named
-          `results`, files are always uploaded to directory named `files`,
-          both inside `artifacts`.
-
-          The path for `artifacts` must already exist and be an empty directory
-          (ie. typically a tmpdir).
+        Positional arguments are the same as class Executor.
 
         - `env` is a dict of extra environment variables to pass to the test.
-
-        Returns an integer exit code of the test script.
         """
         artifacts = Path(artifacts)
         test_data = self.fmf_tests.tests[test_name]
@@ -240,6 +214,7 @@ class FMFExecutor(Executor):
                             with reporter.open_testout() as testout_fd:
                                 test_proc = self.conn.cmd(
                                     ("env", *env_args, f"{self.work_dir}/wrapper.sh"),
+                                    stdin=subprocess.DEVNULL,
                                     stdout=pipe_w,
                                     stderr=testout_fd,
                                     func=util.subprocess_Popen,

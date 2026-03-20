@@ -470,7 +470,7 @@ def cmd_copy_volume(logger, reply, args):
         fd, tmpf = tempfile.mkstemp(dir=to_path.parent.absolute())
         os.close(fd)
         proc = subprocess.run(
-            ("cp", "-f", "--reflink=always", from_path.absolute(), tmpf),
+            ("cp", "-f", "--reflink=auto", from_path.absolute(), tmpf),
             stdin=subprocess.DEVNULL,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,

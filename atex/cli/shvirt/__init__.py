@@ -83,7 +83,7 @@ def parse_args(parser):
         title="Helper connection",
         description=(
             "These specify how to connect to atex-virt-helper. "
-            "Use either '--helper-localhost' OR the other options, not both."
+            "Use either '--helper-localhost' OR '--helper-host/user/port', not both."
         ),
     )
     mutex = grp.add_mutually_exclusive_group(required=True)
@@ -97,7 +97,7 @@ def parse_args(parser):
     grp.add_argument("--helper-user", help="connect via ssh as this user", default="root")
     grp.add_argument(
         "--helper-sshkey",
-        help="connect via ssh using this key",
+        help="connect via ssh using this key, for reservations too",
         default=_default_ssh_key(),
     )
 

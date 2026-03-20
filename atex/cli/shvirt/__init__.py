@@ -100,6 +100,7 @@ def parse_args(parser):
         help="connect via ssh using this key, for reservations too",
         default=_default_ssh_key(),
     )
+    grp.add_argument("--helper-cmd", help="cmd + args instead of atex-virt-helper (shlex syntax)")
 
     cmds = parser.add_subparsers(
         dest="_cmd", help="shvirt sub-command", metavar="<cmd>", required=True,

@@ -1,11 +1,13 @@
+import shlex
 from pathlib import Path
 
 from ...provisioner.shvirt import SharedVirtProvisioner
 
 
 def make_helper_cmd(args):
+    cmd = shlex.split(args.helper_cmd) if args.helper_cmd else SharedVirtProvisioner.helper_command
     if args.helper_localhost:
-        return SharedVirtProvisioner.helper_command
+        return cmd
     else:
         return (
             "ssh",
@@ -16,5 +18,5 @@ def make_helper_cmd(args):
             f"-oIdentityFile={str(Path(args.helper_sshkey).absolute())}",
             f"-oUser={args.helper_user}", f"-oHostname={args.helper_host}",
             "ignored_arg", "--",
-            *SharedVirtProvisioner.helper_command,
+            *cmd,
         )

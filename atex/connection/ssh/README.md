@@ -1,3 +1,7 @@
+> [!NOTE]
+> This describes a specific implementation of the abstract Connection API.
+> See also the [documentation of the generic API](..).
+
 # SSH Connection
 
 This wraps the `ssh` (OpenSSH) client with a [Connection](..) API.

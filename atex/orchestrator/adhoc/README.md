@@ -1,3 +1,7 @@
+> [!NOTE]
+> This describes a specific implementation of the abstract Orchestrator API.
+> See also the [documentation of the generic API](..).
+
 # AdHoc Orchestrator
 
 The idea here is to use a "pool" of reserved Remotes for test execution,

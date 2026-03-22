@@ -1,3 +1,7 @@
+> [!NOTE]
+> This describes a specific implementation of the abstract Provisioner API.
+> See also the [documentation of the generic API](..).
+
 # Testing Farm Provisioner
 
 This Provisioner uses [Testing Farm](https://testing-farm.io/) by scheduling

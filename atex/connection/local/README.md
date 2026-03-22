@@ -1,3 +1,7 @@
+> [!NOTE]
+> This describes a specific implementation of the abstract Connection API.
+> See also the [documentation of the generic API](..).
+
 # Local Connection
 
 This is just a simple translation layer between the `subprocess` module and

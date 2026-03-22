@@ -1,3 +1,7 @@
+> [!NOTE]
+> This describes a specific implementation of the abstract Aggregator API.
+> See also the [documentation of the generic API](..).
+
 # JSON Aggregators
 
 These Aggregators collect reported results in a line-JSON output file and

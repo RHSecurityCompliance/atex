@@ -1,3 +1,7 @@
+> [!NOTE]
+> This describes a specific implementation of the abstract Provisioner API.
+> See also the [documentation of the generic API](..).
+
 # Podman Provisioner
 
 This creates podman containers on the local OS and provides the Provisioner

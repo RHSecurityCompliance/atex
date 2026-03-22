@@ -1,3 +1,7 @@
+> [!NOTE]
+> This describes a specific implementation of the abstract Connection API.
+> See also the [documentation of the generic API](..).
+
 # Podman Connection
 
 This wraps `podman exec` in a [Connection](..) API, running commands inside

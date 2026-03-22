@@ -1,3 +1,7 @@
+> [!NOTE]
+> This describes a specific implementation of the abstract Executor API.
+> See also the [documentation of the generic API](..).
+
 # FMFExecutor
 
 This Executor is built around [fmf](https://github.com/teemtee/fmf/), the

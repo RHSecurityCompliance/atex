@@ -137,7 +137,7 @@ class StatelessSSHConnection(Connection):
         self._tmpdir = None
         self._master_proc = None
 
-    def connect(self, block=True):
+    def connect(self):
         pass
 
     def disconnect(self):
@@ -233,6 +233,12 @@ class ManagedSSHConnection(Connection):
         self._master_proc = None
 
     def connect(self, block=True):
+        """
+        Establish a persistent connection to the remote.
+
+        If `block` is True, wait for the connection to be up,
+        otherwise raise BlockingIOError if the connection is still down.
+        """
         if not self._tmpdir:
             # _tmpdir_handle just prevents the TemporaryDirectory instance
             # from being garbage collected (and removed on disk)

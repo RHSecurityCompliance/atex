@@ -12,7 +12,7 @@ class PodmanConnection(Connection):
     def __init__(self, container):
         self.container = container
 
-    def connect(self, block=True):
+    def connect(self):
         pass
 
     def disconnect(self):

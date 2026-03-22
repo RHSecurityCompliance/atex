@@ -5,7 +5,7 @@ from .. import Connection
 
 
 class LocalConnection(Connection):
-    def connect(self, block=True):
+    def connect(self):
         pass
 
     def disconnect(self):

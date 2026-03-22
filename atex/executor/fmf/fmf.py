@@ -8,6 +8,7 @@ import time
 from pathlib import Path
 
 from ... import util
+from ...connection.ssh import ManagedSSHConnection
 from .. import Executor, ExecutorError
 from . import scripts
 from .duration import Duration
@@ -267,7 +268,10 @@ class FMFExecutor(Executor):
 
                     elif state == self.State.RECONNECTING:
                         try:
-                            self.conn.connect(block=False)
+                            if isinstance(self.conn, ManagedSSHConnection):
+                                self.conn.connect(block=False)
+                            else:
+                                self.conn.connect()
                             reconnects += 1
                             state = self.State.STARTING_TEST
                         except BlockingIOError:

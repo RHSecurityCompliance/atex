@@ -18,12 +18,9 @@ class Connection:
         self.disconnect()
 
     @_abc.abstractmethod
-    def connect(self, block=True):
+    def connect(self):
         """
         Establish a persistent connection to the remote.
-
-        If `block` is True, wait for the connection to be up,
-        otherwise raise BlockingIOError if the connection is still down.
         """
 
     @_abc.abstractmethod

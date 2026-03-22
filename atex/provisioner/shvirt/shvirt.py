@@ -111,11 +111,11 @@ class SharedVirtRemote(Remote, connection.ssh.ManagedSSHConnection):
         self.disconnect()
         self.release_hook(self)
 
-    def connect(self, block=True):
+    def connect(self, **kwargs):
         with self.lock:
             if self.release_called:
                 raise ConnectionError("remote released, cannot connect")
-        super().connect(block=block)
+        super().connect(**kwargs)
 
     def __str__(self):
         class_name = self.__class__.__name__

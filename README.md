@@ -88,6 +88,18 @@ b = CoffeeBrewer("espresso", 1000)
 serve_to_employees(brewer=b)
 ```
 
+If the code needs to make use of the extended functionality of a specific
+implementation, it can check an instance using `isinstance()` and then safely
+pass keyword arguments:
+
+```python
+def serve_to_employees(brewer):
+    if isinstance(brewer, CoffeeBrewer):
+        intake(ingredients, grind=False)
+    else:
+        intake(ingredients)
+```
+
 ### `__init__` is not special
 
 Note that `__init__` is subject to the statements above too:

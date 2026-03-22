@@ -27,6 +27,13 @@ jobs:
             --require-plugins flake8-picky-parentheses \
             --select PAR --extend-ignore PAR104
 
+  markdown:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: No double-space for line break
+        run: ! grep -H --include='*.md' '  $' -r .
+
   yamllint:
     runs-on: ubuntu-latest
     steps:

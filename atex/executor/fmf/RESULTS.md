@@ -46,7 +46,7 @@ ERROR   /real/test
 
 If a test doesn't report a result for itself (with `name` missing), we append
 a simple result for it, autodetecting `status` from the `test` shell exit code,
-`0` as `pass`, non-`0` as `fail`.  
+`0` as `pass`, non-`0` as `fail`.\
 We also attach its stdout+stderr as `output.txt` (name inspired by tmt).
 
 This is roughly equivalent to ie.
@@ -77,7 +77,7 @@ data stream by the lengths specified.
 A file name may contain zero or more `/`, but it must not start with `/`.
 
 A sanity check will cause an error (discarding the result) if you specify
-multiple identical file names within one result.  
+multiple identical file names within one result.\
 However, this does not extend across results - a second result with the same
 `name` specifying the same `files` `name` causes `length` bytes to be
 **appended** to the existing file.
@@ -164,14 +164,14 @@ reported along with previously-stored data.
 
 This allows a test to "prepare" a final picture of how its results should
 look in the end, and gradually update that picture - if it times out or
-otherwise crashes (exits unexpectedly), the `error` status gets used.  
+otherwise crashes (exits unexpectedly), the `error` status gets used.\
 It also allows a test to send out critical logs before a risky operation,
 without that creating a separate result entry.
 
 Note that there can be more than one `"partial": true` result queued up
 at the same time (with different `name`s), from one test - useful if the test
 is running multiple operations in parallel and wants to report each as
-a separate result.  
+a separate result.\
 Multiple `"partial": true` results retain the order they first appeared in,
 new additions/updates don't change the order.
 
@@ -188,7 +188,7 @@ to be added to `files` by us, with test stdout+stderr as the contents.
 ```
 
 The result doesn't need to (but may) specify other unrelated `files` in the
-same result.  
+same result.\
 It must not specify a `files` entry with `name` identical to the name passed
 in `testout`, doing so triggers a sanity check error, discarding the result.
 

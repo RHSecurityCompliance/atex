@@ -23,7 +23,7 @@ with FMFExecutor(conn, fmf_tests=fmf_tests) as e:
 ```
 
 You are free to modify the discovered FMFTests prior to passing them to
-the Executor. See FMFTests instance attributes (commented in code).  
+the Executor. See FMFTests instance attributes (commented in code).\
 Ie. to double allowed 'duration':
 
 ```python

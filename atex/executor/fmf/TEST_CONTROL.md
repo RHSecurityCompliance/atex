@@ -45,7 +45,7 @@ some!@#$%^binary_dataword2 arg1 arg2\n
 ```
 
 In this example, the global stream handler read `write_file /tmp/foobar 21\n`
-and recognized `write_file` as a *control word*, calling its parser.  
+and recognized `write_file` as a *control word*, calling its parser.\
 This parser then received `/tmp/foobar 21` as arguments, along with the open
 stream handle.
 

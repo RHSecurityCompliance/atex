@@ -59,7 +59,7 @@ class Brewer:
 
 Note that **only the function names and their positional arguments are part
 of the API**. Any other functions and or keyword arguments to the API functions
-are left to the implementation.  
+are left to the implementation.\
 Similarly, return values are part of the API only where explicitly stated, and
 up to the implementation otherwise.
 

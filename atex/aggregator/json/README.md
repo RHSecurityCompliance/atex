@@ -53,7 +53,7 @@ of strings.
 
 Note that test name is explicitly given to `ingest()`, and subtest name comes
 from test artifacts (the `name` result key, which may be non-existent,
-indicating the result is relevant to the test itself, not a subtest).  
+indicating the result is relevant to the test itself, not a subtest).\
 See also [RESULTS.md](../../executor/RESULTS.md).
 
 Further:

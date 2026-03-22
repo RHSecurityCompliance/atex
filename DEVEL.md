@@ -61,7 +61,7 @@ and there is no clear winner (in terms of cleanup on `SIGTERM` or Ctrl-C):
   - other stdlib bugs, ie. "large" reads returning BlockingIOError sometimes
 
 The approach chosen by this project was to use `threading.Thread`, and
-implement thread safety for classes and their functions that need it.  
+implement thread safety for classes and their functions that need it.\
 For example:
 
 ```python
@@ -110,7 +110,7 @@ with some exception, but doesn't do any harm.
 
 Here is where `daemon=True` threads come in handy - we can simply call `.abort()`
 from a `KeyboardInterrupt` (or `SIGTERM`) handle in the main thread, and just
-exit, automatically killing any leftover threads that are uselessly sleeping.  
+exit, automatically killing any leftover threads that are uselessly sleeping.\
 (Realistically, we might want to spawn new threads to run many `.abort()`s in
 parallel, but the main thread can wait for those just fine.)
 
@@ -118,7 +118,7 @@ It is not perfect, but it's probably the best Python can do.
 
 Note that races can still occur between a resource being reserved and written
 to `self.*` for `.abort()` to free, so resource de-allocation is not 100%
-guaranteed, but single-threaded interrupting has the same issue.  
+guaranteed, but single-threaded interrupting has the same issue.\
 Do have fallbacks (ie. max reserve times on the external service).
 
 Also note that `.reserve()` and `.abort()` could be also called by a context

@@ -92,7 +92,7 @@ All of these can be combined (chained) together, see their docstrings.
 - **`FMFDurationMixin`** to run longer-running tests sooner.
   - The idea is that, with multiple parallel test executions, you can dedicate
     some of the Remotes to very-long-running tests while the short ones finish
-    (and maybe are re-run) in parallel on other Remotes.  
+    (and maybe are re-run) in parallel on other Remotes.\
     Basically - you don't want to leave a 12h test toward the end of your test
     run and then it fails, and you need another 12h to rerun it, waiting on the
     one single test running on one Remote the whole time.

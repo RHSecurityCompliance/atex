@@ -32,6 +32,10 @@ Note that both `.cmd()` and `.rsync()` expect `func=` to behave like one of
 the `subprocess` functions (`.run()`, `.check_output()`, `.Popen()`, etc.),
 giving it a command to execute and any other kwargs you specify.
 
+This also implies that a **Connection is always backed by a separate process**
+and not just a virtual Python construct. It further must provde full stdio
+(stdin + stdout + stderr) pipes and be able to return an exit code.
+
 A Connection can be connected/disconnected using a context manager (above)
 or manually via `.connect()` and `.disconnect()`:
 

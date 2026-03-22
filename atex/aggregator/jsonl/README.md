@@ -2,14 +2,15 @@
 > This describes a specific implementation of the abstract Aggregator API.
 > See also the [documentation of the generic API](..).
 
-# JSON Aggregators
+# JSON Lines Aggregators
 
-These Aggregators collect reported results in a line-JSON output file and
-uploaded files (logs) from multiple test runs under a shared directory.
+These Aggregators collect reported results in a line-JSON output file
+(see https://jsonltools.com/) and uploaded files (logs) from multiple
+test runs under a shared directory.
 
 For example
 
-- `aggregated/results.json`
+- `aggregated/results.jsonl`
 
   ```json
   ["9.8@x86_64", "pass", "/some/test", null, [], null]
@@ -36,9 +37,9 @@ For example
   /11.0@x86_64/ltp/syscalls/socketpair02/client/test.out
   ```
 
-The primary class is `JSONAggregator`, but there are additional variants that
-store the results in a compressed JSON file, and optionally can also compress
-the uploaded files.
+The primary class is `JSONLinesAggregator`, but there are additional variants
+that store the results in a compressed JSONL file, and optionally can also
+compress the uploaded files.
 
 ## Format
 
@@ -61,19 +62,19 @@ Further:
 - If `testout` is present inside test artifacts (in the result for the test
   itself), it is prepended to the list of `files`.
 
-Also note that the aggregated JSON file **is not related** to any JSON usage
+Also note that the aggregated JSONL file **is not related** to any JSON usage
 inside test artifacts - both might use JSON as a data format, but for
 different purposes.
 
 ## Examples
 
 ```python
-with JSONAggregator("results.json", "uploaded_files") as aggr:
+with JSONLinesAggregator("results.jsonl", "uploaded_files") as aggr:
     aggr.ingest("9.8@x86_64", "/some/test", test_artifacts_dir)
 
 
-aggr_lzma = LZMAJSONAggregator(
-    "results.json.xz",
+aggr_lzma = LZMAJSONLinesAggregator(
+    "results.jsonl.xz",
     "uploaded_files",
     compress_files=False,  # do not compress uploaded files
 )
@@ -81,8 +82,8 @@ with aggr_lzma:
     ...
 
 
-aggr_gzip = GzipJSONAggregator(
-    "results.json.gz",
+aggr_gzip = GzipJSONLinesAggregator(
+    "results.jsonl.gz",
     "uploaded_files",
     compress_level=5,
     compress_files_suffix="",  # transparent compression

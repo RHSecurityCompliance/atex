@@ -17,10 +17,10 @@ def _verbatim_move(src, dst):
     shutil.move(src, dst, copy_function=copy_without_symlinks)
 
 
-class JSONAggregator(Aggregator):
+class JSONLinesAggregator(Aggregator):
     def __init__(self, target, files, *, allow_duplicate=False):
         """
-        - `target` is a string/Path to a `.json` file for all ingested
+        - `target` is a string/Path to a `.jsonl` file for all ingested
           results to be aggregated (written) to.
 
         - `files` is a string/Path of the top-level parent for all per-platform
@@ -136,7 +136,7 @@ class JSONAggregator(Aggregator):
             self._move_test_files(artifacts_files, target_test_files)
 
 
-class CompressedJSONAggregator(JSONAggregator, abc.ABC):
+class CompressedJSONLinesAggregator(JSONLinesAggregator, abc.ABC):
     compress_files = False
     suffix = ""
     exclude = ()
@@ -193,9 +193,9 @@ class CompressedJSONAggregator(JSONAggregator, abc.ABC):
             root.rmdir()
 
 
-class GzipJSONAggregator(CompressedJSONAggregator):
+class GzipJSONLinesAggregator(CompressedJSONLinesAggregator):
     """
-    Identical to JSONAggregator, but transparently Gzips either or both of
+    Identical to JSONLinesAggregator, but transparently Gzips either or both of
     the output line-JSON file with results and the uploaded files.
     """
     def compressed_open(self, *args, **kwargs):
@@ -208,7 +208,7 @@ class GzipJSONAggregator(CompressedJSONAggregator):
         **kwargs,
     ):
         """
-        - `args` and `kwargs` are passed to JSONAggregator().
+        - `args` and `kwargs` are passed to JSONLinesAggregator().
 
         - `compress_level` specifies how much effort should be spent compressing,
           (1 = fast, 9 = slow).
@@ -232,9 +232,9 @@ class GzipJSONAggregator(CompressedJSONAggregator):
         self.exclude = compress_files_exclude or ()
 
 
-class LZMAJSONAggregator(CompressedJSONAggregator):
+class LZMAJSONLinesAggregator(CompressedJSONLinesAggregator):
     """
-    Identical to JSONAggregator, but transparently compresses (via LZMA/XZ)
+    Identical to JSONLinesAggregator, but transparently compresses (via LZMA/XZ)
     either or both of the output line-JSON file with results and the uploaded
     files.
     """
@@ -248,7 +248,7 @@ class LZMAJSONAggregator(CompressedJSONAggregator):
         **kwargs,
     ):
         """
-        - `args` and `kwargs` are passed to JSONAggregator().
+        - `args` and `kwargs` are passed to JSONLinesAggregator().
 
         - `compress_preset` specifies how much effort should be spent
           compressing (1 = fast, 9 = slow). Optionally ORed with

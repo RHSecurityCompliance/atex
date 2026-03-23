@@ -41,12 +41,15 @@ class JSONLinesAggregator(Aggregator):
         self.seen_tests = collections.Counter()
         self.target_fobj = None
 
+    def _open_target(self, target):  # noqa: PLR6301
+        return open(target, "w")
+
     def start(self):
         self.logger.debug(f"starting: {self}")
 
         if self.target.exists(follow_symlinks=False):
             raise FileExistsError(f"{self.target} already exists")
-        self.target_fobj = open(self.target, "w")
+        self.target_fobj = self._open_target(self.target)
 
         if self.files.exists(follow_symlinks=False):
             raise FileExistsError(f"{self.files} already exists")
@@ -159,14 +162,8 @@ class CompressedJSONLinesAggregator(JSONLinesAggregator, abc.ABC):
     def compressed_open(self, *args, **kwargs):
         pass
 
-    def start(self):
-        if self.target.exists(follow_symlinks=False):
-            raise FileExistsError(f"{self.target_file} already exists")
-        self.target_fobj = self.compressed_open(self.target, "wt", newline="\n")
-
-        if self.files.exists(follow_symlinks=False):
-            raise FileExistsError(f"{self.storage_dir} already exists")
-        self.files.mkdir()
+    def _open_target(self, target):
+        return self.compressed_open(target, "wt", newline="\n")
 
     def _modify_file_list(self, test_files):
         if self.compress_files and self.suffix:

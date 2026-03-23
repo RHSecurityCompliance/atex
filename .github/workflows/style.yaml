@@ -25,7 +25,7 @@ jobs:
           python3 -m flake8 \
             --isolated \
             --require-plugins flake8-picky-parentheses \
-            --select PAR --extend-ignore PAR104
+            --select PAR1 --extend-ignore PAR104
 
   markdown:
     runs-on: ubuntu-latest

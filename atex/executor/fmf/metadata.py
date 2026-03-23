@@ -49,9 +49,9 @@ class FMFTests:
         - `plan` is fmf identifier (like `/some/thing`) of a tmt plan
           to use for discovering tests. If None, a dummy (empty) plan is used.
 
-        - `names`, `filters`, `conditions` and `exclude` (all tuple/list)
+        - `names`, `filters`, `conditions` and `excludes` (all tuple/list)
           are fmf tree filters (resolved by the fmf module), overriding any
-          existing tree filters in the plan's discover phase specifies, where:
+          existing tree filters the plan's discover phase specifies, where:
 
             - `names` are test regexes like `["/some/test", "/another/test"]`.
 

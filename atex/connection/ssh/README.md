@@ -52,7 +52,7 @@ to the remote host, authenticates, logs in, etc., but doesn't actually spawn
 a shell. Any subsequent `.cmd()` or `.rsync()` commands then use `ssh` commands
 which use this "master" connection to run.
 
-This has **significant** latency improvements - ie. if StandaloneSSHConnection
+This has **significant** latency improvements - ie. if StatelessSSHConnection
 takes 3 seconds to run a command, ManagedSSHConnection can typically do it in
 0.3 seconds once the "master" connects.
 

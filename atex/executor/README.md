@@ -106,8 +106,8 @@ So that ie.
 
 - `{"files": ["log"]}` is found in `files/log`
 - `{"files": ["some/log"]}` is found in `files/some/log`
-- `{"name": "subtest", files: ["log"]}` is found in `files/subtest/log`
-- `{"name": "sub/test", files: ["some/log"]}` is found in `files/sub/test/some/log`
+- `{"name": "subtest", "files": ["log"]}` is found in `files/subtest/log`
+- `{"name": "sub/test", "files": ["some/log"]}` is found in `files/sub/test/some/log`
 
 ### Special cases
 

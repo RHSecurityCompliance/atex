@@ -11,11 +11,6 @@ get_logger = util.get_loggers("atex.provisioner.testingfarm")
 
 
 class TestingFarmRemote(Remote, connection.ssh.ManagedSSHConnection):
-    """
-    Built on the official Remote API, pulling in the Connection API
-    as implemented by ManagedSSHConnection.
-    """
-
     def __init__(self, request_id, ssh_options, *, release_hook):
         """
         - `request_id` is a string with Testing Farm request UUID
@@ -62,7 +57,7 @@ class TestingFarmProvisioner(Provisioner):
         """
         - `compose` is a Testing Farm compose to prepare.
 
-        - `arch`' is an architecture associated with the compose.
+        - `arch` is an architecture associated with the compose.
 
         - `max_remotes` is how many Testing Farm Requests to keep running at any
           one time (both queued / pending, and already reserved).
@@ -114,7 +109,7 @@ class TestingFarmProvisioner(Provisioner):
             "User": machine.user,
             "Port": machine.port,
             "IdentityFile": machine.ssh_key.absolute(),
-            "ConnectionAttempts": "1000",
+            "ConnectionAttempts": 1000,
             "Compression": "yes",
         }
 
@@ -168,7 +163,7 @@ class TestingFarmProvisioner(Provisioner):
                 **self.reserve_kwargs,
             )
             # add it to self.reserving even before we schedule a provision,
-            # to avoid races on suddent abort
+            # to avoid races on sudden abort
             self.reserving.append(tf_reserve)
             # start a background wait
             initial_delay = (api.Request.api_query_limit / will_reserve) * i
@@ -203,9 +198,10 @@ class TestingFarmProvisioner(Provisioner):
                     ex.submit(func)
 
         with self.lock:
-            # explicitly remove the tmpdir rather than relying on destructor
-            self._tmpdir.cleanup()
-            self._tmpdir = None
+            if self._tmpdir:
+                # explicitly remove the tmpdir rather than relying on destructor
+                self._tmpdir.cleanup()
+                self._tmpdir = None
 
     def provision(self, count=1):
         with self.lock:
@@ -221,7 +217,7 @@ class TestingFarmProvisioner(Provisioner):
             except util.ThreadReturnQueue.Empty:
                 # always non-blocking
                 return None
-            except (api.TestingFarmError, connection.ssh.SSHError) as e:
+            except (api.TestingFarmError, ConnectionError) as e:
                 exc_str = f"{type(e).__name__}({e})"
                 with self.lock:
                     if self.retries > 0:

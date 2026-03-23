@@ -4,7 +4,7 @@ import pkgutil as _pkgutil
 import time as _time
 
 
-class Orchestrator:
+class Orchestrator(_abc.ABC):
     @_abc.abstractmethod
     def __init__(self, platform, tests, provisioners, aggregator, executor):
         """
@@ -31,7 +31,7 @@ class Orchestrator:
           to be used for running tests.
 
           This could be an Executor class itself (as a type) or ie. a wrapper
-          for instatiating the class with extra arguments.
+          for instantiating the class with extra arguments.
         """
 
     @_abc.abstractmethod

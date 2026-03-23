@@ -1,12 +1,6 @@
 import pprint
-import sys
 
 from ..executor.fmf import FMFTests, all_pkg_requires
-
-
-def _fatal(msg):
-    print(f"error: {msg}", file=sys.stderr)
-    raise SystemExit(1)
 
 
 def _get_context(args):

@@ -95,14 +95,14 @@ class FMFExecutor(Executor):
 
         # run 'prepare' scripts from the plan on the remote
         if scripts := self.fmf_tests.prepare_scripts:
-            self._run_prepare_scripts(scripts)
+            self._run_plan_scripts(scripts)
 
     def stop(self):
         self.logger.debug(f"stopping: {self}")
 
         # run 'finish' scripts from the plan on the remote
         if scripts := self.fmf_tests.finish_scripts:
-            self._run_prepare_scripts(scripts)
+            self._run_plan_scripts(scripts)
 
         if self.work_dir:
             self.conn.cmd(("rm", "-rf", self.work_dir), check=True)
@@ -115,8 +115,8 @@ class FMFExecutor(Executor):
         with self.lock:
             self.cancelled = True
 
-    def _run_prepare_scripts(self, scripts):
-        # make envionment for 'prepare' scripts
+    def _run_plan_scripts(self, scripts):
+        # make environment for 'prepare' / 'finish' scripts
         env = {
             **self.fmf_tests.plan_env,
             **self.env,
@@ -298,7 +298,7 @@ class FMFExecutor(Executor):
                             state = self.State.STARTING_TEST
                             self.logger.debug(f"'{test_name}': {state.name}")
                         except BlockingIOError:
-                            # avoid 100% CPU spinning if the connection it too slow
+                            # avoid 100% CPU spinning if the connection is too slow
                             # to come up (ie. ssh ControlMaster socket file not created)
                             time.sleep(0.5)
                         except ConnectionError:

@@ -212,7 +212,7 @@ def cmd_reservations(logger, reply, _args):
 def cmd_upload(logger, reply, args):
     name = args["name"]
     if "/" in name:
-        reply(False, "name canot have '/'")
+        reply(False, "name cannot have '/'")
         return
     length = args["length"]
     with open(name, "wb") as f:

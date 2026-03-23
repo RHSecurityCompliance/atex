@@ -38,7 +38,7 @@ happens at certain stages of the scheduling process.
 Namely,
 
 - **`run_setup()`** which is called upon receiving a Remote from a Provisioner,
-  but before an Executor is instantiated to run tests on it.
+  but before any tests are executed on it.
 - **`next_test()`** which chooses a test name (from a big list of tests) to be
   scheduled next, on either a recycled Remote, or a fresh new one.
 - **`destructive()`** which returns a boolean whether the just-finished test

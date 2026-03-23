@@ -16,9 +16,9 @@ DEFAULT_OPTIONS = {
     "LogLevel": "ERROR",
     "StrictHostKeyChecking": "no",
     "UserKnownHostsFile": "/dev/null",
-    "ConnectionAttempts": "3",
-    "ServerAliveCountMax": "4",
-    "ServerAliveInterval": "5",
+    "ConnectionAttempts": 3,
+    "ServerAliveCountMax": 4,
+    "ServerAliveInterval": 5,
     "TCPKeepAlive": "no",
     "EscapeChar": "none",
     "ExitOnForwardFailure": "yes",
@@ -71,6 +71,7 @@ def _options_to_cli(options):
         if isinstance(value, (list, tuple, set)):
             list_opts += (f"-o{key}={v}" for v in value)
         else:
+            # also converts int and __str__ capable values to strings
             list_opts.append(f"-o{key}={value}")
     return list_opts
 
@@ -83,6 +84,7 @@ def _options_to_ssh(options, password=None, extra_cli_flags=()):
     if password:
         return (
             "sshpass", "-p", password,
+            # force BatchMode=no to make sshpass(1) work
             "ssh", *extra_cli_flags, "-oBatchMode=no", *cli_opts,
             "ignored_arg",
         )
@@ -97,8 +99,12 @@ def _options_to_rsync_e(options, password=None):
     Return a string usable for the rsync `-e` argument.
     """
     cli_opts = _options_to_cli(options)
-    batch_mode = "-oBatchMode=no" if password else "-oBatchMode=yes"
-    return " ".join(("ssh", *cli_opts, batch_mode))  # no ignored_arg inside -e
+    # no ignored_arg inside rsync -e
+    if password:
+        # force BatchMode=no to make sshpass(1) work
+        return " ".join(("ssh", "-oBatchMode=no", *cli_opts))
+    else:
+        return " ".join(("ssh", *cli_opts, "-oBatchMode=yes"))
 
 
 def _rsync_host_cmd(*args, options, password=None, sudo=None):
@@ -133,8 +139,6 @@ class StatelessSSHConnection(Connection):
         self.options.update(options)
         self.password = password
         self.sudo = sudo
-        self._tmpdir = None
-        self._master_proc = None
 
     def connect(self):
         pass
@@ -143,7 +147,7 @@ class StatelessSSHConnection(Connection):
         pass
 
     # have options as kwarg to be compatible with other functions here
-    def cmd(self, command, options=None, func=subprocess.run, **func_args):
+    def cmd(self, command, *, options=None, func=subprocess.run, **func_args):
         unified_options = self.options.copy()
         if options:
             unified_options.update(options)
@@ -280,17 +284,19 @@ class ManagedSSHConnection(Connection):
             else:
                 code = proc.poll()
                 out = proc.stdout.read()
+                out = f":\n{out.decode()}" if out else ""
                 self._master_proc = None
                 raise ConnectError(
-                    f"SSH ControlMaster failed to start on {self._tmpdir} with {code}:\n{out}",
+                    f"SSH ControlMaster failed to start on {self._tmpdir} with {code}{out}",
                 )
         else:
             code = proc.poll()
             if code is not None:
                 out = proc.stdout.read()
+                out = f":\n{out.decode()}" if out else ""
                 self._master_proc = None
                 raise ConnectError(
-                    f"SSH ControlMaster failed to start on {self._tmpdir} with {code}:\n{out}",
+                    f"SSH ControlMaster failed to start on {self._tmpdir} with {code}{out}",
                 )
             elif not sock.exists():
                 raise BlockingIOError("SSH ControlMaster not yet ready")
@@ -308,7 +314,7 @@ class ManagedSSHConnection(Connection):
         """
         assert forward_type in ("LocalForward", "RemoteForward")
         self.assert_master()
-        options = DEFAULT_OPTIONS.copy()
+        options = self.options.copy()
         options[forward_type] = spec
         options["ControlPath"] = self._tmpdir / "control.sock"
         action = "forward" if not cancel else "cancel"

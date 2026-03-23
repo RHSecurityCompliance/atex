@@ -22,7 +22,7 @@ to the constructor:
 Similarly, you can specify defaults (for required or non-required keys),
 as a dict, that are used if omitted from the constructor:
 
-    class MyMap(NamedMapping, defaults={"key": 678}):
+    class MyMap(NamedMapping, default={"key": 678}):
         pass
 
     m = MyMap()  # will have m.key == 678
@@ -34,10 +34,10 @@ A class instance can unpack via `**` with the entirety of its mapping contents:
 
 You can also chain (append to) required / default values through inheritance:
 
-    class MyMap(NamedMapping, required=("key1",), defaults={"key2": 234}):
+    class MyMap(NamedMapping, required=("key1",), default={"key2": 234}):
         pass
 
-    class AnotherMap(MyMap, required=("key3",))
+    class AnotherMap(MyMap, required=("key3",)):
         pass
 
     m = AnotherMap()      # KeyError (key1 and key3 are required)
@@ -136,10 +136,10 @@ class NamedMapping(collections.abc.Mapping, metaclass=_NamedMappingMeta):
         return self._data[key]
 
     def __setitem__(self, key, value):
-        raise ValueError(f"'{self}' is read-only, cannot set '{key}'")
+        raise KeyError(f"'{self}' is read-only, cannot set '{key}'")
 
     def __delitem__(self, key):
-        raise ValueError(f"'{self}' is read-only, cannot delete '{key}'")
+        raise KeyError(f"'{self}' is read-only, cannot delete '{key}'")
 
     def __contains__(self, key):
         return key in self._data

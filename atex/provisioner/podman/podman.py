@@ -8,11 +8,6 @@ get_logger = util.get_loggers("atex.provisioner.podman")
 
 
 class PodmanRemote(Remote, connection.podman.PodmanConnection):
-    """
-    Built on the official Remote API, pulling in the Connection API
-    as implemented by ManagedSSHConnection.
-    """
-
     def __init__(self, image, container, *, release_hook):
         """
         - `image` is an image tag (used for `str(self)`).

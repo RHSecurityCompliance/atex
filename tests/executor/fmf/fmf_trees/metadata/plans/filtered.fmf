@@ -4,7 +4,7 @@ execute:
 discover:
   how: fmf
 
-  # excldue filter1 via tag
+  # exclude filter1 via tag
   filter:
     - tag:-tagged
 

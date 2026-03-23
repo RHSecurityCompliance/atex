@@ -17,6 +17,7 @@ def make_helper_cmd(args):
             "-oTCPKeepAlive=no", "-oEscapeChar=none", "-oRequestTTY=no",
             f"-oIdentityFile={str(Path(args.helper_sshkey).absolute())}",
             f"-oUser={args.helper_user}", f"-oHostname={args.helper_host}",
+            f"-oPort={args.helper_port}",
             "ignored_arg", "--",
             *cmd,
         )

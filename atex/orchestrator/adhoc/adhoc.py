@@ -117,7 +117,7 @@ class AdHocOrchestrator(Orchestrator):
             (reusing Remote/Executor for a new test).
         """
         next_test_name = self.next_test(self.to_run.keys(), info)
-        assert next_test_name in self.to_run, "next_test() returned valid test name"
+        assert next_test_name in self.to_run, "next_test() needs to return a valid test name"
 
         self.logger.info(f"starting '{next_test_name}' on {info.remote}")
 
@@ -363,7 +363,7 @@ class AdHocOrchestrator(Orchestrator):
     def stop(self):
         self.logger.debug(f"stopping: {self}")
 
-        # cancel all running tests and wait for them to clean up (up to 0.1sec)
+        # cancel all running tests and wait for them to clean up
         for rinfo in self.running_tests.values():
             rinfo.executor.cancel()  # TODO: .cancel() is nonstandard
         self.test_queue.join()    # also ignore any exceptions raised
@@ -394,7 +394,7 @@ class AdHocOrchestrator(Orchestrator):
             f"{set_up} set up)"
         )
 
-    def run_setup(self, info, /):  # noqa: ARG002, PLR6301
+    def run_setup(self, info, /):  # noqa: PLR6301
         """
         Set up a newly acquired class Remote instance for test execution.
 
@@ -409,8 +409,8 @@ class AdHocOrchestrator(Orchestrator):
         """
         Return a test name (string) to be executed next.
 
-        - `to_run` is a list of test names to pick from. The returned test name
-          must be chosen from these names.
+        - `to_run` is a sequence of test names to pick from. The returned
+          test name must be chosen from these names.
 
         - `previous` can be either
 
@@ -424,13 +424,13 @@ class AdHocOrchestrator(Orchestrator):
         # default to simply picking any available test
         return next(iter(to_run))
 
-    def destructive(self, info, /):  # noqa: ARG002, PLR6301
+    def destructive(self, info, /):  # noqa: PLR6301
         """
         Return a boolean result whether a finished test was destructive
         to a class Remote instance, indicating that the Remote instance
         should not be used for further test execution.
 
-        - `info` is Orchestrator.FinishedInfo of the test.
+        - `info` is AdHocOrchestrator.FinishedInfo of the test.
         """
         # if the test returned non-0 exit code, it could have thrown
         # a python exception of its own, or (if bash) aborted abruptly
@@ -446,7 +446,7 @@ class AdHocOrchestrator(Orchestrator):
         that another execution attempt might succeed, due to race conditions
         in the test or other non-deterministic factors.
 
-        - `info` is Orchestrator.FinishedInfo of the test.
+        - `info` is AdHocOrchestrator.FinishedInfo of the test.
         """
         # never rerun by default
         return False

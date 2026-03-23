@@ -53,7 +53,7 @@ channel.
   S: {"cmd": "virsh", "args": ["list"], "success": true, "reply": " 747   vmname   running\n"}
 
   C: {"cmd": "virsh", "args": ["sdsd"]}
-  S: {"cmd": "virsh", "args": ["list"], "success": false, "reply": "error: unknown command: 'sdsd'\n"}
+  S: {"cmd": "virsh", "args": ["sdsd"], "success": false, "reply": "error: unknown command: 'sdsd'\n"}
   ```
 
 - `reserve`
@@ -113,7 +113,7 @@ channel.
     resuming line-JSON parsing.
 
   ```json
-  C: {"cmd": "upload", "file": "ks.cfg", "length": 4}
+  C: {"cmd": "upload", "name": "ks.cfg", "length": 4}
   C: abc\n
   S: {"cmd": "upload", "success": true, "file": "ks.cfg", "length": 4}
   ```

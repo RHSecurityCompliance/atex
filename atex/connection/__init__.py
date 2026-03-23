@@ -4,7 +4,7 @@ import pkgutil as _pkgutil
 import subprocess as _subprocess
 
 
-class Connection:
+class Connection(_abc.ABC):
     def __enter__(self):
         try:
             self.connect()
@@ -48,7 +48,7 @@ class Connection:
         Pass `*args` like `rsync(1)` CLI arguments, incl. option arguments, ie.
 
             .rsync("-vr", "local_path/", "remote:remote_path")
-            .rsync("-z", "remote:remote_file" ".")
+            .rsync("-z", "remote:remote_file", ".")
 
         To indicate remote path, use any string followed by a colon, the remote
         name does not matter as an internally-handled `-e` option dictates all

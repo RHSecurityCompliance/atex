@@ -3,7 +3,7 @@ import os
 
 class BufferFullError(Exception):
     """
-    Returned by NonblockLineReader when the line is longer than `max_len`
+    Raised by NonblockLineReader when the line is longer than `max_len`
     (as specified via `__init__` args to NonblockLineReader).
     """
 

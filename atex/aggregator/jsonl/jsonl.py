@@ -96,7 +96,7 @@ class JSONLinesAggregator(Aggregator):
 
             output_line = (
                 platform,
-                result_line["status"],
+                result_line.get("status"),
                 test_name,
                 result_line.get("name"),  # subtest
                 file_names,
@@ -168,8 +168,8 @@ class CompressedJSONLinesAggregator(JSONLinesAggregator, abc.ABC):
     def _modify_file_list(self, test_files):
         if self.compress_files and self.suffix:
             return [
-                (name if name in self.exclude else f"{name}{self.suffix}")
-                for name in test_files
+                (path if Path(path).name in self.exclude else f"{path}{self.suffix}")
+                for path in test_files
             ]
         else:
             return super()._modify_file_list(test_files)

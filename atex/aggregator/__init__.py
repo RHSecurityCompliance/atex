@@ -3,12 +3,12 @@ import importlib as _importlib
 import pkgutil as _pkgutil
 
 
-class Aggregator:
+class Aggregator(_abc.ABC):
     @_abc.abstractmethod
     def ingest(self, platform, test_name, artifacts):
         """
         Process `artifacts` (string/Path) for results reported and files
-        uploadedby a test ran by an Executor, aggregating them under
+        uploaded by a test ran by an Executor, aggregating them under
         `platform` (string) as `test_name` (string).
 
         This is **destructive**, the artifacts are consumed in the process.

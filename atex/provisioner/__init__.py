@@ -2,10 +2,10 @@ import abc as _abc
 import importlib as _importlib
 import pkgutil as _pkgutil
 
-from .. import connection as _connection
+from ..connection import Connection as _Connection
 
 
-class Remote(_connection.Connection):
+class Remote(_Connection):
     @_abc.abstractmethod
     def release(self):
         """
@@ -13,7 +13,7 @@ class Remote(_connection.Connection):
         """
 
 
-class Provisioner:
+class Provisioner(_abc.ABC):
     @_abc.abstractmethod
     def provision(self, count=1):
         """

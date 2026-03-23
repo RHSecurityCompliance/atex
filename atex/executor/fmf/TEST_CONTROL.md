@@ -98,8 +98,9 @@ The parent then read `word2 arg1 arg2\n` as another *control line*, calling
       unknown amount of time that should not be deducted from the test duration.
     - Can be used as `duration save` + `duration 600` + perform infra action
       + `duration restore` to add a 600sec safety timer for the infra task.
-    - The save/restore logic works with a stack, so ie. library code can use its
-      own save/restore commands while already running in a saved context.
+    - The save/restore logic works a bit like a stack, so ie. library code can
+      use its own save/restore commands while already running in a saved
+      context.
 - **`disconnect`**
   - ie. `disconnect\n`
   - Signals the runner to disconnect the control channel and wait for test

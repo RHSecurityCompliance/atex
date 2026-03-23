@@ -1,4 +1,5 @@
 import collections
+import copy
 import datetime
 import json
 import logging
@@ -328,6 +329,7 @@ class Request:
             # did not catch it, the wait will never end
             if self.data["state"] in END_STATES:
                 raise GoneAwayError(f"request {self.id} ended with {self.data['state']}")
+            time.sleep(0.1)
 
     def __repr__(self):
         return f"Request(id={self.id})"
@@ -568,7 +570,7 @@ class Reserve:
             if self.request:
                 raise RuntimeError("reservation already in progress")
 
-        spec = self._spec.copy()
+        spec = copy.deepcopy(self._spec)
         spec_env = spec["environments"][0]
 
         # add source_host firewall filter on the public ranch

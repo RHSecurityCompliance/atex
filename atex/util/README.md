@@ -15,9 +15,9 @@ identifiers via ie.
 
 ```python
 # in wrappers.py
-from .custom_dedent import dedent
+from .some_util_module import func
 
-dedent(...)
+func(...)
 ```
 
 rather than trying to preserve `custom_dedent.dedent()` or reaching beyond

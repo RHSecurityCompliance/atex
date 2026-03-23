@@ -87,7 +87,7 @@ def search_requests(args):
         if "fmf" in req["test"] and req["test"]["fmf"]:
             test = req["test"]["fmf"]["url"]
         elif "tmt" in req["test"] and req["test"]["tmt"]:
-            test = req["test"]["tmf"]["url"]
+            test = req["test"]["tmt"]["url"]
         else:
             test = ""
 
@@ -189,6 +189,7 @@ def reserve(args):
         timeout=args.timeout,
         hardware=hardware,
         reserve_test=test,
+        ssh_key=args.ssh_key,
         api=api,
     )
     with res as m:

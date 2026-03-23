@@ -3,10 +3,6 @@ import subprocess
 from .. import Connection
 
 
-class PodmanConnectionError(ConnectionError):
-    pass
-
-
 class PodmanConnection(Connection):
     def __init__(self, container):
         self.container = container
@@ -17,7 +13,6 @@ class PodmanConnection(Connection):
     def disconnect(self):
         pass
 
-    # have options as kwarg to be compatible with other functions here
     def cmd(self, command, *, func=subprocess.run, **func_args):
         return func(
             ("podman", "container", "exec", "-i", self.container, *command),

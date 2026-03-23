@@ -177,7 +177,7 @@ class SharedVirtProvisioner(Provisioner):
           untouched.
 
         - `domain_user` and `domain_sshkey` (strings) specify how to connect to
-          an OS booted from the pre-instaled `image`, as these credentials are
+          an OS booted from the pre-installed `image`, as these credentials are
           known only to the logic that created the `image` in the first place.
 
           The `domain_sshkey` is a file path to the private key.
@@ -347,8 +347,8 @@ class SharedVirtProvisioner(Provisioner):
                 "Hostname": self.domain_host,
                 "User": self.domain_user,
                 "Port": port,
-                "IdentityFile": str(Path(self.domain_sshkey).absolute()),
-                "ConnectionAttempts": "1000",
+                "IdentityFile": Path(self.domain_sshkey).absolute(),
+                "ConnectionAttempts": 1000,
                 "Compression": "yes",
             }
 
@@ -356,10 +356,11 @@ class SharedVirtProvisioner(Provisioner):
                 self.logger.debug(f"releasing {remote}")
 
                 # remove from the list of remotes inside this Provisioner
-                try:
-                    self.remotes.remove(remote)
-                except ValueError:
-                    pass
+                with self.lock:
+                    try:
+                        self.remotes.remove(remote)
+                    except ValueError:
+                        pass
                 # issue a cmd:release to the remote helper
                 response = self._helper_query({"cmd": "release", "domain": remote.domain})
                 assert response["success"]

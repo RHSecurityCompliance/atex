@@ -37,7 +37,7 @@ def test_wrapper(*, test, tests_dir, test_exec):
 
     - `test` is a class Test instance.
 
-    - `test_dir` is a remote directory (repository) of all the tests,
+    - `tests_dir` is a remote directory (repository) of all the tests,
       a.k.a. FMF metadata root.
 
     - `test_exec` is a remote path to the actual test to run.

@@ -9,7 +9,7 @@ def LimitedRerunsMixin(reruns, cond=lambda code: code != 0):  # noqa: N802
 
     - `reruns` is the maximum number of reruns for each test.
 
-    - `cond` is a callable with a text exit code passed as argument,
+    - `cond` is a callable with a test exit code passed as argument,
       returning True if the test should be rerun, False if it should not.
     """
     class LimitedRerunsMixin:

@@ -43,7 +43,7 @@ def subprocess_stream(cmd, *, stream="stdout", check=False, input=None, **kwargs
         for line in line_stream:
             yield line.rstrip("\n")
         code = proc.wait()
-        if code > 0 and check:
+        if code != 0 and check:
             raise subprocess.CalledProcessError(cmd=cmd, returncode=code)
 
     return (proc, generate_lines())

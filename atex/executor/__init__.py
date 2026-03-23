@@ -3,7 +3,7 @@ import importlib as _importlib
 import pkgutil as _pkgutil
 
 
-class Executor:
+class Executor(_abc.ABC):
     @_abc.abstractmethod
     def run_test(self, test_name, artifacts):
         """

@@ -17,7 +17,7 @@ class BadControlError(Exception):
 class BadReportJSONError(BadControlError):
     """
     Raised on a syntactical or semantical error caused by the test not following
-    the TEST_CONROL.md specification when passing JSON data to the 'result'
+    the TEST_CONTROL.md specification when passing JSON data to the 'result'
     control word.
     """
 
@@ -41,7 +41,7 @@ class TestControl:
 
         self.reporter = reporter
         self.duration = duration
-        if control_fd:
+        if control_fd is not None:
             self.control_fd = control_fd
             self.stream = util.NonblockLineReader(control_fd, read_len=1)
         else:
@@ -152,9 +152,12 @@ class TestControl:
             # nested dict, merge it recursively
             if isinstance(value, dict):
                 cls._merge(orig_value, value)
-            # extensible list-like iterable, extend it
-            elif isinstance(value, (tuple, list)):
+            # extensible sequence, extend it
+            elif isinstance(value, list):
                 orig_value += value
+            # immutable sequence, re-created a merged one
+            elif isinstance(value, tuple):
+                dst[key] = (*orig_value, *value)
             # overridable types, doesn't make sense to extend them
             elif isinstance(value, (str, int, float, bool, bytes, bytearray)):
                 dst[key] = value

@@ -16,6 +16,8 @@ from .metadata import listlike
 from .reporter import Reporter
 from .testcontrol import BadReportJSONError, TestControl
 
+get_logger = util.get_loggers("atex.executor.fmf")
+
 
 class TestSetupError(ExecutorError):
     """
@@ -40,6 +42,8 @@ class FMFExecutor(Executor):
           plan prepare/finish scripts and to all tests.
         """
         self.lock = threading.RLock()
+        self.logger = get_logger()
+
         self.fmf_tests = fmf_tests
         self.conn = connection
         self.env = env or {}
@@ -155,7 +159,7 @@ class FMFExecutor(Executor):
         with contextlib.ExitStack() as stack:
             reporter = stack.enter_context(Reporter(artifacts, "results", "files"))
             duration = Duration(test_data.get("duration", "5m"))
-            control = TestControl(reporter=reporter, duration=duration)
+            control = TestControl(reporter=reporter, duration=duration, logger=self.logger)
 
             # run a setup script, preparing wrapper + test scripts
             setup_script = scripts.test_setup(

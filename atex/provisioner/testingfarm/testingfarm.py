@@ -1,5 +1,4 @@
 import concurrent.futures
-import logging
 import tempfile
 import threading
 import time
@@ -8,7 +7,7 @@ from ... import connection, util
 from .. import Provisioner, Remote
 from . import api
 
-logger = logging.getLogger("atex.provisioner.testingfarm")
+get_logger = util.get_loggers("atex.provisioner.testingfarm")
 
 
 class TestingFarmRemote(Remote, connection.ssh.ManagedSSHConnection):
@@ -72,6 +71,8 @@ class TestingFarmProvisioner(Provisioner):
           that will be reprovisioned before giving up.
         """
         self.lock = threading.RLock()
+        self.logger = get_logger()
+
         self.compose = compose
         self.arch = arch
         self.max_remotes = min(max_remotes, self.absolute_max_remotes)
@@ -97,7 +98,7 @@ class TestingFarmProvisioner(Provisioner):
         # distribute load on TF servers
         # (we can sleep here as this code is running in a separate thread)
         if initial_delay:
-            logger.info(f"delaying for {initial_delay}s to distribute load")
+            self.logger.info(f"delaying for {initial_delay}s to distribute load")
             time.sleep(initial_delay)
 
         # 'machine' is api.Reserve.ReservedMachine namedtuple
@@ -151,7 +152,7 @@ class TestingFarmProvisioner(Provisioner):
                 return
             self.to_reserve -= will_reserve
 
-        logger.info(f"{self}: reserving {will_reserve} new remotes")
+        self.logger.info(f"{self}: reserving {will_reserve} new remotes")
         for i in range(will_reserve):
             tf_reserve = api.Reserve(
                 compose=self.compose,
@@ -214,7 +215,7 @@ class TestingFarmProvisioner(Provisioner):
                 exc_str = f"{type(e).__name__}({e})"
                 with self.lock:
                     if self.retries > 0:
-                        logger.warning(
+                        self.logger.warning(
                             f"caught while reserving a TF system: {exc_str}, "
                             f"retrying ({self.retries} left)",
                         )
@@ -225,7 +226,7 @@ class TestingFarmProvisioner(Provisioner):
                         else:
                             return None
                     else:
-                        logger.warning(
+                        self.logger.warning(
                             f"caught while reserving a TF system: {exc_str}, "
                             "exhausted all retries, giving up",
                         )
@@ -248,5 +249,5 @@ class TestingFarmProvisioner(Provisioner):
         remotes = len(self.remotes)
         return (
             f"{class_name}({self.compose} @ {self.arch}, {reserving} reserving, "
-            f"{remotes} remotes, {hex(id(self))})"
+            f"{remotes} remotes)"
         )

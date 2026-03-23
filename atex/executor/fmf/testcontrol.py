@@ -5,8 +5,6 @@ import os
 
 from ... import util
 
-logger = logging.getLogger("atex.executor.testcontrol")
-
 
 class BadControlError(Exception):
     """
@@ -30,7 +28,7 @@ class TestControl:
     processing test-issued commands, results and uploaded files.
     """
 
-    def __init__(self, *, reporter, duration, control_fd=None):
+    def __init__(self, *, reporter, duration, control_fd=None, logger=None):
         """
         - `control_fd` is a non-blocking file descriptor to be read.
 
@@ -39,6 +37,8 @@ class TestControl:
 
         - `duration` is a class Duration instance.
         """
+        self.logger = logger or logging.getLogger("atex")
+
         self.reporter = reporter
         self.duration = duration
         if control_fd:
@@ -91,7 +91,7 @@ class TestControl:
         except util.BufferFullError as e:
             raise BadControlError(str(e)) from None
 
-        logger.debug(f"control line: {line} // eof: {self.stream.eof}")
+        self.logger.debug(f"control line: {line} // eof: {self.stream.eof}")
 
         if self.stream.eof:
             self.eof = True
@@ -105,7 +105,7 @@ class TestControl:
         line = line.decode()
         word, _, arg = line.partition(" ")
 
-        logger.debug(f"decoded word: {word} / arg: {arg}")
+        self.logger.debug(f"decoded word: {word} / arg: {arg}")
 
         if word == "result":
             parser = self._parser_result(arg)
@@ -190,7 +190,7 @@ class TestControl:
         except json.decoder.JSONDecodeError as e:
             raise BadReportJSONError(f"JSON decode: {str(e)} caused by: {json_data}") from None
 
-        logger.debug(f"parsed result: {result}")
+        self.logger.debug(f"parsed result: {result}")
 
         # note that this may be None (result for the test itself)
         name = result.get("name")

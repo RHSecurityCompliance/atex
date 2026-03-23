@@ -16,8 +16,6 @@ import urllib3
 from ... import util
 from .. import ProvisionerError
 
-logger = logging.getLogger("atex.provisioner.testingfarm")
-
 DEFAULT_API_URL = "https://api.testing-farm.io"
 
 DEFAULT_RESERVE_TEST = {
@@ -358,7 +356,8 @@ class PipelineLogStreamer:
     # how frequently to check for pipeline.log updates (seconds)
     pipeline_query_limit = 30
 
-    def __init__(self, request):
+    def __init__(self, request, logger=None):
+        self.logger = logger or logging.getLogger("atex")
         self.request = request
 
     def _wait_for_entry(self):
@@ -380,12 +379,12 @@ class PipelineLogStreamer:
                 # 403: happens on internal OSCI artifacts server, probably
                 #      due to similar reasons (folder exists without log)
                 if reply.status in (404,403):
-                    logger.info(f"got {reply.status} for {log}, retrying")
+                    self.logger.info(f"got {reply.status} for {log}, retrying")
                     continue
                 elif reply.status != 200:
                     raise APIError(f"got HTTP {reply.status} on HEAD {log}", reply)
 
-                logger.info(f"artifacts: {artifacts}")
+                self.logger.info(f"artifacts: {artifacts}")
 
                 return log
 
@@ -446,7 +445,7 @@ class Reserve:
         self, *, compose, arch="x86_64", pool=None, hardware=None, kickstart=None,
         timeout=60, ssh_key=None, source_host=None,
         reserve_test=None, variables=None, secrets=None, tags=None,
-        api=None,
+        api=None, logger=None,
     ):
         """
         - `compose` (str) is the OS to install, chosen from the composes
@@ -503,6 +502,8 @@ class Reserve:
         - `api` is a TestingFarmAPI instance - if unspecified, a new one
           is instantiated.
         """
+        self.logger = logger or logging.getLogger("atex")
+
         spec = {
             "test": {
                 "fmf": reserve_test or DEFAULT_RESERVE_TEST,
@@ -606,17 +607,17 @@ class Reserve:
             with self.lock:
                 self.request = Request(api=self.api)
                 self.request.submit(spec)
-            logger.info(f"submitted request {self.request.id}")
-            logger.debug(
+            self.logger.info(f"submitted request {self.request.id}")
+            self.logger.debug(
                 f"request {self.request.id}:\n{textwrap.indent(str(self.request), '    ')}",
             )
 
             # wait for user/host to ssh to
             ssh_user = ssh_host = None
-            for line in PipelineLogStreamer(self.request):
+            for line in PipelineLogStreamer(self.request, self.logger):
                 # the '\033[0m' is to reset colors sometimes left in a bad
                 # state by pipeline.log
-                logger.debug(f"{line}\033[0m")
+                self.logger.debug(f"{line}\033[0m")
                 # find hidden login details
                 m = re.search(
                     # host address can be an IP address or a hostname

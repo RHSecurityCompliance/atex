@@ -1,4 +1,3 @@
-import logging
 import os
 import shlex
 import subprocess
@@ -10,7 +9,7 @@ from pathlib import Path
 from ... import util
 from .. import Connection
 
-logger = logging.getLogger("atex.connection.ssh")
+get_logger = util.get_loggers("atex.connection.ssh")
 
 
 DEFAULT_OPTIONS = {
@@ -198,6 +197,8 @@ class ManagedSSHConnection(Connection):
           to run under a different user on the remote host.
         """
         self.lock = threading.RLock()
+        self.logger = get_logger()
+
         self.options = DEFAULT_OPTIONS.copy()
         self.options.update(options)
         self.password = password
@@ -224,7 +225,7 @@ class ManagedSSHConnection(Connection):
         proc = self._master_proc
         if not proc:
             return
-        logger.info(f"disconnecting: {self.options}")
+        self.logger.info(f"disconnecting: {self.options}")
         proc.kill()
         # don't zombie forever, return EPIPE on any attempts to write to us
         proc.stdout.close()
@@ -250,7 +251,7 @@ class ManagedSSHConnection(Connection):
         sock = self._tmpdir / "control.sock"
 
         if not self._master_proc:
-            logger.info(f"connecting: {self.options}")
+            self.logger.info(f"connecting: {self.options}")
             options = self.options.copy()
             options["SessionType"] = "none"
             options["ControlMaster"] = "yes"

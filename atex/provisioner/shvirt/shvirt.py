@@ -9,13 +9,13 @@ import time
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
-from ... import connection
+from ... import connection, util
 from .. import Provisioner, ProvisionerError, Remote
 
-logger = logging.getLogger("atex.provisioner.shvirt")
+get_logger = util.get_loggers("atex.provisioner.shvirt")
 
 
-def _wait_for_sshd(host, port, event):
+def _wait_for_sshd(host, port, event, logger=None):
     """
     Wait for real OpenSSH server to start responding on host/port,
     non-blockingly.
@@ -23,6 +23,7 @@ def _wait_for_sshd(host, port, event):
     Return True if successful, False if `event` was set and the waiting
     was thus interrupted.
     """
+    logger = logger or logging.getLogger("atex")
     while True:
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             s.setblocking(False)
@@ -199,6 +200,8 @@ class SharedVirtProvisioner(Provisioner):
           by a user. Must be at most 15 characters long (per PR_SET_NAME).
         """
         self.lock = threading.RLock()
+        self.logger = get_logger()
+
         self.host = host
         self.image = image
         self.pool = pool
@@ -247,13 +250,13 @@ class SharedVirtProvisioner(Provisioner):
             self._reserve()
         except Exception as e:
             self.reserving_exc = e
-            logger.debug(f"reserve thread got {type(e).__name__}({e})")
+            self.logger.debug(f"reserve thread got {type(e).__name__}({e})")
             self.reserving_remotes.clear()
             self.stop()
             # wake up any waiting .get_remote() calls
             self.reserving_events.release(math.inf)
         else:
-            logger.debug("reserve thread exited cleanly")
+            self.logger.debug("reserve thread exited cleanly")
 
     def _reserve(self):
         while self.to_reserve > 0:
@@ -277,7 +280,7 @@ class SharedVirtProvisioner(Provisioner):
                     raise ProvisionerError(f"failed reserve: {reply}")
 
             domain = response["domain"]
-            logger.debug(f"reserved domain {domain}")
+            self.logger.debug(f"reserved domain {domain}")
 
             # we are relying on .stop() terminating the helper connection
             # to release the domain if any of the exceptions below are raised,
@@ -289,7 +292,7 @@ class SharedVirtProvisioner(Provisioner):
             if not response["success"]:
                 raise ProvisionerError(f"failed domstate {domain}: {response['reply']}")
             if response["reply"] != "shut off\n":
-                logger.debug(f"domain {domain} running, destroying it")
+                self.logger.debug(f"domain {domain} running, destroying it")
                 response = self._helper_query({"cmd": "virsh", "args": ["destroy", domain]})
                 if not response["success"]:
                     raise ProvisionerError(f"failed destroy {domain}: {response['reply']}")
@@ -298,7 +301,7 @@ class SharedVirtProvisioner(Provisioner):
                     if not response["success"]:
                         raise ProvisionerError(f"failed domstate {domain}: {response['reply']}")
                     if response["reply"] == "shut off\n":
-                        logger.debug(f"destroyed domain {domain}")
+                        self.logger.debug(f"destroyed domain {domain}")
                         break
 
             # clone the requested image to the domain
@@ -312,7 +315,7 @@ class SharedVirtProvisioner(Provisioner):
                 reply = response["reply"]
                 raise ProvisionerError(f"failed copy-volume: {reply}")
 
-            logger.debug(f"copied volume {self.image} to {domain}")
+            self.logger.debug(f"copied volume {self.image} to {domain}")
 
             # find the forwarded port via virsh over atex-virt-helper
             response = self._helper_query({
@@ -327,7 +330,7 @@ class SharedVirtProvisioner(Provisioner):
                 raise ProvisionerError(f"'virsh dumpxml {domain}' failed: {output}")
 
             first_range, _, _ = output.partition("\n")  # first <range> only
-            logger.debug(f"found portForward range {first_range}")
+            self.logger.debug(f"found portForward range {first_range}")
             port_range = ET.fromstring(first_range)
             port = port_range.get("start")  # string!
             assert port
@@ -337,7 +340,7 @@ class SharedVirtProvisioner(Provisioner):
             output = response["reply"]
             if not response["success"]:
                 raise ProvisionerError(f"'virsh start {domain}' failed: {output}")
-            logger.debug(f"started up {domain}")
+            self.logger.debug(f"started up {domain}")
 
             # create a remote and connect it
             ssh_options = {
@@ -367,11 +370,11 @@ class SharedVirtProvisioner(Provisioner):
                 release_hook=release_hook,
             )
 
-            logger.debug(f"waiting for sshd on {remote}")
-            if not _wait_for_sshd(self.domain_host, int(port), self.reserving_exit):
+            self.logger.debug(f"waiting for sshd on {remote}")
+            if not _wait_for_sshd(self.domain_host, int(port), self.reserving_exit, self.logger):
                 return
 
-            logger.debug(f"connecting to {remote}")
+            self.logger.debug(f"connecting to {remote}")
             retries = 0
             while True:
                 if self.reserving_exit.wait(timeout=0.1):
@@ -397,7 +400,7 @@ class SharedVirtProvisioner(Provisioner):
                 else:
                     break
 
-            logger.debug(f"appending {remote}")
+            self.logger.debug(f"appending {remote}")
             with self.lock:
                 self.remotes.append(remote)
                 self.reserving_remotes.add(remote)
@@ -518,6 +521,5 @@ class SharedVirtProvisioner(Provisioner):
         dfilter = f", {self.domain_filter}" if self.domain_filter is not None else ""
         return (
             f"{class_name}({self.domain_host}{dfilter}, {self.image}, "
-            f"{len(self.remotes)} remotes, {self.to_reserve} to reserve, "
-            f"{hex(id(self))})"
+            f"{len(self.remotes)} remotes, {self.to_reserve} to reserve)"
         )

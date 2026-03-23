@@ -1,8 +1,10 @@
 import subprocess
 import threading
 
-from ... import connection
+from ... import connection, util
 from .. import Provisioner, Remote
+
+get_logger = util.get_loggers("atex.provisioner.podman")
 
 
 class PodmanRemote(Remote, connection.podman.PodmanConnection):
@@ -99,6 +101,8 @@ class PodmanProvisioner(Provisioner):
           to execute as the "init system" in the container.
         """
         self.lock = threading.RLock()
+        self.logger = get_logger()
+
         self.image = image
         self.run_options = run_options or ()
         self.run_command = run_command
@@ -109,33 +113,37 @@ class PodmanProvisioner(Provisioner):
         self.to_create = _SettableCounter(0)
 
     def start(self):
+        self.logger.debug(f"starting: {self}")
+
         if not self.image:
             raise ValueError("image cannot be empty")
 
     def stop(self):
+        self.logger.debug(f"stopping: {self}")
+
         with self.lock:
             while self.remotes:
                 self.remotes.pop().release()
 
     def provision(self, count=1):
+        self.logger.debug(f"provisioning {count}")
         self.to_create.add(count)
 
     def get_remote(self, block=True):
         if not self.to_create.remove_one(block=block):
             return None
 
-        proc = subprocess.run(
-            (
-                "podman", "container", "run", "--quiet", "--detach", "--pull", "never",
-                *self.run_options, self.image, *self.run_command,
-            ),
-            check=True,
-            text=True,
-            stdout=subprocess.PIPE,
+        cmd = (
+            "podman", "container", "run", "--quiet", "--detach", "--pull", "never",
+            *self.run_options, self.image, *self.run_command,
         )
+
+        proc = subprocess.run(cmd, check=True, text=True, stdout=subprocess.PIPE)
         container_id = proc.stdout.rstrip("\n")
+        self.logger.debug(f"new container: {cmd} --> {container_id}")
 
         def release_hook(remote):
+            self.logger.debug(f"releasing {remote}")
             # remove from the list of remotes inside this Provisioner
             with self.lock:
                 try:

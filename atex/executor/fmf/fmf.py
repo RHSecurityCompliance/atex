@@ -53,6 +53,8 @@ class FMFExecutor(Executor):
         self.cancelled = False
 
     def start(self):
+        self.logger.debug(f"starting: {self}")
+
         tmp_dir = self.conn.cmd(
             # /var is not cleaned up by bootc, /var/tmp is
             ("mktemp", "-d", "-p", "/var", "atex-XXXXXXXXXX"),
@@ -96,6 +98,8 @@ class FMFExecutor(Executor):
             self._run_prepare_scripts(scripts)
 
     def stop(self):
+        self.logger.debug(f"stopping: {self}")
+
         # run 'finish' scripts from the plan on the remote
         if scripts := self.fmf_tests.finish_scripts:
             self._run_prepare_scripts(scripts)
@@ -142,6 +146,8 @@ class FMFExecutor(Executor):
 
         - `env` is a dict of extra environment variables to pass to the test.
         """
+        self.logger.info(f"'{test_name}': running, {artifacts=}")
+
         artifacts = Path(artifacts)
         test_data = self.fmf_tests.tests[test_name]
 
@@ -160,6 +166,8 @@ class FMFExecutor(Executor):
         # append variables given to this function call
         if env:
             env_vars.update(env)
+
+        self.logger.debug(f"'{test_name}': {env_vars=}")
 
         with contextlib.ExitStack() as stack:
             reporter = stack.enter_context(Reporter(artifacts, "results", "files"))
@@ -204,6 +212,8 @@ class FMFExecutor(Executor):
 
             try:
                 state = self.State.STARTING_TEST
+                self.logger.debug(f"'{test_name}': {state.name}")
+
                 while not duration.out_of_time():
                     with self.lock:
                         if self.cancelled:
@@ -233,6 +243,7 @@ class FMFExecutor(Executor):
                         finally:
                             os.close(pipe_w)
                         state = self.State.READING_CONTROL
+                        self.logger.debug(f"'{test_name}': {state.name}")
 
                     elif state == self.State.READING_CONTROL:
                         rlist, _, xlist = select.select((control_fd,), (), (control_fd,), 0.1)
@@ -244,6 +255,7 @@ class FMFExecutor(Executor):
                                 os.close(control_fd)
                                 control_fd = None
                                 state = self.State.WAITING_FOR_EXIT
+                                self.logger.debug(f"'{test_name}': {state.name}")
 
                     elif state == self.State.WAITING_FOR_EXIT:
                         # control stream is EOF and it has nothing for us to read,
@@ -265,6 +277,7 @@ class FMFExecutor(Executor):
                                 # if test control disconnect was intentional, try to reconnect
                                 if control.disconnect_received:
                                     state = self.State.RECONNECTING
+                                    self.logger.debug(f"'{test_name}': {state.name}")
                                     control.disconnect_received = False
                                 else:
                                     abort(
@@ -283,6 +296,7 @@ class FMFExecutor(Executor):
                                 self.conn.connect()
                             reconnects += 1
                             state = self.State.STARTING_TEST
+                            self.logger.debug(f"'{test_name}': {state.name}")
                         except BlockingIOError:
                             # avoid 100% CPU spinning if the connection it too slow
                             # to come up (ie. ssh ControlMaster socket file not created)
@@ -346,7 +360,14 @@ class FMFExecutor(Executor):
                         reporter.link_testout("output.txt")
                     except FileExistsError:
                         pass
+                    self.logger.debug(f"'{test_name}': reporting fallback result")
                     reporter.report({
                         "status": "pass" if control.exit_code == 0 else "fail",
                         "testout": "output.txt",
                     })
+
+    def __str__(self):
+        class_name = self.__class__.__name__
+        conn_class = type(self.conn)
+        fmf_root = str(self.fmf_tests.root)
+        return f"{class_name}({conn_class}, {fmf_root})"

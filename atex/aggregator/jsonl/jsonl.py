@@ -10,6 +10,8 @@ from pathlib import Path
 from ... import util
 from .. import Aggregator, AggregatorError
 
+get_logger = util.get_loggers("atex.aggregator.jsonl")
+
 
 def _verbatim_move(src, dst):
     def copy_without_symlinks(src, dst):
@@ -31,6 +33,8 @@ class JSONLinesAggregator(Aggregator):
           third, etc.
         """
         self.lock = threading.RLock()
+        self.logger = get_logger()
+
         self.target = Path(target)
         self.files = Path(files)
         self.allow_duplicate = allow_duplicate
@@ -38,6 +42,8 @@ class JSONLinesAggregator(Aggregator):
         self.target_fobj = None
 
     def start(self):
+        self.logger.debug(f"starting: {self}")
+
         if self.target.exists(follow_symlinks=False):
             raise FileExistsError(f"{self.target} already exists")
         self.target_fobj = open(self.target, "w")
@@ -47,6 +53,8 @@ class JSONLinesAggregator(Aggregator):
         self.files.mkdir()
 
     def stop(self):
+        self.logger.debug(f"stopping: {self}")
+
         if self.target_fobj:
             self.target_fobj.close()
             self.target_fobj = None
@@ -102,6 +110,8 @@ class JSONLinesAggregator(Aggregator):
                 test_name = f"{test_name} ({self.seen_tests[unique_id]})"
         self.seen_tests[unique_id] += 1
 
+        self.logger.info(f"ingesting '{platform}' / '{test_name}' from '{artifacts}'")
+
         artifacts = Path(artifacts)
         # TODO: define these as TestArtifacts namedtuple in Executor?
         artifacts_results = artifacts / "results"
@@ -134,6 +144,10 @@ class JSONLinesAggregator(Aggregator):
             platform_files.mkdir(exist_ok=True)
             # TODO: why does this work without .mkdir(target_test_files.parent) ?
             self._move_test_files(artifacts_files, target_test_files)
+
+    def __str__(self):
+        class_name = self.__class__.__name__
+        return f"{class_name}({str(self.target)}, {str(self.files)})"
 
 
 class CompressedJSONLinesAggregator(JSONLinesAggregator, abc.ABC):

@@ -119,7 +119,7 @@ class AdHocOrchestrator(Orchestrator):
         next_test_name = self.next_test(self.to_run.keys(), info)
         assert next_test_name in self.to_run, "next_test() returned valid test name"
 
-        self.logger.info(f"{info.remote}: starting '{next_test_name}'")
+        self.logger.info(f"starting '{next_test_name}' on {info.remote}")
 
         del self.to_run[next_test_name]
 
@@ -154,23 +154,21 @@ class AdHocOrchestrator(Orchestrator):
         """
         `finfo` is a FinishedInfo instance.
         """
-        remote_with_test = f"{finfo.remote}: '{finfo.test_name}'"
-
         if finfo.exception:
             exc_str = f"{type(finfo.exception).__name__}({finfo.exception})"
-            self.logger.warning(f"{remote_with_test} threw {exc_str} during test runtime")
+            self.logger.warning(f"'{finfo.test_name}' threw {exc_str} during test runtime")
             remote_destroyed = True
         else:
-            self.logger.debug(f"{remote_with_test} exited with: {finfo.exit_code}")
+            self.logger.debug(f"'{finfo.test_name}' exited with: {finfo.exit_code}")
             remote_destroyed = self.destructive(finfo)
 
         if (finfo.exception or finfo.exit_code != 0) and self.should_be_rerun(finfo):
-            self.logger.info(f"{remote_with_test} failed, re-running")
+            self.logger.info(f"'{finfo.test_name}' failed, re-running")
             self.to_run[finfo.test_name] = None  # add it
 
             # provision a replacement for a destroyed Remote
             if remote_destroyed:
-                self.logger.debug(f"{remote_with_test} was destructive, getting a new Remote")
+                self.logger.debug(f"{finfo.remote} was destroyed, getting a new one")
                 finfo.provisioner.provision(1)
 
             if self.old_aggregator:
@@ -192,7 +190,7 @@ class AdHocOrchestrator(Orchestrator):
                 finfo.artifacts.cleanup()
 
         else:
-            self.logger.info(f"{remote_with_test} completed, ingesting result")
+            self.logger.info(f"'{finfo.test_name}' completed, ingesting result")
 
             # ingest the artifacts into the main aggregator
             self.ingest_queue.start_thread(
@@ -214,7 +212,7 @@ class AdHocOrchestrator(Orchestrator):
         # if there are still tests to run and the Remote is still valid,
         # run the next test on it (possibly a rerun)
         if self.to_run and not remote_destroyed:
-            self.logger.debug(f"{remote_with_test} was non-destructive, running next test")
+            self.logger.debug(f"'{finfo.test_name}' was non-destructive, running next test")
             self._run_new_test(finfo)
         else:
             self.logger.debug(f"{finfo.remote} no longer useful, releasing it")
@@ -316,7 +314,7 @@ class AdHocOrchestrator(Orchestrator):
                     target_args=(sinfo,),
                     sinfo=sinfo,
                 )
-                self.logger.info(f"{provisioner}: running setup on new {remote}")
+                self.logger.info(f"running setup on new {remote}")
 
         # gather returns from Remote.release() functions - check for exceptions
         # thrown, re-report them as warnings as they are not typically critical
@@ -349,6 +347,8 @@ class AdHocOrchestrator(Orchestrator):
         return True
 
     def start(self):
+        self.logger.debug(f"starting: {self}")
+
         # start up initial reservations - the idea is to request as much remotes
         # as there are tests (worst possible case where Remotes are not reused)
         # from EACH provisioner, allowing any one of them to supply the Remotes
@@ -361,6 +361,8 @@ class AdHocOrchestrator(Orchestrator):
             prov.provision(remotes)
 
     def stop(self):
+        self.logger.debug(f"stopping: {self}")
+
         # cancel all running tests and wait for them to clean up (up to 0.1sec)
         for rinfo in self.running_tests.values():
             rinfo.executor.cancel()  # TODO: .cancel() is nonstandard

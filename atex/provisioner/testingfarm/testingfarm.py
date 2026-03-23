@@ -115,6 +115,8 @@ class TestingFarmProvisioner(Provisioner):
         }
 
         def release_hook(remote):
+            self.logger.debug(f"releasing {remote}")
+
             # remove from the list of remotes inside this Provisioner
             with self.lock:
                 try:
@@ -152,7 +154,7 @@ class TestingFarmProvisioner(Provisioner):
                 return
             self.to_reserve -= will_reserve
 
-        self.logger.info(f"{self}: reserving {will_reserve} new remotes")
+        self.logger.info(f"reserving {will_reserve} new remotes")
         for i in range(will_reserve):
             tf_reserve = api.Reserve(
                 compose=self.compose,
@@ -172,11 +174,15 @@ class TestingFarmProvisioner(Provisioner):
             )
 
     def start(self):
+        self.logger.debug(f"starting: {self}")
+
         with self.lock:
             self._tmpdir = tempfile.TemporaryDirectory()
             self.ssh_key, self.ssh_pubkey = util.ssh_keygen(self._tmpdir.name)
 
     def stop(self):
+        self.logger.debug(f"stopping: {self}")
+
         release_funcs = []
 
         with self.lock:

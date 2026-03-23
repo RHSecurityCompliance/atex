@@ -250,7 +250,7 @@ class SharedVirtProvisioner(Provisioner):
             self._reserve()
         except Exception as e:
             self.reserving_exc = e
-            self.logger.debug(f"reserve thread got {type(e).__name__}({e})")
+            self.logger.warning(f"reserve thread got {type(e).__name__}({e})")
             self.reserving_remotes.clear()
             self.stop()
             # wake up any waiting .get_remote() calls
@@ -353,6 +353,8 @@ class SharedVirtProvisioner(Provisioner):
             }
 
             def release_hook(remote):
+                self.logger.debug(f"releasing {remote}")
+
                 # remove from the list of remotes inside this Provisioner
                 try:
                     self.remotes.remove(remote)
@@ -412,6 +414,8 @@ class SharedVirtProvisioner(Provisioner):
                 return
 
     def start(self):
+        self.logger.debug(f"starting: {self}")
+
         with self.lock:
             # launch the helper on the remote host
             if self.helper:
@@ -445,6 +449,8 @@ class SharedVirtProvisioner(Provisioner):
             self.started = True
 
     def stop(self):
+        self.logger.debug(f"stopping: {self}")
+
         with self.lock:
             self.started = False
 

@@ -1,4 +1,5 @@
-from atex import util
+import subprocess
+
 from atex.executor.fmf import FMFExecutor, FMFTests
 
 
@@ -8,8 +9,13 @@ def test_prepare_cwd(provisioner):
     remote = provisioner.get_remote()
     with FMFExecutor(remote, fmf_tests=fmf_tests):
         pass
-    output = remote.cmd(("cat", "/tmp/file_contents"), func=util.subprocess_output)
-    assert output == "123"  # util.subprocess_output strips trailing \n
+    proc = remote.cmd(
+        ("cat", "/tmp/file_contents"),
+        stdout=subprocess.PIPE,
+        check=True,
+        text=True,
+    )
+    assert proc.stdout == "123\n"
 
 
 def test_test_cwd(provisioner, tmp_dir):

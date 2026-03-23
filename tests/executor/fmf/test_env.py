@@ -1,7 +1,7 @@
 import re
+import subprocess
 import tempfile
 
-from atex import util
 from atex.executor.fmf import FMFExecutor, FMFTests
 
 
@@ -11,8 +11,13 @@ def test_prepare_env(provisioner):
     remote = provisioner.get_remote()
     with FMFExecutor(remote, fmf_tests=fmf_tests):
         pass
-    output = remote.cmd(("cat", "/tmp/plan_env"), func=util.subprocess_output)
-    assert "\nVAR_FROM_PLAN=foo bar\n" in output
+    proc = remote.cmd(
+        ("cat", "/tmp/plan_env"),
+        stdout=subprocess.PIPE,
+        check=True,
+        text=True,
+    )
+    assert "\nVAR_FROM_PLAN=foo bar\n" in proc.stdout
 
 
 def test_test_env(provisioner, tmp_dir):
@@ -44,11 +49,16 @@ def test_envfile_shared(provisioner, tmp_dir):
     remote = provisioner.get_remote()
     with FMFExecutor(remote, fmf_tests=fmf_tests) as e:
         e.run_test("/test_env", tmp_dir)
-    plan_output = remote.cmd(("cat", "/tmp/plan_env"), func=util.subprocess_output)
+    plan_proc = remote.cmd(
+        ("cat", "/tmp/plan_env"),
+        stdout=subprocess.PIPE,
+        check=True,
+        text=True,
+    )
     test_output = (tmp_dir / "files" / "output.txt").read_text()
-    assert "\nTMT_PLAN_ENVIRONMENT_FILE=" in plan_output
+    assert "\nTMT_PLAN_ENVIRONMENT_FILE=" in plan_proc.stdout
     assert "\nTMT_PLAN_ENVIRONMENT_FILE=" in test_output
-    plan_regex = re.search(r"TMT_PLAN_ENVIRONMENT_FILE=([^\n]+)", plan_output)
+    plan_regex = re.search(r"TMT_PLAN_ENVIRONMENT_FILE=([^\n]+)", plan_proc.stdout)
     assert plan_regex is not None
     test_regex = re.search(r"TMT_PLAN_ENVIRONMENT_FILE=([^\n]+)", test_output)
     assert test_regex is not None

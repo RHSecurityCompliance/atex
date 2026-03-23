@@ -1,7 +1,6 @@
+import subprocess
 import tempfile
 import time
-
-from atex import util
 
 
 def one_remote(p):
@@ -67,34 +66,41 @@ def two_remotes_nonblock(p):
 def cmd(p):
     p.provision(1)
     rem = p.get_remote()
-    out = rem.cmd(
+    proc = rem.cmd(
         ("echo", "foo bar"),
-        func=util.subprocess_output,
+        stdout=subprocess.PIPE,
+        check=True,
+        text=True,
     )
-    assert out.rstrip("\n") == "foo bar"
+    out = proc.stdout.rstrip("\n")
+    assert out == "foo bar", f"{repr(out)} is 'foo bar'"
 
 
 def cmd_input(p):
     p.provision(1)
     rem = p.get_remote()
-    out = rem.cmd(
+    proc = rem.cmd(
         ("cat",),
-        func=util.subprocess_output,
+        stdout=subprocess.PIPE,
+        check=True,
+        text=True,
         input="foo bar\n",
     )
-    assert out.rstrip("\n") == "foo bar", f"{repr(out)} is 'foo bar'"
+    out = proc.stdout.rstrip("\n")
+    assert out == "foo bar", f"{repr(out)} is 'foo bar'"
 
 
 def cmd_binary(p):
     bstr = b"\x00\x01\n\x02\x03"
     p.provision(1)
     rem = p.get_remote()
-    out = rem.cmd(
+    proc = rem.cmd(
         ("cat",),
-        func=util.subprocess_output,
-        text=False,
+        stdout=subprocess.PIPE,
+        check=True,
         input=bstr,
     )
+    out = proc.stdout
     assert out == bstr, f"{repr(out)} is {bstr}"
 
 
@@ -107,11 +113,12 @@ def rsync(p):
         p.provision(1)
         rem = p.get_remote()
         rem.rsync(tmpf.name, "remote:foobar")
-        out = rem.cmd(
+        proc = rem.cmd(
             ("cat", "foobar"),
-            func=util.subprocess_output,
-            text=False,
+            stdout=subprocess.PIPE,
+            check=True,
         )
+        out = proc.stdout
         assert out == bstr, f"{repr(out)} is {bstr}"
 
 

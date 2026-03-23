@@ -5,7 +5,7 @@ from ... import util
 
 
 def pull_image(origin):
-    proc = util.subprocess_run(
+    proc = subprocess.run(
         ("podman", "image", "pull", "-q", origin),
         check=True,
         text=True,
@@ -30,7 +30,7 @@ def build_container_with_deps(origin, tag=None, *, extra_pkgs=None, extra_conten
             {extra_content}
         """))
         tmpf.close()
-        proc = util.subprocess_run(
+        proc = subprocess.run(
             ("podman", "image", "build", "-q", "-f", tmpf.name, *tag_args, "."),
             check=True,
             text=True,

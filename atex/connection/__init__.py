@@ -1,8 +1,7 @@
 import abc as _abc
 import importlib as _importlib
 import pkgutil as _pkgutil
-
-from .. import util as _util
+import subprocess as _subprocess
 
 
 class Connection:
@@ -30,7 +29,7 @@ class Connection:
         """
 
     @_abc.abstractmethod
-    def cmd(self, command, *, func=_util.subprocess_run, **func_args):
+    def cmd(self, command, *, func=_subprocess.run, **func_args):
         """
         Execute a single command on the remote, using subprocess-like semantics.
 
@@ -42,7 +41,7 @@ class Connection:
         """
 
     @_abc.abstractmethod
-    def rsync(self, *args, func=_util.subprocess_run, **func_args):
+    def rsync(self, *args, func=_subprocess.run, **func_args):
         """
         Synchronize local/remote files/directories via `rsync`.
 

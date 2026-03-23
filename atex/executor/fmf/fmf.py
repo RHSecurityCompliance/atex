@@ -56,9 +56,11 @@ class FMFExecutor(Executor):
         tmp_dir = self.conn.cmd(
             # /var is not cleaned up by bootc, /var/tmp is
             ("mktemp", "-d", "-p", "/var", "atex-XXXXXXXXXX"),
-            func=util.subprocess_output,
+            stdout=subprocess.PIPE,
+            text=True,
+            check=True,
         )
-        tmp_dir = Path(tmp_dir)
+        tmp_dir = Path(tmp_dir.stdout.rstrip("\n"))
         self.work_dir = tmp_dir
         self.tests_dir = tmp_dir / "tests"
         self.plan_env_file = tmp_dir / "plan_env"
@@ -72,6 +74,7 @@ class FMFExecutor(Executor):
             f"{self.fmf_tests.root}/",
             f"remote:{self.tests_dir}",
             func=util.subprocess_log,
+            logger=self.logger,
         )
 
         # install packages from the plan on the remote
@@ -82,6 +85,7 @@ class FMFExecutor(Executor):
                     "install", *self.fmf_tests.prepare_pkgs,
                 ),
                 func=util.subprocess_log,
+                logger=self.logger,
                 stdin=subprocess.DEVNULL,
                 stderr=subprocess.STDOUT,
                 check=True,
@@ -120,6 +124,7 @@ class FMFExecutor(Executor):
             self.conn.cmd(
                 ("env", "-C", self.tests_dir, *env_args, "bash"),
                 func=util.subprocess_log,
+                logger=self.logger,
                 input=script,
                 stderr=subprocess.STDOUT,
                 check=True,
@@ -222,7 +227,7 @@ class FMFExecutor(Executor):
                                     stdin=subprocess.DEVNULL,
                                     stdout=pipe_w,
                                     stderr=testout_fd,
-                                    func=util.subprocess_Popen,
+                                    func=subprocess.Popen,
                                     bufsize=0,  # we handle fds ourselves
                                 )
                         finally:

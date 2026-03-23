@@ -143,7 +143,7 @@ class StatelessSSHConnection(Connection):
         pass
 
     # have options as kwarg to be compatible with other functions here
-    def cmd(self, command, options=None, func=util.subprocess_run, **func_args):
+    def cmd(self, command, options=None, func=subprocess.run, **func_args):
         unified_options = self.options.copy()
         if options:
             unified_options.update(options)
@@ -154,7 +154,7 @@ class StatelessSSHConnection(Connection):
             **func_args,
         )
 
-    def rsync(self, *args, options=None, func=util.subprocess_run, **func_args):
+    def rsync(self, *args, options=None, func=subprocess.run, **func_args):
         unified_options = self.options.copy()
         if options:
             unified_options.update(options)
@@ -256,7 +256,7 @@ class ManagedSSHConnection(Connection):
             options["SessionType"] = "none"
             options["ControlMaster"] = "yes"
             options["ControlPath"] = sock
-            self._master_proc = util.subprocess_Popen(
+            self._master_proc = subprocess.Popen(
                 _options_to_ssh(options, password=self.password),
                 stdin=subprocess.DEVNULL,
                 stdout=subprocess.PIPE,
@@ -312,12 +312,12 @@ class ManagedSSHConnection(Connection):
         options[forward_type] = spec
         options["ControlPath"] = self._tmpdir / "control.sock"
         action = "forward" if not cancel else "cancel"
-        util.subprocess_run(
+        subprocess.run(
             _options_to_ssh(options, extra_cli_flags=("-O", action)),
             check=True,
         )
 
-    def cmd(self, command, *, options=None, func=util.subprocess_run, **func_args):
+    def cmd(self, command, *, options=None, func=subprocess.run, **func_args):
         self.assert_master()
         unified_options = self.options.copy()
         if options:
@@ -330,7 +330,7 @@ class ManagedSSHConnection(Connection):
             **func_args,
         )
 
-    def rsync(self, *args, options=None, func=util.subprocess_run, **func_args):
+    def rsync(self, *args, options=None, func=subprocess.run, **func_args):
         self.assert_master()
         unified_options = self.options.copy()
         if options:

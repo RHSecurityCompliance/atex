@@ -646,7 +646,7 @@ class Reserve:
                 time.sleep(1)
                 self.request.assert_alive()
 
-                proc = util.subprocess_run(
+                proc = subprocess.run(
                     ssh_attempt_cmd,
                     stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
                 )

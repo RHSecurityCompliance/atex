@@ -1,7 +1,7 @@
 import subprocess
 import threading
 
-from ... import connection, util
+from ... import connection
 from .. import Provisioner, Remote
 
 
@@ -35,7 +35,7 @@ class PodmanRemote(Remote, connection.podman.PodmanConnection):
                 self.release_called = True
         self.disconnect()
         self.release_hook(self)
-        util.subprocess_run(
+        subprocess.run(
             ("podman", "container", "rm", "-f", "-t", "0", self.container),
             check=False,  # ignore if it fails
             stdout=subprocess.DEVNULL,
@@ -124,7 +124,7 @@ class PodmanProvisioner(Provisioner):
         if not self.to_create.remove_one(block=block):
             return None
 
-        proc = util.subprocess_run(
+        proc = subprocess.run(
             (
                 "podman", "container", "run", "--quiet", "--detach", "--pull", "never",
                 *self.run_options, self.image, *self.run_command,

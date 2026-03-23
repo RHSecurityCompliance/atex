@@ -1,35 +1,6 @@
 import logging
 import subprocess
 
-logger = logging.getLogger("atex.util.subprocess")
-
-
-def subprocess_run(cmd, **kwargs):
-    """
-    A simple wrapper for the real `subprocess.run()` that logs the command used.
-    """
-    # when logging, skip current stack frame - report the place we were called
-    # from, not util.subprocess_run itself
-    logger.info(f"running: '{cmd}' with {kwargs=}")
-    return subprocess.run(cmd, **kwargs)
-
-
-def subprocess_output(cmd, *, check=True, text=True, **kwargs):
-    """
-    A wrapper simulating `subprocess.check_output()` via a modern `.run()` API.
-    """
-    logger.info(f"running: '{cmd}' with {check=}, {text=} and {kwargs=}")
-    proc = subprocess.run(cmd, check=check, text=text, stdout=subprocess.PIPE, **kwargs)
-    return proc.stdout.rstrip("\n") if text else proc.stdout
-
-
-def subprocess_Popen(cmd, **kwargs):  # noqa: N802
-    """
-    A simple wrapper for the real `subprocess.Popen()` that logs the command used.
-    """
-    logger.info(f"running: '{cmd}' with {kwargs=}")
-    return subprocess.Popen(cmd, **kwargs)
-
 
 def subprocess_stream(cmd, *, stream="stdout", check=False, input=None, **kwargs):
     """
@@ -62,7 +33,6 @@ def subprocess_stream(cmd, *, stream="stdout", check=False, input=None, **kwargs
         all_kwargs["stdin"] = subprocess.PIPE
     all_kwargs |= kwargs
 
-    logger.info(f"running: '{cmd}' with {all_kwargs=}")
     proc = subprocess.Popen(cmd, **all_kwargs)
 
     def generate_lines():
@@ -79,14 +49,15 @@ def subprocess_stream(cmd, *, stream="stdout", check=False, input=None, **kwargs
     return (proc, generate_lines())
 
 
-def subprocess_log(cmd, **kwargs):
+def subprocess_log(cmd, *, logger=None, **kwargs):
     """
     A wrapper to stream every (text) line output from the process to the
     logging module.
 
     Uses `subprocess_stream()` to gather the lines.
     """
-    logger.info(f"running: '{cmd}' with {kwargs=}")
-    _, lines = subprocess_stream(cmd, **kwargs)
+    logger = logger or logging.getLogger("atex")
+    proc, lines = subprocess_stream(cmd, **kwargs)
+    logger.info(f"subprocess_log {proc.pid}: '{cmd}' with {kwargs=}")
     for line in lines:
-        logger.info(line)
+        logger.info(f"subprocess_log {proc.pid}: {line}")

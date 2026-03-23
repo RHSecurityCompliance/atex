@@ -1,6 +1,5 @@
 import subprocess
 
-from ... import util
 from .. import Connection
 
 
@@ -19,13 +18,13 @@ class PodmanConnection(Connection):
         pass
 
     # have options as kwarg to be compatible with other functions here
-    def cmd(self, command, *, func=util.subprocess_run, **func_args):
+    def cmd(self, command, *, func=subprocess.run, **func_args):
         return func(
             ("podman", "container", "exec", "-i", self.container, *command),
             **func_args,
         )
 
-    def rsync(self, *args, func=util.subprocess_run, **func_args):
+    def rsync(self, *args, func=subprocess.run, **func_args):
         return func(
             (
                 "rsync",

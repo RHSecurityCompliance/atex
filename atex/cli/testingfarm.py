@@ -1,9 +1,9 @@
 import collections
 import json
 import pprint
+import subprocess
 import sys
 
-from .. import util
 from ..provisioner.testingfarm import api as tf
 
 
@@ -200,11 +200,11 @@ def reserve(args):
                 print(e)
                 raise SystemExit(1) from None
 
-            proc = util.subprocess_run([
-                "ssh", "-q", "-i", m.ssh_key,
+            proc = subprocess.run((
+                "ssh", "-q", "-i", m.ssh_key.absolute(),
                 "-oStrictHostKeyChecking=no", "-oUserKnownHostsFile=/dev/null",
                 f"{m.user}@{m.host}",
-            ])
+            ))
             if proc.returncode != 0:
                 print(
                     f"\nssh -i {str(m.ssh_key)} {m.user}@{m.host}\n"

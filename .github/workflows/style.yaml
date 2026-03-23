@@ -32,7 +32,8 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - name: No double-space for line break
-        run: ! grep -H --include='*.md' '  $' -r .
+        run: >
+          ! grep -H --include='*.md' '  $' -r .
 
   yamllint:
     runs-on: ubuntu-latest

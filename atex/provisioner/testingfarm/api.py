@@ -587,83 +587,78 @@ class Reserve:
             else:
                 provisioning["security_group_rules_ingress"] = [ingress_rule]
 
-        try:
-            # read user-provided ssh key, or generate one
-            ssh_key = self._ssh_key
-            if ssh_key:
-                if not ssh_key.exists():
-                    raise FileNotFoundError(f"{ssh_key} specified, but does not exist")
-                ssh_pubkey = Path(f"{ssh_key}.pub")
-            else:
-                with self.lock:
-                    self._tmpdir = tempfile.TemporaryDirectory()
-                    ssh_key, ssh_pubkey = util.ssh_keygen(self._tmpdir.name)
-
-            pubkey_contents = ssh_pubkey.read_text().strip()
-            # TODO: split ^^^ into 3 parts (key type, hash, comment), assert it,
-            #       and anonymize comment in case it contains a secret user/hostname
-            spec_env["secrets"]["RESERVE_SSH_PUBKEY"] = pubkey_contents
-
+        # read user-provided ssh key, or generate one
+        ssh_key = self._ssh_key
+        if ssh_key:
+            if not ssh_key.exists():
+                raise FileNotFoundError(f"{ssh_key} specified, but does not exist")
+            ssh_pubkey = Path(f"{ssh_key}.pub")
+        else:
             with self.lock:
-                self.request = Request(api=self.api)
-                self.request.submit(spec)
-            self.logger.info(f"submitted request {self.request.id}")
-            self.logger.debug(
-                f"request {self.request.id}:\n{textwrap.indent(str(self.request), '    ')}",
+                self._tmpdir = tempfile.TemporaryDirectory()
+                ssh_key, ssh_pubkey = util.ssh_keygen(self._tmpdir.name)
+
+        pubkey_contents = ssh_pubkey.read_text().strip()
+        # TODO: split ^^^ into 3 parts (key type, hash, comment), assert it,
+        #       and anonymize comment in case it contains a secret user/hostname
+        spec_env["secrets"]["RESERVE_SSH_PUBKEY"] = pubkey_contents
+
+        with self.lock:
+            self.request = Request(api=self.api)
+            self.request.submit(spec)
+        self.logger.info(f"submitted request {self.request.id}")
+        self.logger.debug(
+            f"request {self.request.id}:\n{textwrap.indent(str(self.request), '    ')}",
+        )
+
+        # wait for user/host to ssh to
+        ssh_user = ssh_host = None
+        for line in PipelineLogStreamer(self.request, self.logger):
+            # the '\033[0m' is to reset colors sometimes left in a bad
+            # state by pipeline.log
+            self.logger.debug(f"{line}\033[0m")
+            # find hidden login details
+            m = re.search(
+                # host address can be an IP address or a hostname
+                r"\] Guest is ready: ArtemisGuest\([^,]+, (\w+)@([^,]+), arch=",
+                line,
             )
+            if m:
+                ssh_user, ssh_host = m.groups()
+                continue
+            # but wait until much later despite having login, at least until
+            # the test starts running (and we get closer to it inserting our
+            # ~/.ssh/authorized_keys entry)
+            if ssh_user and re.search(r"\] starting tests execution", line):
+                break
 
-            # wait for user/host to ssh to
-            ssh_user = ssh_host = None
-            for line in PipelineLogStreamer(self.request, self.logger):
-                # the '\033[0m' is to reset colors sometimes left in a bad
-                # state by pipeline.log
-                self.logger.debug(f"{line}\033[0m")
-                # find hidden login details
-                m = re.search(
-                    # host address can be an IP address or a hostname
-                    r"\] Guest is ready: ArtemisGuest\([^,]+, (\w+)@([^,]+), arch=",
-                    line,
-                )
-                if m:
-                    ssh_user, ssh_host = m.groups()
-                    continue
-                # but wait until much later despite having login, at least until
-                # the test starts running (and we get closer to it inserting our
-                # ~/.ssh/authorized_keys entry)
-                if ssh_user and re.search(r"\] starting tests execution", line):
-                    break
+        # wait for a successful connection over ssh
+        # (it will be failing to login for a while, until the reserve test
+        #  installs our ssh pubkey into authorized_keys)
+        ssh_attempt_cmd = (
+            "ssh", "-q", "-i", ssh_key.absolute(), "-oConnectionAttempts=60",
+            "-oStrictHostKeyChecking=no", "-oUserKnownHostsFile=/dev/null",
+            "-oBatchMode=yes",
+            f"{ssh_user}@{ssh_host}", "exit 123",
+        )
+        while True:
+            time.sleep(1)
+            self.request.assert_alive()
 
-            # wait for a successful connection over ssh
-            # (it will be failing to login for a while, until the reserve test
-            #  installs our ssh pubkey into authorized_keys)
-            ssh_attempt_cmd = (
-                "ssh", "-q", "-i", ssh_key.absolute(), "-oConnectionAttempts=60",
-                "-oStrictHostKeyChecking=no", "-oUserKnownHostsFile=/dev/null",
-                "-oBatchMode=yes",
-                f"{ssh_user}@{ssh_host}", "exit 123",
+            proc = subprocess.run(
+                ssh_attempt_cmd,
+                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
             )
-            while True:
-                time.sleep(1)
-                self.request.assert_alive()
+            if proc.returncode == 123:
+                break
 
-                proc = subprocess.run(
-                    ssh_attempt_cmd,
-                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                )
-                if proc.returncode == 123:
-                    break
-
-            return self.Reserved(
-                host=ssh_host,
-                port=22,
-                user=ssh_user,
-                ssh_key=ssh_key,
-                request=self.request,
-            )
-
-        except:
-            self.release()
-            raise
+        return self.Reserved(
+            host=ssh_host,
+            port=22,
+            user=ssh_user,
+            ssh_key=ssh_key,
+            request=self.request,
+        )
 
     def release(self):
         with self.lock:

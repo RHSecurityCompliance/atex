@@ -101,8 +101,12 @@ class TestingFarmProvisioner(Provisioner):
             self.logger.info(f"delaying for {initial_delay}s to distribute load")
             time.sleep(initial_delay)
 
-        # 'machine' is api.Reserve.ReservedMachine namedtuple
-        machine = tf_reserve.reserve()
+        try:
+            # 'machine' is api.Reserve.ReservedMachine namedtuple
+            machine = tf_reserve.reserve()
+        except Exception:
+            tf_reserve.release()
+            raise
 
         # connect our Remote to the machine via its class Connection API
         ssh_options = {

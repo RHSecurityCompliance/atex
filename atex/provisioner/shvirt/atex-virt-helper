@@ -274,8 +274,10 @@ def cmd_virt_install(logger, reply, args):
             events = poller.poll()
             for fd, event in events:
                 if fd == clean_stderr:
-                    logger.error("stderr disconnect while virt-install was running")
                     proc.terminate()
+                    msg = "stderr disconnect while virt-install was running"
+                    reply(False, msg)
+                    logger.error(msg)
                     destroy_if_requested()
                     return
                 elif fd == m_fd:
@@ -297,9 +299,10 @@ def cmd_virt_install(logger, reply, args):
                 continue  # the inner 'for' didn't break
             break
 
-    except Exception:
-        logger.exception("unknown error")
+    except Exception as e:
         proc.terminate()
+        reply(False, f"{type(e).__name__}({e})")
+        logger.exception("unknown error")
         destroy_if_requested()
         return
     finally:

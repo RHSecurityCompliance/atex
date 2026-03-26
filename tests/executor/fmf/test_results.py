@@ -3,7 +3,7 @@ import os
 import sys
 from pathlib import Path
 
-from atex.executor.fmf import FMFExecutor, FMFTests
+from atex.executor.fmf import FMFExecutor, FMFTests, TestAbortedError
 from atex.executor.fmf.testcontrol import BadControlError, BadReportJSONError
 
 
@@ -37,6 +37,24 @@ def test_noresult_fail(provisioner, tmp_dir):
     assert json.loads(results) == {"status": "fail", "testout": "output.txt"}
     output = (tmp_dir / "files" / "output.txt").read_text()
     assert output == "failing the script\n"
+
+
+def test_noresult_abort(provisioner, tmp_dir):
+    """Automatic fallback exception."""
+    try:
+        run_fmf_test(provisioner, tmp_dir, read_results=False)
+    except TestAbortedError as e:
+        if str(e) != "test duration timeout reached":
+            raise
+    results = (tmp_dir / "results").read_text()
+    assert results.count("\n") == 1
+    assert json.loads(results) == {
+        "status": "infra",
+        "note": "TestAbortedError(test duration timeout reached)",
+        "testout": "output.txt",
+    }
+    output = (tmp_dir / "files" / "output.txt").read_text()
+    assert output == "sleeping forever-ish\n"
 
 
 # -----------------------------------------------------------------------------

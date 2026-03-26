@@ -14,6 +14,12 @@
     echo "failing the script" >&2
     exit 1
 
+/test_noresult_abort:
+  test: |
+    echo "sleeping forever-ish" >&2
+    sleep 60
+  duration: 5
+
 # -----------------------------------------------------------------------------
 
 /test_trivial:

@@ -54,7 +54,9 @@ def subprocess_log(cmd, *, logger=None, **kwargs):
     A wrapper to stream every (text) line output from the process to the
     logging module.
 
-    Uses `subprocess_stream()` to gather the lines.
+    Runs `cmd` via `subprocess_stream()` to gather the lines.
+
+    - `logger` is an logging-API object to log messages to.
     """
     logger = logger or logging.getLogger("atex")
     proc, lines = subprocess_stream(cmd, **kwargs)

@@ -217,7 +217,7 @@ class TestingFarmProvisioner(Provisioner):
             except util.ThreadReturnQueue.Empty:
                 # always non-blocking
                 return None
-            except (api.TestingFarmError, ConnectionError) as e:
+            except Exception as e:
                 exc_str = f"{type(e).__name__}({e})"
                 with self.lock:
                     if self.retries > 0:

@@ -176,20 +176,14 @@ def reserve(args):
     else:
         hardware = None
 
-    if args.native_test:
-        test = tf.DEFAULT_RESERVE_TEST.copy()
-        test["name"] = "/plans/testing-farm-native"
-    else:
-        test = None
-
     api = _get_api(args)
     res = tf.Reserve(
         compose=args.compose,
         arch=args.arch,
         timeout=args.timeout,
         hardware=hardware,
-        reserve_test=test,
         ssh_key=args.ssh_key,
+        os_cleaning=not args.no_cleaning,
         api=api,
     )
     with res as m:
@@ -308,8 +302,8 @@ def parse_args(parser):
     cmd.add_argument("--ssh-key", help="path to a ssh private key file like 'id_rsa'")
     cmd.add_argument("--hvm", help="request a HVM virtualization capable HW", action="store_true")
     cmd.add_argument(
-        "--native-test",
-        help="use the default testing farm reserve test",
+        "--no-cleaning",
+        help="do not run OS cleaning script on the system",
         action="store_true",
     )
 

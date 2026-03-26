@@ -1,6 +1,8 @@
+import base64
 import collections
 import copy
 import datetime
+import importlib.resources
 import json
 import logging
 import os
@@ -19,11 +21,11 @@ from .. import ProvisionerError
 
 DEFAULT_API_URL = "https://api.testing-farm.io"
 
-DEFAULT_RESERVE_TEST = {
-    "url": "https://github.com/RHSecurityCompliance/atex-reserve",
+RESERVE_TEST = {
+    "url": "https://gitlab.com/testing-farm/tests",
     "ref": "main",
     "path": ".",
-    "name": "/plans/reserve",
+    "name": "/testing-farm/reserve",
 }
 
 # final states of a request,
@@ -48,6 +50,11 @@ _http = urllib3.PoolManager(
         allowed_methods=urllib3.Retry.DEFAULT_ALLOWED_METHODS | {"POST"},
     ),
 )
+
+# OS preparation script, run on the reserved machine after SSH is up,
+# cleaning up Testing Farm / Beaker leftovers and restoring the OS to
+# a vanilla-ish state
+_os_cleaning_script = importlib.resources.files(__package__).joinpath("cleaning.sh")
 
 
 class TestingFarmError(ProvisionerError):
@@ -446,8 +453,8 @@ class Reserve:
     def __init__(
         self, *, compose, arch="x86_64", pool=None, hardware=None, kickstart=None,
         timeout=60, ssh_key=None, source_host=None,
-        reserve_test=None, variables=None, secrets=None, tags=None,
-        api=None, logger=None,
+        variables=None, secrets=None, tags=None,
+        os_cleaning=False, api=None, logger=None,
     ):
         """
         - `compose` (str) is the OS to install, chosen from the composes
@@ -484,14 +491,6 @@ class Reserve:
 
           Ignored on the `redhat` ranch.
 
-        - `reserve_test` is a dict with a fmf test specification to be run on
-          the target system to reserve it, ie.:
-              {
-                  "url": "https://some-host/path/to/repo",
-                  "ref": "main",
-                  "name": "/plans/reserve",
-              }
-
         - `variables` and `secrets` are dicts with environment variable
           key/values exported for the reserve test - variables are visible via
           TF API, secrets are not (but can still be extracted from pipeline
@@ -501,14 +500,23 @@ class Reserve:
           `environments->settings->provisioning->tags`, useful for storing
           custom metadata to be queried later.
 
+        - `os_cleaning`, when True, runs a custom setup-like script on the
+          reserved OS prior to returning it as a Remote.
+
+          This script attempts to undo RHTS/Beaker style customizations done by
+          Testing Farm and restore as much of the original vanilla OS as
+          possible (ie. enabling gpgcheck, removing nonstandard repos, etc.).
+
         - `api` is a TestingFarmAPI instance - if unspecified, a new one
           is instantiated.
+
+        - `logger` is an logging-API object to log messages to.
         """
         self.logger = logger or logging.getLogger("atex")
 
         spec = {
             "test": {
-                "fmf": reserve_test or DEFAULT_RESERVE_TEST,
+                "fmf": RESERVE_TEST,
             },
             "environments": [{
                 "arch": arch,
@@ -548,6 +556,7 @@ class Reserve:
         self._spec = spec
         self._ssh_key = Path(ssh_key) if ssh_key else None
         self._source_host = source_host
+        self.os_cleaning = os_cleaning
         self.api = api or TestingFarmAPI()
 
         self.lock = threading.RLock()
@@ -600,10 +609,14 @@ class Reserve:
                 self._tmpdir = tempfile.TemporaryDirectory()
                 ssh_key, ssh_pubkey = util.ssh_keygen(self._tmpdir.name)
 
+        # re-construct the ssh pubkey in case the comment contains
+        # a secret username or hostname
         pubkey_contents = ssh_pubkey.read_text().strip()
-        # TODO: split ^^^ into 3 parts (key type, hash, comment), assert it,
-        #       and anonymize comment in case it contains a secret user/hostname
-        spec_env["secrets"]["RESERVE_SSH_PUBKEY"] = pubkey_contents
+        pubkey_type, pubkey_key, _ = pubkey_contents.split(" ")
+        pubkey_contents = f"{pubkey_type} {pubkey_key} foo@bar\n"
+        # the TF native reserve test expects a base64-encoded pubkey
+        encoded_pubkey = base64.b64encode(pubkey_contents.encode()).decode()
+        spec_env["secrets"]["TF_RESERVATION_AUTHORIZED_KEYS_BASE64"] = encoded_pubkey
 
         with self.lock:
             self.request = Request(api=self.api)
@@ -637,22 +650,31 @@ class Reserve:
         # wait for a successful connection over ssh
         # (it will be failing to login for a while, until the reserve test
         #  installs our ssh pubkey into authorized_keys)
-        ssh_attempt_cmd = (
+        ssh_cmd = (
             "ssh", "-q", "-i", ssh_key.absolute(), "-oConnectionAttempts=60",
             "-oStrictHostKeyChecking=no", "-oUserKnownHostsFile=/dev/null",
-            "-oBatchMode=yes",
-            f"{ssh_user}@{ssh_host}", "exit 123",
+            "-oBatchMode=yes", f"{ssh_user}@{ssh_host}",
         )
         while True:
             time.sleep(1)
             self.request.assert_alive()
 
             proc = subprocess.run(
-                ssh_attempt_cmd,
+                (*ssh_cmd, "exit 123"),
                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
             )
             if proc.returncode == 123:
                 break
+
+        # run OS cleaning script (if requested)
+        if self.os_cleaning:
+            util.subprocess_log(
+                (*ssh_cmd, "bash"),
+                logger=self.logger,
+                input=_os_cleaning_script.read_text(),
+                stderr=subprocess.STDOUT,
+                check=True,
+            )
 
         return self.Reserved(
             host=ssh_host,

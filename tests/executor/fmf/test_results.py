@@ -113,7 +113,7 @@ def test_files(provisioner, tmp_dir):
     assert results.count("\n") == 1
     assert json.loads(results) == {
         "status": "pass",
-        "files": [{"name": "some_file", "length": 5}],
+        "files": ["some_file"],
     }
     output = (tmp_dir / "files" / "some_file").read_bytes()
     assert output == b"\x00\x10\x20\x30\x40"
@@ -126,7 +126,7 @@ def test_files_upload(provisioner, tmp_dir):
     assert results.count("\n") == 1
     assert json.loads(results) == {
         "status": "pass",
-        "files": [{"name": "rand_file", "length": len(rand_file_bytes)}],
+        "files": ["rand_file"],
     }
     output = (tmp_dir / "files" / "rand_file").read_bytes()
     assert output == rand_file_bytes
@@ -138,7 +138,7 @@ def test_files_subpath(provisioner, tmp_dir):
     assert results.count("\n") == 1
     assert json.loads(results) == {
         "status": "pass",
-        "files": [{"name": "some/file", "length": 5}],
+        "files": ["some/file"],
     }
     output = (tmp_dir / "files" / "some" / "file").read_bytes()
     assert output == b"\x00\x10\x20\x30\x40"
@@ -150,10 +150,7 @@ def test_files_multiple(provisioner, tmp_dir):
     assert results.count("\n") == 1
     assert json.loads(results) == {
         "status": "pass",
-        "files": [
-            {"name": "first_file", "length": 2},
-            {"name": "second_file", "length": 3},
-        ],
+        "files": ["first_file", "second_file"],
     }
     first = (tmp_dir / "files" / "first_file").read_bytes()
     assert first == b"\x00\x10"
@@ -168,11 +165,11 @@ def test_files_multiple_results(provisioner, tmp_dir):
     first, second = results.rstrip("\n").split("\n")
     assert json.loads(first) == {
         "status": "fail",
-        "files": [{"name": "first_file", "length": 2}],
+        "files": ["first_file"],
     }
     assert json.loads(second) == {
         "status": "pass",
-        "files": [{"name": "second_file", "length": 3}],
+        "files": ["second_file"],
     }
     first = (tmp_dir / "files" / "first_file").read_bytes()
     assert first == b"\x00\x10"
@@ -186,9 +183,7 @@ def test_files_append(provisioner, tmp_dir):
     assert results.count("\n") == 1
     assert json.loads(results) == {
         "status": "pass",
-        "files": [
-            {"name": "one_file", "length": 5},
-        ],
+        "files": ["one_file"],
     }
     output = (tmp_dir / "files" / "one_file").read_bytes()
     assert output == b"\x00\x10\x20\x30\x40"
@@ -204,11 +199,27 @@ def test_files_subtest(provisioner, tmp_dir):
     assert json.loads(first) == {
         "status": "pass",
         "name": "sub/res/ult",
-        "files": [{"name": "some_file", "length": 5}],
+        "files": ["some_file"],
     }
     assert json.loads(second) == {"status": "pass", "testout": "output.txt"}
     output = (tmp_dir / "files" / "sub" / "res" / "ult" / "some_file").read_bytes()
     assert output == b"\x00\x10\x20\x30\x40"
+
+
+def test_files_sorted(provisioner, tmp_dir):
+    """Files are sorted by name in ascending order."""
+    results = run_fmf_test(provisioner, tmp_dir)
+    assert results.count("\n") == 1
+    assert json.loads(results) == {
+        "status": "pass",
+        "files": ["file_A", "file_B", "file_C"],
+    }
+    first = (tmp_dir / "files" / "file_B").read_bytes()
+    assert first == b"\x00\x10"
+    second = (tmp_dir / "files" / "file_C").read_bytes()
+    assert second == b"\x20\x30"
+    third = (tmp_dir / "files" / "file_A").read_bytes()
+    assert third == b"\x40\x50"
 
 
 # -----------------------------------------------------------------------------
@@ -311,10 +322,7 @@ def test_partial_files(provisioner, tmp_dir):
     assert results.count("\n") == 1
     assert json.loads(results) == {
         "status": "pass",
-        "files": [
-            {"name": "first_file", "length": 2},
-            {"name": "second_file", "length": 3},
-        ],
+        "files": ["first_file", "second_file"],
     }
     first = (tmp_dir / "files" / "first_file").read_bytes()
     assert first == b"\x00\x10"
@@ -328,9 +336,7 @@ def test_partial_files_append(provisioner, tmp_dir):
     assert results.count("\n") == 1
     assert json.loads(results) == {
         "status": "pass",
-        "files": [
-            {"name": "one_file", "length": 5},
-        ],
+        "files": ["one_file"],
     }
     output = (tmp_dir / "files" / "one_file").read_bytes()
     assert output == b"\x00\x10\x20\x30\x40"

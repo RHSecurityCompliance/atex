@@ -90,7 +90,7 @@ class JSONLinesAggregator(Aggregator):
                 file_names.append(result_line["testout"])
             # process any additional files in the 'files' key
             if "files" in result_line:
-                file_names += (f["name"] for f in result_line["files"])
+                file_names += result_line["files"]
 
             file_names = self._modify_file_list(file_names)
 
@@ -116,7 +116,6 @@ class JSONLinesAggregator(Aggregator):
         self.logger.info(f"ingesting '{platform}' / '{test_name}' from '{artifacts}'")
 
         artifacts = Path(artifacts)
-        # TODO: define these as TestArtifacts namedtuple in Executor?
         artifacts_results = artifacts / "results"
         artifacts_files = artifacts / "files"
 

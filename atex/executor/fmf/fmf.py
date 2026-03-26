@@ -14,7 +14,7 @@ from . import scripts
 from .duration import Duration
 from .metadata import listlike
 from .reporter import Reporter
-from .testcontrol import BadReportJSONError, TestControl
+from .testcontrol import TestControl
 
 get_logger = util.get_loggers("atex.executor.fmf")
 
@@ -326,45 +326,35 @@ class FMFExecutor(Executor):
                 raise
 
             finally:
-                # partial results that were never reported
-                if control.partial_results:
-                    for result in control.partial_results.values():
-                        name = result.get("name")
-                        if not name:
-                            # partial result is also a result
-                            control.nameless_result_seen = True
-                        if testout := result.get("testout"):
-                            try:
-                                reporter.link_testout(testout, name)
-                            except FileExistsError:
-                                raise BadReportJSONError(
-                                    f"file '{testout}' already exists",
-                                ) from None
-                        reporter.report(result)
-
-                # if an unexpected infrastructure-related exception happened
-                if exception:
-                    try:
-                        reporter.link_testout("output.txt")
-                    except FileExistsError:
-                        pass
-                    reporter.report({
-                        "status": "infra",
-                        "note": f"{type(exception).__name__}({exception})",
-                        "testout": "output.txt",
-                    })
+                # finish any unfinished partial:true results
+                reporter.replay_partial()
 
                 # if the test hasn't reported a result for itself
-                elif not control.nameless_result_seen:
-                    try:
-                        reporter.link_testout("output.txt")
-                    except FileExistsError:
-                        pass
-                    self.logger.debug(f"'{test_name}': reporting fallback result")
-                    reporter.report({
-                        "status": "pass" if control.exit_code == 0 else "fail",
-                        "testout": "output.txt",
-                    })
+                if not reporter.nameless_result_seen:
+                    # link testout to the fallback result if the test hasn't
+                    if not reporter.testout_seen:
+                        testout_addition = {"testout": "output.txt"}
+                    else:
+                        testout_addition = {}
+
+                    # if an unexpected infrastructure-related exception happened
+                    # - we already raise it upwards as an exception, but log it
+                    #   to results as well as a fallback result, why not
+                    if exception:
+                        self.logger.debug(f"'{test_name}': reporting fallback exception")
+                        reporter.report({
+                            "status": "infra",
+                            "note": f"{type(exception).__name__}({exception})",
+                            **testout_addition,
+                        })
+
+                    # regular fallback result - use pass/fail based on exitcode
+                    else:
+                        self.logger.debug(f"'{test_name}': reporting fallback result")
+                        reporter.report({
+                            "status": "pass" if control.exit_code == 0 else "fail",
+                            **testout_addition,
+                        })
 
     def __str__(self):
         class_name = self.__class__.__name__

@@ -4,6 +4,7 @@ import os
 from pathlib import Path
 
 from ... import util
+from .testcontrol import BadReportJSONError
 
 
 class Reporter:
@@ -32,36 +33,81 @@ class Reporter:
         self.results_fobj = None
         self.files_dir = self.output_dir / files_dir
         self.testout_file = self.output_dir / self.TESTOUT
+        # data of partial results
+        self.partial = {}
+        # whether any one of the results was without a 'name' key,
+        # indicating a result for the test itself was reported
+        self.nameless_result_seen = False
+        # whether any one of the results ever linked testout to a file
+        self.testout_seen = False
 
-    def start(self):
-        if self.results_file.exists(follow_symlinks=False):
-            raise FileExistsError(f"{self.results_file} already exists")
-        self.results_fobj = open(self.results_file, "w", newline="\n")
+    @classmethod
+    def _merge_partial(cls, dst, src):
+        """
+        Merge a `src` dict into `dst`, using the rules described by
+        RESULTS.md for "Partial results".
+        """
+        for key, value in src.items():
+            # delete existing if new value is None (JSON null)
+            if value is None and key in dst:
+                del dst[key]
+                continue
+            # add new key
+            elif key not in dst:
+                dst[key] = value
+                continue
 
-        if self.testout_file.exists(follow_symlinks=False):
-            raise FileExistsError(f"{self.testout_file} already exists")
-        self.testout_file.touch()
+            orig_value = dst[key]
+            # different type - replace
+            if type(value) is not type(orig_value):
+                dst[key] = value
+                continue
 
-        if self.files_dir.exists(follow_symlinks=False):
-            raise FileExistsError(f"{self.files_dir} already exists")
-        self.files_dir.mkdir()
+            # nested dict, merge it recursively
+            if isinstance(value, dict):
+                cls._merge_partial(orig_value, value)
+            # extensible sequence, extend it
+            elif isinstance(value, list):
+                orig_value += value
+            # immutable sequence, re-created a merged one
+            elif isinstance(value, tuple):
+                dst[key] = (*orig_value, *value)
+            # overridable types, doesn't make sense to extend them
+            elif isinstance(value, (str, int, float, bool, bytes, bytearray)):
+                dst[key] = value
+            # set-like, needs unioning
+            elif isinstance(value, set):
+                orig_value.update(value)
+            else:
+                raise BadReportJSONError(f"cannot merge type {type(value)}")
 
-    def stop(self):
-        if self.results_fobj:
-            self.results_fobj.close()
-            self.results_fobj = None
-        self.testout_file.unlink(missing_ok=True)
+    def _report_to_file(self, result_line):
+        # if testout was specified and is valid, link output to it
+        if "testout" in result_line:
+            testout = result_line["testout"]
+            try:
+                self.link_testout(testout, result_line.get("name"))
+            except FileExistsError:
+                raise BadReportJSONError(f"file '{testout}' already exists") from None
 
-    def __enter__(self):
-        try:
-            self.start()
-            return self
-        except Exception:
-            self.stop()
-            raise
+        # convert the set() of files into a sorted list
+        if "files" in result_line:
+            result_line["files"] = sorted(result_line["files"])
 
-    def __exit__(self, exc_type, exc_value, traceback):
-        self.stop()
+        # write persistently to the results file
+        json.dump(result_line, self.results_fobj, indent=None)
+        self.results_fobj.write("\n")
+        self.results_fobj.flush()
+
+    def replay_partial(self):
+        """
+        Pop all unfinished partial results and finalize them, writing them out
+        to the results file.
+        """
+        values = self.partial.values()
+        self.partial = {}
+        for final in values:
+            self._report_to_file(final)
 
     def report(self, result_line):
         """
@@ -69,9 +115,46 @@ class Reporter:
 
         - `result_line` is a dict in the format specified by RESULTS.md.
         """
-        json.dump(result_line, self.results_fobj, indent=None)
-        self.results_fobj.write("\n")
-        self.results_fobj.flush()
+        # transform files to just a set(), discarding length, to make it follow
+        # the Test Artifacts format
+        if "files" in result_line:
+            result_line["files"] = {f["name"] for f in result_line["files"]}
+
+        if (partial_flag := result_line.get("partial")) is not None:
+            # do not store the 'partial' key in the result, even if False
+            del result_line["partial"]
+
+        if "name" not in result_line:
+            self.nameless_result_seen = True
+        if "testout" in result_line:
+            if not result_line["testout"]:
+                raise BadReportJSONError("'testout' specified, but empty")
+            self.testout_seen = True
+
+        # None is valid too
+        name = result_line.get("name")
+
+        # if the result is partial:true, just store it temporarily, do not
+        # write it persistently yet
+        if partial_flag:
+            if name in self.partial:
+                self._merge_partial(self.partial[name], result_line)
+            else:
+                self.partial[name] = result_line
+
+        else:
+            # if there is a partial result for the result_line, merge it
+            try:
+                final = self.partial.pop(name)
+            except KeyError:
+                # no previous partial result - use the current result as final
+                final = result_line
+            else:
+                # merge the current result into the partial one,
+                # then use it as final for writing persistently
+                self._merge_partial(final, result_line)
+
+            self._report_to_file(final)
 
     def _dest_path(self, file_name, result_name=None):
         result_name = util.normalize_path(result_name) if result_name else "."
@@ -110,3 +193,39 @@ class Reporter:
     def link_testout(self, file_name, result_name=None):
         # TODO: docstring
         os.link(self.testout_file, self._dest_path(file_name, result_name))
+
+    def start(self):
+        if self.results_file.exists(follow_symlinks=False):
+            raise FileExistsError(f"{self.results_file} already exists")
+        self.results_fobj = open(self.results_file, "w", newline="\n")
+
+        if self.testout_file.exists(follow_symlinks=False):
+            raise FileExistsError(f"{self.testout_file} already exists")
+        self.testout_file.touch()
+
+        if self.files_dir.exists(follow_symlinks=False):
+            raise FileExistsError(f"{self.files_dir} already exists")
+        self.files_dir.mkdir()
+
+    def stop(self):
+        self.replay_partial()
+
+        if self.results_fobj:
+            self.results_fobj.close()
+            self.results_fobj = None
+
+        self.testout_file.unlink(missing_ok=True)
+
+        self.nameless_result_seen = False
+        self.testout_seen = False
+
+    def __enter__(self):
+        try:
+            self.start()
+            return self
+        except Exception:
+            self.stop()
+            raise
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.stop()

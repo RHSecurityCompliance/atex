@@ -124,6 +124,19 @@
     }'
     write '\x00\x10\x20\x30\x40'
 
+/test_files_sorted:
+  test: |
+    . functions
+    report '{
+      "status": "pass",
+      "files": [
+        {"name": "file_B", "length": 2},
+        {"name": "file_C", "length": 2},
+        {"name": "file_A", "length": 2}
+      ]
+    }'
+    write '\x00\x10\x20\x30\x40\x50'
+
 # -----------------------------------------------------------------------------
 
 /test_custom_keys:

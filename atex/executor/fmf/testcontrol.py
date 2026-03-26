@@ -1,4 +1,3 @@
-import collections
 import json
 import logging
 import os
@@ -30,12 +29,14 @@ class TestControl:
 
     def __init__(self, *, reporter, duration, control_fd=None, logger=None):
         """
-        - `control_fd` is a non-blocking file descriptor to be read.
-
         - `reporter` is an instance of class Reporter all the results
           and uploaded files will be written to.
 
         - `duration` is a class Duration instance.
+
+        - `control_fd` is a non-blocking file descriptor to be read.
+
+        - `logger` is an logging-API object to log messages to.
         """
         self.logger = logger or logging.getLogger("atex")
 
@@ -49,10 +50,8 @@ class TestControl:
             self.stream = None
         self.eof = False
         self.in_progress = None
-        self.partial_results = collections.defaultdict(dict)
         self.exit_code = None
         self.disconnect_received = False
-        self.nameless_result_seen = False
 
     def reassign(self, new_fd):
         """
@@ -127,46 +126,6 @@ class TestControl:
         except StopIteration:
             pass
 
-    @classmethod
-    def _merge(cls, dst, src):
-        """
-        Merge a `src` dict into `dst`, using the rules described by
-        TEST_CONTROL.md for "Partial results".
-        """
-        for key, value in src.items():
-            # delete existing if new value is None (JSON null)
-            if value is None and key in dst:
-                del dst[key]
-                continue
-            # add new key
-            elif key not in dst:
-                dst[key] = value
-                continue
-
-            orig_value = dst[key]
-            # different type - replace
-            if type(value) is not type(orig_value):
-                dst[key] = value
-                continue
-
-            # nested dict, merge it recursively
-            if isinstance(value, dict):
-                cls._merge(orig_value, value)
-            # extensible sequence, extend it
-            elif isinstance(value, list):
-                orig_value += value
-            # immutable sequence, re-created a merged one
-            elif isinstance(value, tuple):
-                dst[key] = (*orig_value, *value)
-            # overridable types, doesn't make sense to extend them
-            elif isinstance(value, (str, int, float, bool, bytes, bytearray)):
-                dst[key] = value
-            # set-like, needs unioning
-            elif isinstance(value, set):
-                orig_value.update(value)
-            else:
-                raise BadReportJSONError(f"cannot merge type {type(value)}")
-
     def _parser_result(self, arg):
         try:
             json_length = int(arg)
@@ -195,10 +154,7 @@ class TestControl:
 
         self.logger.debug(f"parsed result: {result}")
 
-        # note that this may be None (result for the test itself)
         name = result.get("name")
-        if not name:
-            self.nameless_result_seen = True
 
         # upload files
         for entry in result.get("files", ()):
@@ -234,51 +190,7 @@ class TestControl:
                     file_length -= written
                     yield
 
-        # either store partial result + return,
-        # or load previous partial result and merge into it
-        partial = result.get("partial")
-        if partial is not None:
-            # do not store the 'partial' key in the result, even if False
-            del result["partial"]
-            # if it exists and is True
-            if partial:
-                # note that nameless result will get None as dict key,
-                # which is perfectly fine
-                self._merge(self.partial_results[name], result)
-                # partial = do nothing
-                return
-
-        # if previously-stored partial result exist, merge the current one
-        # into it, but then use the merged result
-        # - avoid .get() or __getitem__() on defaultdict, it would create
-        #   a new key with an empty value if there was no partial result
-        if name in self.partial_results:
-            partial_result = self.partial_results[name]
-            del self.partial_results[name]
-            self._merge(partial_result, result)
-            result = partial_result
-
-        if "testout" in result:
-            testout = result.get("testout")
-            if not testout:
-                raise BadReportJSONError("'testout' specified, but empty")
-            try:
-                self.reporter.link_testout(testout, name)
-            except FileExistsError:
-                raise BadReportJSONError(f"file '{testout}' already exists") from None
-
-        # deduplicate file names
-        # - appending to files (multiple identical file 'name' in one result, or
-        #   using partial:true) can create large amounts of files:[] entries,
-        #   so simply add up all their lengths and specify each file 'name' once
-        if files := result.get("files"):
-            counter = collections.Counter()
-            for entry in files:
-                counter[entry["name"]] += entry["length"]
-            result["files"] = tuple(
-                {"name": name, "length": length} for name, length in counter.items()
-            )
-
+        # let class Reporter handle everything else
         self.reporter.report(result)
 
     def _parser_duration(self, arg):

@@ -24,6 +24,12 @@ def _wait_for_sshd(host, port, event, logger=None):
     was thus interrupted.
     """
     logger = logger or logging.getLogger("atex")
+
+    # 2 secs to reply over connected socket initially,
+    # with expontential back off (in case the system is too slow
+    # to respond)
+    backoff_sleep = 2
+
     while True:
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             s.setblocking(False)
@@ -58,7 +64,8 @@ def _wait_for_sshd(host, port, event, logger=None):
 
             # connected, try receiving
             sshd_signature = False
-            end = time.monotonic() + 5  # 5sec to reply over connected socket
+            end = time.monotonic() + backoff_sleep
+            backoff_sleep *= 2
             while not sshd_signature and time.monotonic() < end:
                 if event.wait(timeout=0.1):
                     return False

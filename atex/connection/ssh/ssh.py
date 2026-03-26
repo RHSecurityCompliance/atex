@@ -18,7 +18,7 @@ DEFAULT_OPTIONS = {
     "UserKnownHostsFile": "/dev/null",
     "ConnectionAttempts": 3,
     "ServerAliveCountMax": 4,
-    "ServerAliveInterval": 5,
+    "ServerAliveInterval": 30,
     "TCPKeepAlive": "no",
     "EscapeChar": "none",
     "ExitOnForwardFailure": "yes",

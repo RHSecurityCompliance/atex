@@ -20,10 +20,10 @@ def LimitedRerunsMixin(reruns, cond=lambda code: code != 0):  # noqa: N802
         def should_be_rerun(self, info, /):
             if self._counter[info.test_name] >= reruns:
                 return False
-            if not cond(info.exit_code):
-                return False
-            self._counter[info.test_name] += 1
-            return True
+            if info.exception or cond(info.exit_code):
+                self._counter[info.test_name] += 1
+                return True
+            return False
 
     return LimitedRerunsMixin
 

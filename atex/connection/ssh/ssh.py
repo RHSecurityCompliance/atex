@@ -237,7 +237,7 @@ class ManagedSSHConnection(Connection):
         (self._tmpdir / "control.sock").unlink(missing_ok=True)
         self._master_proc = None
 
-    def connect(self, block=True):
+    def connect(self, *, block=True):
         """
         Establish a persistent connection to the remote.
 

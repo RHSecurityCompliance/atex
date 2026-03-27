@@ -370,7 +370,8 @@ class SharedVirtProvisioner(Provisioner):
                         pass
                 # issue a cmd:release to the remote helper
                 response = self._helper_query({"cmd": "release", "domain": remote.domain})
-                assert response["success"]
+                if not response["success"]:
+                    self.logger.warning(f"failed to release {remote}: {response['reply']}")
 
             remote = SharedVirtRemote(
                 ssh_options=ssh_options,

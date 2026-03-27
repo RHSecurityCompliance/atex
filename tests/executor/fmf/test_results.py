@@ -94,6 +94,22 @@ def test_trivial_exit_mismatch(provisioner, tmp_dir):
     assert json.loads(results) == {"status": "pass"}
 
 
+def test_trivial_abort(provisioner, tmp_dir):
+    """No fallback exception is written if test provided a result."""
+    try:
+        run_fmf_test(provisioner, tmp_dir, read_results=False)
+    except TestAbortedError as e:
+        if str(e) != "test duration timeout reached":
+            raise
+    results = (tmp_dir / "results").read_text()
+    assert results.count("\n") == 1
+    assert json.loads(results) == {"status": "pass"}
+    # no output.txt, the reported result has no testout,
+    # despite the test having written to stdout (output discarded)
+    files = list((tmp_dir / "files").iterdir())
+    assert len(files) == 0
+
+
 # -----------------------------------------------------------------------------
 def test_subtest(provisioner, tmp_dir):
     """Basic subtest reporting."""

@@ -5,8 +5,7 @@ function fatal {
 
 function report {
     local what=$1
-    echo "result ${#what}" >&$ATEX_TEST_CONTROL
-    printf '%s' "$what" >&$ATEX_TEST_CONTROL
+    printf 'result %d\n%s' "${#what}" "$what" >&$ATEX_TEST_CONTROL
 }
 
 function sizeof {

@@ -16,7 +16,7 @@
 
 /test_noresult_abort:
   test: |
-    echo "sleeping forever-ish" >&2
+    echo "sleeping forever-ish"
     sleep 60
   duration: 5
 
@@ -45,6 +45,14 @@
     . functions
     report '{"status": "pass"}'
     exit 1
+
+/test_trivial_abort:
+  test: |
+    . functions
+    report '{"status": "pass"}'
+    echo "sleeping forever-ish"
+    sleep 60
+  duration: 5
 
 # -----------------------------------------------------------------------------
 

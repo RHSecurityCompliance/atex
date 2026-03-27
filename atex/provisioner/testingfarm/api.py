@@ -110,7 +110,7 @@ class TestingFarmAPI:
         if reply.status != 200 and not reply.data:
             raise APIError(f"got HTTP {reply.status} on {method} {url}", reply)
 
-        if reply.headers.get("Content-Type") != "application/json":
+        if not reply.headers.get("Content-Type", "").startswith("application/json"):
             raise BadHTTPError(
                 f"HTTP {reply.status} on {method} {url} is not application/json",
                 reply,

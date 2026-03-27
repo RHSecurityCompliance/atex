@@ -50,7 +50,7 @@ class AdHocOrchestrator(Orchestrator):
         pass
 
     def __init__(
-        self, platform, tests, provisioners, executor, aggregator,
+        self, platform, tests, provisioners, executor, aggregator, *,
         old_aggregator=None, max_spares=0, max_failed_setups=10,
     ):
         """

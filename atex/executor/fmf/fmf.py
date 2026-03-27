@@ -32,7 +32,7 @@ class TestAbortedError(ExecutorError):
 
 
 class FMFExecutor(Executor):
-    def __init__(self, connection, fmf_tests, env=None):
+    def __init__(self, connection, fmf_tests, *, env=None):
         """
         - `connection` is a connected class Connection instance.
 

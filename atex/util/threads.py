@@ -89,7 +89,7 @@ class ThreadReturnQueue:
             )
         self.queue.put(result)
 
-    def start_thread(self, target, target_args=None, target_kwargs=None, **user_kwargs):
+    def start_thread(self, target, *, target_args=None, target_kwargs=None, **user_kwargs):
         """
         Start a new thread and call `target` as a callable inside it, passing it
         `target_args` as arguments and `target_kwargs` as keyword arguments.

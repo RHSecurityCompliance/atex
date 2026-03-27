@@ -18,7 +18,7 @@ class Reporter:
     # 'testout'-JSON-key-specified result entries; deleted on exit
     TESTOUT = "testout.temp"
 
-    def __init__(self, output_dir, results_file, files_dir, logger=None):
+    def __init__(self, output_dir, results_file, files_dir, *, logger=None):
         """
         - `output_dir` is a destination dir (string or Path) for results
           reported and files uploaded.

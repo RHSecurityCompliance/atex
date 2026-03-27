@@ -21,7 +21,7 @@ class NonblockLineReader:
     to be used for in-kernel move, such as via `os.sendfile()` or `os.splice()`.
     """
 
-    def __init__(self, src, max_len=4096, read_len=1024):
+    def __init__(self, src, *, max_len=4096, read_len=1024):
         """
         - `src` is an opened file descriptor (integer).
 

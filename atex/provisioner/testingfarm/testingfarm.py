@@ -153,24 +153,24 @@ class TestingFarmProvisioner(Provisioner):
                 return
             self.to_reserve -= will_reserve
 
-        self.logger.info(f"reserving {will_reserve} new remotes")
-        for i in range(will_reserve):
-            tf_reserve = api.Reserve(
-                compose=self.compose,
-                arch=self.arch,
-                ssh_key=self.ssh_key,
-                api=self.tf_api,
-                **self.reserve_kwargs,
-            )
-            # add it to self.reserving even before we schedule a provision,
-            # to avoid races on sudden abort
-            self.reserving.append(tf_reserve)
-            # start a background wait
-            initial_delay = (api.Request.api_query_limit / will_reserve) * i
-            self.queue.start_thread(
-                target=self._wait_for_reservation,
-                target_args=(tf_reserve, initial_delay),
-            )
+            self.logger.info(f"reserving {will_reserve} new remotes")
+            for i in range(will_reserve):
+                tf_reserve = api.Reserve(
+                    compose=self.compose,
+                    arch=self.arch,
+                    ssh_key=self.ssh_key,
+                    api=self.tf_api,
+                    **self.reserve_kwargs,
+                )
+                # add it to self.reserving even before we schedule a provision,
+                # to avoid races on sudden abort
+                self.reserving.append(tf_reserve)
+                # start a background wait
+                initial_delay = (api.Request.api_query_limit / will_reserve) * i
+                self.queue.start_thread(
+                    target=self._wait_for_reservation,
+                    target_args=(tf_reserve, initial_delay),
+                )
 
     def start(self):
         self.logger.debug(f"starting: {self}")

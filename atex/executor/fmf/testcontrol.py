@@ -71,9 +71,6 @@ class TestControl:
         """
         Read from the control file descriptor and potentially perform any
         appropriate action based on commands read from the test.
-
-        Returns `True` if there is more data expected, `False` otherwise
-        (when the control file descriptor reached EOF).
         """
         # if a parser operation is in progress, continue calling it,
         # avoid reading a control line

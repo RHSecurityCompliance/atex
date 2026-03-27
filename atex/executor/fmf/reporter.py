@@ -112,7 +112,10 @@ class Reporter:
         values = self.partial.values()
         self.partial = {}
         for final in values:
-            self._report_to_file(final)
+            try:
+                self._report_to_file(final)
+            except (BadReportJSONError, TypeError) as e:
+                self.logger.error(f"{type(e).__name__}({e}) when replaying {final}")
 
     def report(self, result_line):
         """

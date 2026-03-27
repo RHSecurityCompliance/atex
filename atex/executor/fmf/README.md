@@ -138,3 +138,13 @@ of tmt features on top of what fmf already provides.
 ### Stories
 
 Not supported, but the `story` key exists, the fmf node is skipped/ignored.
+
+## Environment variables
+
+- `ATEX_DEBUG_TEST`
+  - Set to `1` to print out detailed runner-related trace within the test output
+    stream (as if it was printed out by the test).
+- `ATEX_DEBUG_NO_EXITCODE`
+  - Set to anything other than `1` to avoid the test wrapper sending an
+    automatic `exitcode` keyword over [Test Control](TEST_CONTROL.md).
+  - Useful mainly for testing FMFExecutor itself.

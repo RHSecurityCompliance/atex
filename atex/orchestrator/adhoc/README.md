@@ -30,6 +30,19 @@ For example, imagine running 10 tests on 3 Remotes (A,B,C):
 1. Test 10 finishes on A, no more tests to run, we release Remote A
 1. Test 2 (rerun) finally finishes B, fails again destructively, but its reruns were exhausted, so we just release Remote B and finish
 
+```python
+with SomeAggregator(...) as aggr, SomeProvisioner(...) as prov:
+    o = AdHocOrchestrator(
+        platform="cs10@x86_64",
+        tests=["/first/test", "/second/test"],
+        provisioners=[prov],
+        executor=lambda conn: SomeExecutor(conn, env={"FOO": "BAR"}, ...),
+        aggregator=aggr,
+    )
+    with o:
+        o.serve_forever()
+```
+
 ## Customization
 
 There are several subclass-overridable functions you can use to customize what

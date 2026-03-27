@@ -57,12 +57,6 @@ class Brewer:
         """Brew the beverage and return it."""
 ```
 
-Note that **only the function names and their positional arguments are part
-of the API**. Any other functions and or keyword arguments to the API functions
-are left to the implementation.\
-Similarly, return values are part of the API only where explicitly stated, and
-up to the implementation otherwise.
-
 ```python
 class CoffeeBrewer(Brewer):
     def __init__(self, kind, strength=None):
@@ -88,34 +82,9 @@ b = CoffeeBrewer("espresso", 1000)
 serve_to_employees(brewer=b)
 ```
 
-If the code needs to make use of the extended functionality of a specific
-implementation, it can check an instance using `isinstance()` and then safely
-pass keyword arguments:
-
-```python
-def serve_to_employees(brewer):
-    if isinstance(brewer, CoffeeBrewer):
-        intake(ingredients, grind=False)
-    else:
-        intake(ingredients)
-```
-
-### `__init__` is not special
-
-Note that `__init__` is subject to the statements above too:
-
-- If the base API class defines it, an implementation can only extend it
-  via keyword arguments.
-- If it doesn't (as above), `__init__` of the implementation class can have
-  any arguments possible.
+See [API Rules](API_RULES.md) for more details.
 
 ---
-
-## Environment variables
-
-- `ATEX_DEBUG_TEST`
-  - Set to `1` to print out detailed runner-related trace within the test output
-    stream (as if it was printed out by the test).
 
 ## Testing this project
 

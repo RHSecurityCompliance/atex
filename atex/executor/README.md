@@ -9,11 +9,11 @@
 
 A test runner.
 
-It takes a connected [Connection](../connection) and allows you to run
-individual tests over it.
+Once initialized, it provides a `.run_test()` method to run individual tests,
+rather than executing all available tests at once.
 
 ```python
-with Executor(conn) as e:
+with Executor(...) as e:
     ret1 = e.run_test("some_test", artifacts_dir1)
     ret2 = e.run_test("another_test", artifacts_dir2)
 ```
@@ -27,15 +27,15 @@ with Executor(conn) as e:
 
 (See [FMFExecutor](fmf) for a more complete example.)
 
-The executor would typically prepare the connected system for testing
-by uploading tests or installing OS packages (both via the passed Connection)
-during its `.start()`, and clean up during `.stop()`.
+The executor would typically prepare the underlying OS for testing by uploading
+tests, installing OS packages or logging to some web service, all during its
+`.start()`, and clean up during `.stop()`.
 
 Both of these are called by the context manager above, but they can be called
 manually:
 
 ```python
-e = Executor(conn)
+e = Executor(...)
 
 try:
     e.start()

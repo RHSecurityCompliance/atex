@@ -50,13 +50,32 @@ class AdHocOrchestrator(Orchestrator):
         pass
 
     def __init__(
-        self, platform, tests, provisioners, aggregator, executor, *,
+        self, platform, tests, provisioners, executor, aggregator,
         old_aggregator=None, max_spares=0, max_failed_setups=10,
     ):
         """
-        Positional arguments are the same as class Orchestrator.
+        - `platform` is an arbitrary name that identifies this Orchestrator
+          in the aggregated outputs.
 
-        Keyword arguments:
+          Ie. `9.6` or `rhel-9.6` or `9@x86_64` or `centos-10 Gitlab`.
+
+        - `tests` may be any `str()`-capable objects, typically strings,
+          for the Orchestrator to iterate and pass to an Executor as test
+          names.
+
+        - `provisioners` are initialized and started Provisioner instances
+          to source Remotes from, for test execution.
+
+        - `executor` is a factory (function or class) that, when given
+          a connected Connection, produces an initialized Executor instance,
+          to be used for running tests.
+
+          This could be an Executor class itself (as a type) or ie. a wrapper
+          for instantiating the class with extra arguments.
+
+        - `aggregator` is an initialized and started Aggregator instance
+          for ingesting final test results from test artifacts produced
+          by an Executor.
 
         - `old_aggregator` is a started class Aggregator instance for ingesting
           "old" test results (from tests that were later re-run). If left

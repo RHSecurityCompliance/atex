@@ -43,28 +43,26 @@ finally:
 
 ## Use pattern
 
-```python
-Orchestrator(platform, tests, provisioners, aggregator, executor)
+Generally speaking, Orchestrators take a list (sequence) of tests and gradually
+pick tests from it to be run on [Remotes](../provisioner) provided by one of
+the [Provisioners](../provisioner) given to the Orchestrators.
 
-Orchestrator(
-    "cs10@x86_64",
-    ["first test", "second test"],
-    [some_provisioner_instance, another_one],
-    some_aggregator_instance,
-    SomeExecutorClass,
-)
+```
++-------------+                                  +----------+
+| Provisioner |                                  | Executor |
++-------------+                                  +----------+
+                        +--------------+         | Executor |
++-------------+  <--->  | Orchestrator |  <--->  +----------+
+| Provisioner |         +--------------+         | Executor |
++-------------+                |                 +----------+
+                               v                 | Executor |
++-------------+         +--------------+         +----------+
+| Provisioner |         |  Aggregator  |
++-------------+         +--------------+
 ```
 
-Orchestrators take a list of tests as any iterator (or set/list/etc.) and
-gradually pick tests from it to be run on [Remotes](../provisioner) provided
-by one of the [Provisioners](../provisioner) given.
-
-For each new Remote, they create a new Executor instance (using the factory
-callable specified), passing the Remote to the callable as a Connection
-(each Remote inherits from Connection), expecting a fully initialized Executor
-instance on return.
-
-This Executor instance is then used to run tests on the Remote.
+For each new Remote they get from a Provisioner, they instantiate Executor
+to run tests on that Remote.
 
 Any other logic like
 

@@ -32,9 +32,9 @@ class TestAbortedError(ExecutorError):
 
 
 class FMFExecutor(Executor):
-    def __init__(self, connection, *, fmf_tests, env=None):
+    def __init__(self, connection, fmf_tests, env=None):
         """
-        Positional arguments are the same as class Executor.
+        - `connection` is a connected class Connection instance.
 
         - `fmf_tests` is a class FMFTests instance with (discovered) tests.
 

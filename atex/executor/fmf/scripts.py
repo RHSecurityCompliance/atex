@@ -1,6 +1,6 @@
 import collections
 import os
-from pathlib import Path
+from pathlib import PurePath
 
 import yaml
 
@@ -72,7 +72,7 @@ def test_wrapper(*, test, tests_dir, test_exec):
     # TODO: custom PATH with tmt-* style commands?
 
     # join the directory with all tests and nested path of our test inside it
-    test_cwd = Path(tests_dir) / test.dir
+    test_cwd = PurePath(tests_dir) / test.dir
     out += f"cd '{test_cwd}' || exit 1\n"
 
     # run the test script

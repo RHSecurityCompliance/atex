@@ -148,7 +148,6 @@ class FMFExecutor(Executor):
         """
         self.logger.info(f"'{test_name}': running, {artifacts=}")
 
-        artifacts = Path(artifacts)
         test_data = self.fmf_tests.tests[test_name]
 
         # start with fmf-plan-defined environment

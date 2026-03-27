@@ -1,6 +1,6 @@
 import collections
 import re
-from pathlib import Path
+from pathlib import PurePath
 
 # from system-wide sys.path
 import fmf
@@ -93,7 +93,7 @@ class FMFTests:
         tree.adjust(context=context)
 
         # Path of the metadata root
-        self.root = Path(tree.root)
+        self.root = PurePath(tree.root)
 
         # lookup the plan first
         if plan:
@@ -191,7 +191,7 @@ class FMFTests:
             self.tests[child.name] = child.data
             # child.sources ie. ['/abs/path/to/some.fmf', '/abs/path/to/some/node.fmf']
             self.test_dirs[child.name] = \
-                Path(child.sources[-1]).parent.relative_to(self.root)
+                PurePath(child.sources[-1]).parent.relative_to(self.root)
 
 
 def duration_to_seconds(string):

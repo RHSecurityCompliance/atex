@@ -1,10 +1,10 @@
-import abc as _abc
-import importlib as _importlib
-import pkgutil as _pkgutil
+import importlib
+import pkgutil
+from abc import ABC, abstractmethod
 
 
-class Executor(_abc.ABC):
-    @_abc.abstractmethod
+class Executor(ABC):
+    @abstractmethod
     def run_test(self, test_name, artifacts):
         """
         Run one test on the remote system.
@@ -24,14 +24,14 @@ class Executor(_abc.ABC):
         Returns an integer exit code of the test script.
         """
 
-    @_abc.abstractmethod
+    @abstractmethod
     def start(self):
         """
         Start the Executor instance, uploading tests, setting up the system
         for test execution, etc.
         """
 
-    @_abc.abstractmethod
+    @abstractmethod
     def stop(self):
         """
         Stop the Executor instance, cleaning the system up after test execution.
@@ -54,7 +54,7 @@ class ExecutorError(Exception):
 
 
 _submodules = tuple(
-    info.name for info in _pkgutil.iter_modules(__spec__.submodule_search_locations)
+    info.name for info in pkgutil.iter_modules(__spec__.submodule_search_locations)
 )
 
 __all__ = (Executor.__name__, *_submodules)  # noqa: PLE0604
@@ -67,6 +67,6 @@ def __dir__():
 # lazily import submodules
 def __getattr__(attr):
     if attr in _submodules:
-        return _importlib.import_module(f".{attr}", __name__)
+        return importlib.import_module(f".{attr}", __name__)
     else:
         raise AttributeError(f"module '{__name__}' has no attribute '{attr}'")

@@ -1,6 +1,6 @@
-import importlib as _importlib
-import inspect as _inspect
-import pkgutil as _pkgutil
+import importlib
+import inspect
+import pkgutil
 
 __all__ = []
 
@@ -12,8 +12,8 @@ def __dir__():
 # this is the equivalent of 'from .submod import *' for all submodules
 # (function to avoid polluting global namespace with extra variables)
 def _import_submodules():
-    for info in _pkgutil.iter_modules(__spec__.submodule_search_locations):
-        mod = _importlib.import_module(f".{info.name}", __name__)
+    for info in pkgutil.iter_modules(__spec__.submodule_search_locations):
+        mod = importlib.import_module(f".{info.name}", __name__)
 
         # if the module defines __all__, just use it
         if hasattr(mod, "__all__"):
@@ -32,7 +32,7 @@ def _import_submodules():
                     continue
             # avoid some common pollution / imports
             # (we don't want subpackages in here anyway)
-            if _inspect.ismodule(attr):
+            if inspect.ismodule(attr):
                 continue
             # do not override already processed objects (avoid duplicates)
             assert key not in __all__, f"tried to override already-imported '{key}'"

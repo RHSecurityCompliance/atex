@@ -1,8 +1,8 @@
-import importlib as _importlib
-import pkgutil as _pkgutil
+import importlib
+import pkgutil
 
 __all__ = [
-    info.name for info in _pkgutil.iter_modules(__spec__.submodule_search_locations)
+    info.name for info in pkgutil.iter_modules(__spec__.submodule_search_locations)
 ]
 
 
@@ -14,6 +14,6 @@ def __dir__():
 def __getattr__(attr):
     # importing a module known to exist
     if attr in __all__:
-        return _importlib.import_module(f".{attr}", __name__)
+        return importlib.import_module(f".{attr}", __name__)
     else:
         raise AttributeError(f"module '{__name__}' has no attribute '{attr}'")

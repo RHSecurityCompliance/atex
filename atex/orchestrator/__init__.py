@@ -1,11 +1,11 @@
-import abc as _abc
-import importlib as _importlib
-import pkgutil as _pkgutil
-import time as _time
+import importlib
+import pkgutil
+import time
+from abc import ABC, abstractmethod
 
 
-class Orchestrator(_abc.ABC):
-    @_abc.abstractmethod
+class Orchestrator(ABC):
+    @abstractmethod
     def __init__(self, platform, tests, provisioners, aggregator, executor):
         """
         Initialize the Orchestrator.
@@ -34,7 +34,7 @@ class Orchestrator(_abc.ABC):
           for instantiating the class with extra arguments.
         """
 
-    @_abc.abstractmethod
+    @abstractmethod
     def serve_once(self):
         """
         Run the orchestration logic, processing any outstanding requests
@@ -50,16 +50,16 @@ class Orchestrator(_abc.ABC):
         Run the orchestration logic, blocking until all testing is concluded.
         """
         while self.serve_once():
-            _time.sleep(0.1)
+            time.sleep(0.1)
 
-    @_abc.abstractmethod
+    @abstractmethod
     def start(self):
         """
         Start the Orchestrator instance, opening any files / allocating
         resources as necessary.
         """
 
-    @_abc.abstractmethod
+    @abstractmethod
     def stop(self):
         """
         Stop the Orchestrator instance, freeing all allocated resources.
@@ -82,7 +82,7 @@ class OrchestratorError(Exception):
 
 
 _submodules = tuple(
-    info.name for info in _pkgutil.iter_modules(__spec__.submodule_search_locations)
+    info.name for info in pkgutil.iter_modules(__spec__.submodule_search_locations)
 )
 
 __all__ = (Orchestrator.__name__, *_submodules)  # noqa: PLE0604
@@ -95,6 +95,6 @@ def __dir__():
 # lazily import submodules
 def __getattr__(attr):
     if attr in _submodules:
-        return _importlib.import_module(f".{attr}", __name__)
+        return importlib.import_module(f".{attr}", __name__)
     else:
         raise AttributeError(f"module '{__name__}' has no attribute '{attr}'")

@@ -1,10 +1,10 @@
-import abc as _abc
-import importlib as _importlib
-import pkgutil as _pkgutil
-import subprocess as _subprocess
+import importlib
+import pkgutil
+import subprocess
+from abc import ABC, abstractmethod
 
 
-class Connection(_abc.ABC):
+class Connection(ABC):
     def __enter__(self):
         try:
             self.connect()
@@ -16,20 +16,20 @@ class Connection(_abc.ABC):
     def __exit__(self, exc_type, exc_value, traceback):
         self.disconnect()
 
-    @_abc.abstractmethod
+    @abstractmethod
     def connect(self):
         """
         Establish a persistent connection to the remote.
         """
 
-    @_abc.abstractmethod
+    @abstractmethod
     def disconnect(self):
         """
         Destroy the persistent connection to the remote.
         """
 
-    @_abc.abstractmethod
-    def cmd(self, command, *, func=_subprocess.run, **func_args):
+    @abstractmethod
+    def cmd(self, command, *, func=subprocess.run, **func_args):
         """
         Execute a single command on the remote, using subprocess-like semantics.
 
@@ -40,8 +40,8 @@ class Connection(_abc.ABC):
         - `func_args` are further keyword arguments to pass to `func`.
         """
 
-    @_abc.abstractmethod
-    def rsync(self, *args, func=_subprocess.run, **func_args):
+    @abstractmethod
+    def rsync(self, *args, func=subprocess.run, **func_args):
         """
         Synchronize local/remote files/directories via `rsync`.
 
@@ -63,7 +63,7 @@ class Connection(_abc.ABC):
 
 
 _submodules = tuple(
-    info.name for info in _pkgutil.iter_modules(__spec__.submodule_search_locations)
+    info.name for info in pkgutil.iter_modules(__spec__.submodule_search_locations)
 )
 
 __all__ = (Connection.__name__, *_submodules)  # noqa: PLE0604
@@ -76,6 +76,6 @@ def __dir__():
 # lazily import submodules
 def __getattr__(attr):
     if attr in _submodules:
-        return _importlib.import_module(f".{attr}", __name__)
+        return importlib.import_module(f".{attr}", __name__)
     else:
         raise AttributeError(f"module '{__name__}' has no attribute '{attr}'")

@@ -1,27 +1,27 @@
-import abc as _abc
-import importlib as _importlib
-import pkgutil as _pkgutil
+import importlib
+import pkgutil
+from abc import ABC, abstractmethod
 
-from ..connection import Connection as _Connection
+from ..connection import Connection
 
 
-class Remote(_Connection):
-    @_abc.abstractmethod
+class Remote(Connection):
+    @abstractmethod
     def release(self):
         """
         Release (de-provision) the remote resource.
         """
 
 
-class Provisioner(_abc.ABC):
-    @_abc.abstractmethod
+class Provisioner(ABC):
+    @abstractmethod
     def provision(self, count=1):
         """
         Request that `count` machines be provisioned (reserved) for use,
         to be returned at a later point by `.get_remote()`.
         """
 
-    @_abc.abstractmethod
+    @abstractmethod
     def get_remote(self, block=True):
         """
         Return a connected class Remote instance of a previously
@@ -31,7 +31,7 @@ class Provisioner(_abc.ABC):
           otherwise return None if there is none available yet.
         """
 
-    @_abc.abstractmethod
+    @abstractmethod
     def clear(self):
         """
         Cancel any previous `.provision()` requests, preventing `.get_remote()`
@@ -40,14 +40,14 @@ class Provisioner(_abc.ABC):
         This does not release any Remotes already returned via `.get_remote()`.
         """
 
-    @_abc.abstractmethod
+    @abstractmethod
     def start(self):
         """
         Start the Provisioner instance, start any provisioning-related
         processes that lead to systems being reserved.
         """
 
-    @_abc.abstractmethod
+    @abstractmethod
     def stop(self):
         """
         Stop the Provisioner instance, freeing all reserved resources,
@@ -71,7 +71,7 @@ class ProvisionerError(Exception):
 
 
 _submodules = tuple(
-    info.name for info in _pkgutil.iter_modules(__spec__.submodule_search_locations)
+    info.name for info in pkgutil.iter_modules(__spec__.submodule_search_locations)
 )
 
 __all__ = (Provisioner.__name__, Remote.__name__, *_submodules)  # noqa: PLE0604
@@ -84,6 +84,6 @@ def __dir__():
 # lazily import submodules
 def __getattr__(attr):
     if attr in _submodules:
-        return _importlib.import_module(f".{attr}", __name__)
+        return importlib.import_module(f".{attr}", __name__)
     else:
         raise AttributeError(f"module '{__name__}' has no attribute '{attr}'")

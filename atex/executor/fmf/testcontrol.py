@@ -134,7 +134,7 @@ class TestControl:
 
         # read the full JSON
         json_data = bytearray()
-        while json_length > 0:
+        while True:
             try:
                 chunk = os.read(self.control_fd, json_length)
             except BlockingIOError:
@@ -144,6 +144,8 @@ class TestControl:
                 raise BadControlError(f"EOF when reading data, got so far: {json_data}")
             json_data += chunk
             json_length -= len(chunk)
+            if json_length <= 0:
+                break
             yield
 
         # convert to native python dict

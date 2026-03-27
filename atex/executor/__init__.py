@@ -5,6 +5,14 @@ from abc import ABC, abstractmethod
 
 class Executor(ABC):
     @abstractmethod
+    def __init__(self, connection):
+        """
+        Initialize the Executor.
+
+        - `connection` is used for test upload, preparation and execution.
+        """
+
+    @abstractmethod
     def run_test(self, test_name, artifacts):
         """
         Run one test on the remote system.

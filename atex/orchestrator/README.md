@@ -51,7 +51,7 @@ Orchestrator(
     ["first test", "second test"],
     [some_provisioner_instance, another_one],
     some_aggregator_instance,
-    lambda conn: SomeExecutor(conn, other_args=123, ...),
+    SomeExecutorClass,
 )
 ```
 
@@ -59,10 +59,9 @@ Orchestrators take a list of tests as any iterator (or set/list/etc.) and
 gradually pick tests from it to be run on [Remotes](../provisioner) provided
 by one of the [Provisioners](../provisioner) given.
 
-For each new Remote, they create a new Executor instance (using the factory
-callable specified), passing the Remote to the callable as a Connection
-(each Remote inherits from Connection), expecting a fully initialized Executor
-instance on return.
+For each new Remote, they create a new Executor instance, passing the Remote
+to the Executor as a Connection (each Remote inherits from Connection), and
+use that Executor instance for running tests.
 
 This Executor instance is then used to run tests on the Remote.
 

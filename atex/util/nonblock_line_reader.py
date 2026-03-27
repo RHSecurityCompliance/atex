@@ -43,8 +43,9 @@ class NonblockLineReader:
         was reached.
         """
         while self.bytes_read < len(self.buffer):
+            space_left = len(self.buffer) - self.bytes_read
             try:
-                data = os.read(self.src, self.read_len)
+                data = os.read(self.src, min(space_left, self.read_len))
             except BlockingIOError:
                 return None
 

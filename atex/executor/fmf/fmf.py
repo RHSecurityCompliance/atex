@@ -170,7 +170,9 @@ class FMFExecutor(Executor):
         self.logger.debug(f"'{test_name}': {env_vars=}")
 
         with contextlib.ExitStack() as stack:
-            reporter = stack.enter_context(Reporter(artifacts, "results", "files"))
+            reporter = stack.enter_context(
+                Reporter(artifacts, "results", "files", logger=self.logger),
+            )
             duration = Duration(test_data.get("duration", "5m"))
             control = TestControl(reporter=reporter, duration=duration, logger=self.logger)
 
@@ -358,6 +360,5 @@ class FMFExecutor(Executor):
 
     def __str__(self):
         class_name = self.__class__.__name__
-        conn_class = type(self.conn)
         fmf_root = str(self.fmf_tests.root)
-        return f"{class_name}({conn_class}, {fmf_root})"
+        return f"{class_name}({self.conn}, {fmf_root})"

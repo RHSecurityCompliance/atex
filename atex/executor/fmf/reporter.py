@@ -1,5 +1,6 @@
 import contextlib
 import json
+import logging
 import os
 from pathlib import Path
 
@@ -17,7 +18,7 @@ class Reporter:
     # 'testout'-JSON-key-specified result entries; deleted on exit
     TESTOUT = "testout.temp"
 
-    def __init__(self, output_dir, results_file, files_dir):
+    def __init__(self, output_dir, results_file, files_dir, logger=None):
         """
         - `output_dir` is a destination dir (string or Path) for results
           reported and files uploaded.
@@ -27,7 +28,11 @@ class Reporter:
 
         - `files_dir` is a dir name inside `output_dir` any files will be
           uploaded to.
+
+        - `logger` is an logging-API object to log messages to.
         """
+        self.logger = logger or logging.getLogger("atex")
+
         self.output_dir = Path(output_dir)
         self.results_file = self.output_dir / results_file
         self.results_fobj = None
@@ -115,6 +120,8 @@ class Reporter:
 
         - `result_line` is a dict in the format specified by RESULTS.md.
         """
+        self.logger.debug(f"report() received {result_line}")
+
         # transform files to just a set(), discarding length, to make it follow
         # the Test Artifacts format
         if "files" in result_line:

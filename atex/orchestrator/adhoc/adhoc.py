@@ -166,8 +166,10 @@ class AdHocOrchestrator(Orchestrator):
 
     @staticmethod
     def _ingest_and_cleanup(ingest, args, cleanup):
-        ingest(*args)
-        cleanup()
+        try:
+            ingest(*args)
+        finally:
+            cleanup()
 
     def _process_finished_test(self, finfo):
         """

@@ -56,7 +56,8 @@ def _shell_cmd(command, sudo=None):
     quoted_args = (shlex.quote(str(arg)) for arg in command)
     if sudo:
         return " ".join((
-            "exec", "sudo", "--no-update", "--non-interactive", "--user", sudo, "--", *quoted_args,
+            "exec", "sudo", "--no-update", "--non-interactive", "--user", shlex.quote(sudo),
+            "--", *quoted_args,
         ))
     else:
         return " ".join(("exec", *quoted_args))

@@ -1,6 +1,5 @@
 import subprocess
 import threading
-from collections.abc import Callable, Sequence
 
 from ... import connection, util
 from .. import Provisioner, Remote
@@ -9,7 +8,7 @@ get_logger = util.get_loggers("atex.provisioner.podman")
 
 
 class PodmanRemote(Remote, connection.podman.PodmanConnection):
-    def __init__(self, image: str, container: str, *, release_hook: Callable):
+    def __init__(self, image, container, *, release_hook):
         """
         - `image` is an image tag (used for `str(self)`).
 
@@ -25,7 +24,7 @@ class PodmanRemote(Remote, connection.podman.PodmanConnection):
         self.release_called = False
         self.release_hook = release_hook
 
-    def release(self) -> None:
+    def release(self):
         with self.lock:
             if self.release_called:
                 return
@@ -85,13 +84,7 @@ class _SettableCounter:
 
 
 class PodmanProvisioner(Provisioner):
-    def __init__(
-        self,
-        image: str,
-        *,
-        run_options: Sequence | None = None,
-        run_command: Sequence = ("sleep", "inf"),
-    ):
+    def __init__(self, image, *, run_options=None, run_command=("sleep", "inf")):
         """
         - `image` is a string of image tag/ID to create containers from.
           It can be a local identifier or an URL.
@@ -114,24 +107,24 @@ class PodmanProvisioner(Provisioner):
         self.remotes = []
         self.to_create = _SettableCounter(0)
 
-    def start(self) -> None:
+    def start(self):
         self.logger.debug(f"starting: {self}")
 
         if not self.image:
             raise ValueError("image cannot be empty")
 
-    def stop(self) -> None:
+    def stop(self):
         self.logger.debug(f"stopping: {self}")
 
         with self.lock:
             while self.remotes:
                 self.remotes.pop().release()
 
-    def provision(self, count: int = 1) -> None:
+    def provision(self, count=1):
         self.logger.debug(f"provisioning {count}")
         self.to_create.add(count)
 
-    def get_remote(self, block: bool = True) -> Remote | None:
+    def get_remote(self, block=True):
         if not self.to_create.remove_one(block=block):
             return None
 
@@ -162,7 +155,7 @@ class PodmanProvisioner(Provisioner):
         self.remotes.append(remote)
         return remote
 
-    def clear(self) -> None:
+    def clear(self):
         self.to_create.zero()
 
     def __str__(self):

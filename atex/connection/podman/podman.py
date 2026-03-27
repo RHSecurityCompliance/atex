@@ -1,26 +1,25 @@
 import subprocess
-from collections.abc import Callable, Sequence
 
 from .. import Connection
 
 
 class PodmanConnection(Connection):
-    def __init__(self, container: str):
+    def __init__(self, container):
         self.container = container
 
-    def connect(self) -> None:
+    def connect(self):
         pass
 
-    def disconnect(self) -> None:
+    def disconnect(self):
         pass
 
-    def cmd(self, command: Sequence, func: Callable = subprocess.run, **func_args):
+    def cmd(self, command, *, func=subprocess.run, **func_args):
         return func(
             ("podman", "container", "exec", "-i", self.container, *command),
             **func_args,
         )
 
-    def rsync(self, *args: str, func: Callable = subprocess.run, **func_args):
+    def rsync(self, *args, func=subprocess.run, **func_args):
         return func(
             (
                 "rsync",

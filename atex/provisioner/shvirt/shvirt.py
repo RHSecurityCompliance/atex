@@ -7,11 +7,9 @@ import subprocess
 import threading
 import time
 import xml.etree.ElementTree as ET
-from collections.abc import Callable, Mapping
 from pathlib import Path
 
 from ... import connection, util
-from ...connection import Connection
 from .. import Provisioner, ProvisionerError, Remote
 
 get_logger = util.get_loggers("atex.provisioner.shvirt")
@@ -90,15 +88,7 @@ def _wait_for_sshd(host, port, event, logger=None):
 
 
 class SharedVirtRemote(Remote, connection.ssh.ManagedSSHConnection):
-    def __init__(
-        self,
-        ssh_options: Mapping,
-        host: str,
-        domain: str,
-        source_image: str,
-        *,
-        release_hook: Callable,
-    ):
+    def __init__(self, ssh_options, host, domain, source_image, *, release_hook):
         """
         - `ssh_options` are a dict, passed to ManagedSSHConnection `__init__()`.
 
@@ -120,7 +110,7 @@ class SharedVirtRemote(Remote, connection.ssh.ManagedSSHConnection):
         self.release_called = False
         self.release_hook = release_hook
 
-    def release(self) -> None:
+    def release(self):
         with self.lock:
             if self.release_called:
                 return
@@ -129,7 +119,7 @@ class SharedVirtRemote(Remote, connection.ssh.ManagedSSHConnection):
         self.disconnect()
         self.release_hook(self)
 
-    def connect(self, **kwargs) -> None:
+    def connect(self, **kwargs):
         with self.lock:
             if self.release_called:
                 raise ConnectionError("remote released, cannot connect")
@@ -174,17 +164,9 @@ class SharedVirtProvisioner(Provisioner):
     # any reservations).
 
     def __init__(
-        self,
-        host: Connection,
-        image: str,
-        *,
-        pool: str = "default",
-        domain_filter: str | None = None,
-        domain_user: str = "root",
-        domain_sshkey: str,
-        domain_host: str | None = None,
-        reserve_delay: int = 3,
-        reserve_name: str | None = None,
+        self, host, image, *, pool="default",
+        domain_filter=None, domain_user="root", domain_sshkey, domain_host=None,
+        reserve_delay=3, reserve_name=None,
     ):
         """
 
@@ -439,7 +421,7 @@ class SharedVirtProvisioner(Provisioner):
             if self.reserving_exit.wait(timeout=self.reserve_delay):
                 return
 
-    def start(self) -> None:
+    def start(self):
         self.logger.debug(f"starting: {self}")
 
         with self.lock:
@@ -474,7 +456,7 @@ class SharedVirtProvisioner(Provisioner):
 
             self.started = True
 
-    def stop(self) -> None:
+    def stop(self):
         self.logger.debug(f"stopping: {self}")
 
         with self.lock:
@@ -513,7 +495,7 @@ class SharedVirtProvisioner(Provisioner):
         if not self.started:
             raise ProvisionerError("the provisioner is stopped")
 
-    def provision(self, count: int = 1) -> None:
+    def provision(self, count=1):
         self._sanity_check()
 
         with self.lock:
@@ -525,7 +507,7 @@ class SharedVirtProvisioner(Provisioner):
                 self.reserving_thread = threading.Thread(target=self._reserve_wrapper)
                 self.reserving_thread.start()
 
-    def get_remote(self, block: bool = True) -> Remote | None:
+    def get_remote(self, block=True):
         self._sanity_check()
 
         if self.reserving_events.acquire(blocking=block):
@@ -540,7 +522,7 @@ class SharedVirtProvisioner(Provisioner):
         # non-blocking
         return None
 
-    def clear(self) -> None:
+    def clear(self):
         # if there's a reservation in progress, it will lower to_reserve
         # to -1, but that's fine because the next .provision() will increase
         # it back to >= 0 and a follow-up .get_remote() will get the one

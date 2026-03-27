@@ -1,10 +1,6 @@
 import tempfile
-from collections.abc import Callable, Iterable
 
 from ... import util
-from ...aggregator import Aggregator
-from ...connection import Connection
-from ...executor import Executor
 from .. import Orchestrator, OrchestratorError
 
 get_logger = util.get_loggers("atex.orchestrator.adhoc")
@@ -54,16 +50,8 @@ class AdHocOrchestrator(Orchestrator):
         pass
 
     def __init__(
-        self,
-        platform: str,
-        tests: Iterable,
-        provisioners: Iterable,
-        aggregator: Aggregator,
-        executor: Callable[[Connection], Executor],
-        *,
-        old_aggregator: Aggregator | None = None,
-        max_spares: int = 0,
-        max_failed_setups: int = 10,
+        self, platform, tests, provisioners, aggregator, executor, *,
+        old_aggregator=None, max_spares=0, max_failed_setups=10,
     ):
         """
         Positional arguments are the same as class Orchestrator.
@@ -233,7 +221,7 @@ class AdHocOrchestrator(Orchestrator):
                 remote=finfo.remote,
             )
 
-    def serve_once(self) -> bool:
+    def serve_once(self):
         # all done
         if not self.to_run and not self.running_tests:
             return False
@@ -358,7 +346,7 @@ class AdHocOrchestrator(Orchestrator):
 
         return True
 
-    def start(self) -> None:
+    def start(self):
         self.logger.debug(f"starting: {self}")
 
         # start up initial reservations - the idea is to request as much remotes
@@ -372,7 +360,7 @@ class AdHocOrchestrator(Orchestrator):
         for prov in self.provisioners:
             prov.provision(remotes)
 
-    def stop(self) -> None:
+    def stop(self):
         self.logger.debug(f"stopping: {self}")
 
         # cancel all running tests and wait for them to clean up

@@ -4,7 +4,6 @@ import subprocess
 import tempfile
 import threading
 import time
-from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
 
 from ... import util
@@ -126,7 +125,7 @@ def _rsync_host_cmd(*args, options, password=None, sudo=None):
 
 
 class StatelessSSHConnection(Connection):
-    def __init__(self, options: Mapping, *, password: str | None = None, sudo: str | None = None):
+    def __init__(self, options, *, password=None, sudo=None):
         """
         Prepare to connect to an SSH server specified in `options`.
 
@@ -141,21 +140,14 @@ class StatelessSSHConnection(Connection):
         self.password = password
         self.sudo = sudo
 
-    def connect(self) -> None:
+    def connect(self):
         pass
 
-    def disconnect(self) -> None:
+    def disconnect(self):
         pass
 
     # have options as kwarg to be compatible with other functions here
-    def cmd(
-        self,
-        command: Sequence,
-        func: Callable = subprocess.run,
-        *,
-        options: Mapping | None = None,
-        **func_args,
-    ):
+    def cmd(self, command, *, options=None, func=subprocess.run, **func_args):
         unified_options = self.options.copy()
         if options:
             unified_options.update(options)
@@ -166,13 +158,7 @@ class StatelessSSHConnection(Connection):
             **func_args,
         )
 
-    def rsync(
-        self,
-        *args: str,
-        options: Mapping | None = None,
-        func: Callable = subprocess.run,
-        **func_args,
-    ):
+    def rsync(self, *args, options=None, func=subprocess.run, **func_args):
         unified_options = self.options.copy()
         if options:
             unified_options.update(options)
@@ -204,7 +190,7 @@ class StatelessSSHConnection(Connection):
 class ManagedSSHConnection(Connection):
     # TODO: thread safety and locking via self.lock ?
 
-    def __init__(self, options: Mapping, *, password: str | None = None, sudo: str | None = None):
+    def __init__(self, options, *, password=None, sudo=None):
         """
         Prepare to connect to an SSH server specified in `options`.
 
@@ -239,7 +225,7 @@ class ManagedSSHConnection(Connection):
                 f"SSH ControlMaster on {self._tmpdir} exited with {code}{out}",
             )
 
-    def disconnect(self) -> None:
+    def disconnect(self):
         proc = self._master_proc
         if not proc:
             return
@@ -251,7 +237,7 @@ class ManagedSSHConnection(Connection):
         (self._tmpdir / "control.sock").unlink(missing_ok=True)
         self._master_proc = None
 
-    def connect(self, *, block: bool = True) -> None:
+    def connect(self, block=True):
         """
         Establish a persistent connection to the remote.
 
@@ -315,7 +301,7 @@ class ManagedSSHConnection(Connection):
             elif not sock.exists():
                 raise BlockingIOError("SSH ControlMaster not yet ready")
 
-    def forward(self, forward_type: str, *spec: str, cancel: bool = False):
+    def forward(self, forward_type, *spec, cancel=False):
         """
         Add (one or more) ssh forwarding specifications as `spec` to an
         already-connected instance. Each specification has to follow the
@@ -337,14 +323,7 @@ class ManagedSSHConnection(Connection):
             check=True,
         )
 
-    def cmd(
-        self,
-        command: Sequence,
-        func: Callable = subprocess.run,
-        *,
-        options: Mapping | None = None,
-        **func_args,
-    ):
+    def cmd(self, command, *, options=None, func=subprocess.run, **func_args):
         self.assert_master()
         unified_options = self.options.copy()
         if options:
@@ -357,13 +336,7 @@ class ManagedSSHConnection(Connection):
             **func_args,
         )
 
-    def rsync(
-        self,
-        *args: str,
-        options: Mapping | None = None,
-        func: Callable = subprocess.run,
-        **func_args,
-    ):
+    def rsync(self, *args, options=None, func=subprocess.run, **func_args):
         self.assert_master()
         unified_options = self.options.copy()
         if options:

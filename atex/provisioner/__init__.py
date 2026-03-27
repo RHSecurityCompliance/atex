@@ -7,7 +7,7 @@ from ..connection import Connection as _Connection
 
 class Remote(_Connection):
     @_abc.abstractmethod
-    def release(self) -> None:
+    def release(self):
         """
         Release (de-provision) the remote resource.
         """
@@ -15,14 +15,14 @@ class Remote(_Connection):
 
 class Provisioner(_abc.ABC):
     @_abc.abstractmethod
-    def provision(self, count: int = 1) -> None:
+    def provision(self, count=1):
         """
         Request that `count` machines be provisioned (reserved) for use,
         to be returned at a later point by `.get_remote()`.
         """
 
     @_abc.abstractmethod
-    def get_remote(self, block: bool = True) -> Remote | None:
+    def get_remote(self, block=True):
         """
         Return a connected class Remote instance of a previously
         `.provision()`ed remote system.
@@ -32,7 +32,7 @@ class Provisioner(_abc.ABC):
         """
 
     @_abc.abstractmethod
-    def clear(self) -> None:
+    def clear(self):
         """
         Cancel any previous `.provision()` requests, preventing `.get_remote()`
         (currently running and future) calls from receiving Remotes until
@@ -41,14 +41,14 @@ class Provisioner(_abc.ABC):
         """
 
     @_abc.abstractmethod
-    def start(self) -> None:
+    def start(self):
         """
         Start the Provisioner instance, start any provisioning-related
         processes that lead to systems being reserved.
         """
 
     @_abc.abstractmethod
-    def stop(self) -> None:
+    def stop(self):
         """
         Stop the Provisioner instance, freeing all reserved resources,
         calling `.release()` on all Remote instances that were created.

@@ -1,24 +1,12 @@
 import abc as _abc
-import collections.abc as _cabc
 import importlib as _importlib
 import pkgutil as _pkgutil
 import time as _time
 
-from ..aggregator import Aggregator as _Aggregator
-from ..connection import Connection as _Connection
-from ..executor import Executor as _Executor
-
 
 class Orchestrator(_abc.ABC):
     @_abc.abstractmethod
-    def __init__(
-        self,
-        platform: str,
-        tests: _cabc.Iterable,
-        provisioners: _cabc.Iterable,
-        aggregator: _Aggregator,
-        executor: _cabc.Callable[[_Connection], _Executor],
-    ):
+    def __init__(self, platform, tests, provisioners, aggregator, executor):
         """
         Initialize the Orchestrator.
 
@@ -47,7 +35,7 @@ class Orchestrator(_abc.ABC):
         """
 
     @_abc.abstractmethod
-    def serve_once(self) -> bool:
+    def serve_once(self):
         """
         Run the orchestration logic, processing any outstanding requests
         (for provisioning, new test execution, etc.) and returning once these
@@ -57,7 +45,7 @@ class Orchestrator(_abc.ABC):
         (more work to be done), `False` once all testing is concluded.
         """
 
-    def serve_forever(self) -> None:
+    def serve_forever(self):
         """
         Run the orchestration logic, blocking until all testing is concluded.
         """
@@ -65,14 +53,14 @@ class Orchestrator(_abc.ABC):
             _time.sleep(0.1)
 
     @_abc.abstractmethod
-    def start(self) -> None:
+    def start(self):
         """
         Start the Orchestrator instance, opening any files / allocating
         resources as necessary.
         """
 
     @_abc.abstractmethod
-    def stop(self) -> None:
+    def stop(self):
         """
         Stop the Orchestrator instance, freeing all allocated resources.
         """

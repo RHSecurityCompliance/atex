@@ -2,7 +2,6 @@ import concurrent.futures
 import tempfile
 import threading
 import time
-from collections.abc import Callable, Mapping
 
 from ... import connection, util
 from .. import Provisioner, Remote
@@ -12,7 +11,7 @@ get_logger = util.get_loggers("atex.provisioner.testingfarm")
 
 
 class TestingFarmRemote(Remote, connection.ssh.ManagedSSHConnection):
-    def __init__(self, request_id: str, ssh_options: Mapping, *, release_hook: Callable):
+    def __init__(self, request_id, ssh_options, *, release_hook):
         """
         - `request_id` is a string with Testing Farm request UUID
           (for printouts).
@@ -28,7 +27,7 @@ class TestingFarmRemote(Remote, connection.ssh.ManagedSSHConnection):
         self.release_hook = release_hook
         self.release_called = False
 
-    def release(self) -> None:
+    def release(self):
         with self.lock:
             if self.release_called:
                 return
@@ -54,15 +53,7 @@ class TestingFarmProvisioner(Provisioner):
     # TF requests on .stop() or Context Manager exit
     stop_release_workers = 10
 
-    def __init__(
-        self,
-        compose: str,
-        arch: str = "x86_64",
-        max_remotes: int = 3,
-        *,
-        max_retries: int = 10,
-        **reserve_kwargs,
-    ):
+    def __init__(self, compose, arch="x86_64", max_remotes=3, *, max_retries=10, **reserve_kwargs):
         """
         - `compose` is a Testing Farm compose to prepare.
 
@@ -181,14 +172,14 @@ class TestingFarmProvisioner(Provisioner):
                 target_args=(tf_reserve, initial_delay),
             )
 
-    def start(self) -> None:
+    def start(self):
         self.logger.debug(f"starting: {self}")
 
         with self.lock:
             self._tmpdir = tempfile.TemporaryDirectory()
             self.ssh_key, self.ssh_pubkey = util.ssh_keygen(self._tmpdir.name)
 
-    def stop(self) -> None:
+    def stop(self):
         self.logger.debug(f"stopping: {self}")
 
         release_funcs = []
@@ -212,12 +203,12 @@ class TestingFarmProvisioner(Provisioner):
                 self._tmpdir.cleanup()
                 self._tmpdir = None
 
-    def provision(self, count: int = 1) -> None:
+    def provision(self, count=1):
         with self.lock:
             self.to_reserve += count
         self._schedule_new_reservations()
 
-    def get_remote(self, block: bool = True) -> Remote | None:
+    def get_remote(self, block=True):
         while True:
             self._schedule_new_reservations()
             # otherwise wait on a queue of Remotes being provisioned
@@ -247,7 +238,7 @@ class TestingFarmProvisioner(Provisioner):
                         )
                         raise
 
-    def clear(self) -> None:
+    def clear(self):
         with self.lock:
             self.to_reserve = 0
         # keep all self.reserving running

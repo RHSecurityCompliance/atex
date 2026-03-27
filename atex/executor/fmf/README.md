@@ -11,23 +11,19 @@ several tmt features (see further below).
 
 ```python
 # discover tests
-discovered = FMFTests(
+fmf_tests = FMFTests(
     "path/to/repo_with_tests",
     plan="/plans/sanity",
     context={"distro": "rhel-9.6", "arch": "x86_64"},
 )
 
-# inject them into FMFExecutor
-class MyExecutor(FMFExecutor, fmf_tests=discovered):
-    pass
-
 # run them
-with MyExecutor(conn) as e:
+with FMFExecutor(conn, fmf_tests=fmf_tests) as e:
     e.run_test(...)
 ```
 
-You are free to modify the discovered FMFTests prior to the Executor
-being instantiated. See FMFTests instance attributes (commented in code).\
+You are free to modify the discovered FMFTests prior to passing them to
+the Executor. See FMFTests instance attributes (commented in code).\
 Ie. to double allowed 'duration':
 
 ```python

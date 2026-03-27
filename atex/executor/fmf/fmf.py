@@ -12,7 +12,7 @@ from ...connection.ssh import ManagedSSHConnection
 from .. import Executor, ExecutorError
 from . import scripts
 from .duration import Duration
-from .metadata import FMFTests, listlike
+from .metadata import listlike
 from .reporter import Reporter
 from .testcontrol import TestControl
 
@@ -32,34 +32,19 @@ class TestAbortedError(ExecutorError):
 
 
 class FMFExecutor(Executor):
-    fmf_tests = None
-
-    def __init_subclass__(cls, fmf_tests=None, **kwargs):
-        """
-        This is necessary to provde an Executor-style API for __init__
-        while still embedding fmf_tests somehow.
-
-        - `fmf_tests` is a class FMFTests instance with (discovered) tests.
-        """
-        super().__init_subclass__(**kwargs)
-        if isinstance(fmf_tests, FMFTests):
-            cls.fmf_tests = fmf_tests
-        else:
-            raise ValueError("'fmf_tests' must be an FMFTests instance")
-
-    def __init__(self, connection, *, env=None):
+    def __init__(self, connection, *, fmf_tests, env=None):
         """
         Positional arguments are the same as class Executor.
+
+        - `fmf_tests` is a class FMFTests instance with (discovered) tests.
 
         - `env` is a dict of extra environment variables to pass to the
           plan prepare/finish scripts and to all tests.
         """
-        if self.fmf_tests is None:
-            raise TypeError("subclass FMFExecutor with fmf_tests=... first")
-
         self.lock = threading.RLock()
         self.logger = get_logger()
 
+        self.fmf_tests = fmf_tests
         self.conn = connection
         self.env = env or {}
         self.work_dir = None

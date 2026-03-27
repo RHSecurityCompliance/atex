@@ -26,9 +26,12 @@ class Orchestrator(ABC):
           for ingesting final test results from test artifacts produced
           by an Executor.
 
-        - `executor` is an Executor class (the type itself, NOT an instance),
-          to be instantiated by the Orchestrator, potentially many times, and
-          used for running tests.
+        - `executor` is a factory (function or class) that, when given
+          a connected Connection, produces an initialized Executor instance,
+          to be used for running tests.
+
+          This could be an Executor class itself (as a type) or ie. a wrapper
+          for instantiating the class with extra arguments.
         """
 
     @abstractmethod

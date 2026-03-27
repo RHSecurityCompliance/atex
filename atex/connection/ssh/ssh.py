@@ -93,7 +93,6 @@ def _options_to_ssh(options, password=None, extra_cli_flags=()):
         return ("ssh", *extra_cli_flags, *cli_opts, "-oBatchMode=yes", "ignored_arg")
 
 
-# return a string usable for rsync -e
 def _options_to_rsync_e(options, password=None):
     """
     Return a string usable for the rsync `-e` argument.

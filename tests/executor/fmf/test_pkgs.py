@@ -35,7 +35,7 @@ def test_require_fail(provisioner, tmp_dir):
     with FMFExecutor(remote, fmf_tests=fmf_tests) as e:
         try:
             e.run_test("/test_require_fail", tmp_dir)
-            raise AssertionError("TestSetupError was not raised")
+            raise AssertionError("TestSetupError should have triggered")
         except TestSetupError as e:
             if "No match for argument: nonexistent_pkg" not in str(e):
                 raise

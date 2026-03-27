@@ -26,7 +26,7 @@ def _wait_for_sshd(host, port, event, logger=None):
     logger = logger or logging.getLogger("atex")
 
     # 2 secs to reply over connected socket initially,
-    # with expontential back off (in case the system is too slow
+    # with exponential back off (in case the system is too slow
     # to respond)
     backoff_sleep = 2
 
@@ -261,7 +261,7 @@ class SharedVirtProvisioner(Provisioner):
             self.reserving_remotes.clear()
             self.stop()
             # wake up any waiting .get_remote() calls
-            self.reserving_events.release(math.inf)
+            self.reserving_events.release(1_000_000_000)  # needs integer, not math.inf
         else:
             self.logger.debug("reserve thread exited cleanly")
 

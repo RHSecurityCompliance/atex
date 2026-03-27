@@ -5,14 +5,16 @@ import select
 import subprocess
 import threading
 import time
-from pathlib import Path
+from collections.abc import Mapping
+from pathlib import Path, PurePath
 
 from ... import util
+from ...connection import Connection
 from ...connection.ssh import ManagedSSHConnection
 from .. import Executor, ExecutorError
 from . import scripts
 from .duration import Duration
-from .metadata import listlike
+from .metadata import FMFTests, listlike
 from .reporter import Reporter
 from .testcontrol import TestControl
 
@@ -32,11 +34,17 @@ class TestAbortedError(ExecutorError):
 
 
 class FMFExecutor(Executor):
-    def __init__(self, connection, *, fmf_tests, env=None):
+    def __init__(
+        self,
+        connection: Connection,
+        *,
+        fmf_tests: FMFTests,
+        env: Mapping | None = None,
+    ):
         """
         Positional arguments are the same as class Executor.
 
-        - `fmf_tests` is a class FMFTests instance with (discovered) tests.
+        - `fmf_tests` is an instance with (discovered) tests.
 
         - `env` is a dict of extra environment variables to pass to the
           plan prepare/finish scripts and to all tests.
@@ -52,7 +60,7 @@ class FMFExecutor(Executor):
         self.plan_env_file = None
         self.cancelled = False
 
-    def start(self):
+    def start(self) -> None:
         self.logger.debug(f"starting: {self}")
 
         tmp_dir = self.conn.cmd(
@@ -97,7 +105,7 @@ class FMFExecutor(Executor):
         if scripts := self.fmf_tests.prepare_scripts:
             self._run_plan_scripts(scripts)
 
-    def stop(self):
+    def stop(self) -> None:
         self.logger.debug(f"stopping: {self}")
 
         # run 'finish' scripts from the plan on the remote
@@ -140,7 +148,12 @@ class FMFExecutor(Executor):
         WAITING_FOR_EXIT = enum.auto()
         RECONNECTING = enum.auto()
 
-    def run_test(self, test_name, artifacts, *, env=None):
+    def run_test(
+        self,
+        test_name: str,
+        artifacts: str | PurePath, *,
+        env: Mapping | None = None,
+    ) -> int:
         """
         Positional arguments are the same as class Executor.
 

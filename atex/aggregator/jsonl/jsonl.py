@@ -5,7 +5,8 @@ import json
 import lzma
 import shutil
 import threading
-from pathlib import Path
+from collections.abc import Sequence
+from pathlib import Path, PurePath
 
 from ... import util
 from .. import Aggregator, AggregatorError
@@ -20,12 +21,17 @@ def _verbatim_move(src, dst):
 
 
 class JSONLinesAggregator(Aggregator):
-    def __init__(self, target, files, *, allow_duplicate=False):
+    def __init__(
+        self,
+        target: str | PurePath,
+        files: str | PurePath, *,
+        allow_duplicate: bool = False,
+    ):
         """
-        - `target` is a string/Path to a `.jsonl` file for all ingested
-          results to be aggregated (written) to.
+        - `target` is path to a `.jsonl` file for all ingested results to be
+          aggregated (written) to.
 
-        - `files` is a string/Path of the top-level parent for all per-platform
+        - `files` is a path of the top-level parent for all per-platform
           / per-test files uploaded by tests.
 
         - `allow_duplicate` permits any one test name to be ingested more than
@@ -44,7 +50,7 @@ class JSONLinesAggregator(Aggregator):
     def _open_target(self, target):  # noqa: PLR6301
         return open(target, "w")
 
-    def start(self):
+    def start(self) -> None:
         self.logger.debug(f"starting: {self}")
 
         if self.target.exists(follow_symlinks=False):
@@ -55,7 +61,7 @@ class JSONLinesAggregator(Aggregator):
             raise FileExistsError(f"{self.files} already exists")
         self.files.mkdir()
 
-    def stop(self):
+    def stop(self) -> None:
         self.logger.debug(f"stopping: {self}")
 
         if self.target_fobj:
@@ -104,7 +110,7 @@ class JSONLinesAggregator(Aggregator):
             )
             yield json.dumps(output_line, indent=None)
 
-    def ingest(self, platform, test_name, artifacts):
+    def ingest(self, platform: str, test_name: str, artifacts: str | PurePath) -> None:
         unique_id = (platform, test_name)
         if unique_id in self.seen_tests:
             if not self.allow_duplicate:
@@ -212,9 +218,12 @@ class GzipJSONLinesAggregator(CompressedJSONLinesAggregator):
         return gzip.open(*args, compresslevel=self.level, **kwargs)
 
     def __init__(
-        self, *args,
-        compress_level=9,
-        compress_files=True, compress_files_suffix=".gz", compress_files_exclude=None,
+        self,
+        *args,
+        compress_level: int = 9,
+        compress_files: bool = True,
+        compress_files_suffix: str = ".gz",
+        compress_files_exclude: Sequence | None = None,
         **kwargs,
     ):
         """
@@ -232,8 +241,8 @@ class GzipJSONLinesAggregator(CompressedJSONLinesAggregator):
           Set to `""` (empty string) to use original file names and just
           compress them transparently in-place.
 
-        - `compress_files_exclude` is a tuple/list of strings (input `files`
-          names) to skip when compressing. Their names also won't be modified.
+        - `compress_files_exclude` is a list of strings (input `files` names)
+          to skip when compressing. Their names also won't be modified.
         """
         super().__init__(*args, **kwargs)
         self.level = compress_level
@@ -252,9 +261,12 @@ class LZMAJSONLinesAggregator(CompressedJSONLinesAggregator):
         return lzma.open(*args, preset=self.preset, **kwargs)
 
     def __init__(
-        self, *args,
-        compress_preset=9, compress_files=True, compress_files_suffix=".xz",
-        compress_files_exclude=None,
+        self,
+        *args,
+        compress_preset: int = 9,
+        compress_files: bool = True,
+        compress_files_suffix: str = ".xz",
+        compress_files_exclude: Sequence | None = None,
         **kwargs,
     ):
         """
@@ -273,8 +285,8 @@ class LZMAJSONLinesAggregator(CompressedJSONLinesAggregator):
           Set to `""` (empty string) to use original file names and just
           compress them transparently in-place.
 
-        - `compress_files_exclude` is a tuple/list of strings (input `files`
-          names) to skip when compressing. Their names also won't be modified.
+        - `compress_files_exclude` is list of strings (input `files` names)
+          to skip when compressing. Their names also won't be modified.
         """
         super().__init__(*args, **kwargs)
         self.preset = compress_preset

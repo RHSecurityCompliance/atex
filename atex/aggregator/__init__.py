@@ -1,28 +1,29 @@
 import abc as _abc
 import importlib as _importlib
 import pkgutil as _pkgutil
+from pathlib import PurePath as _PurePath
 
 
 class Aggregator(_abc.ABC):
     @_abc.abstractmethod
-    def ingest(self, platform, test_name, artifacts):
+    def ingest(self, platform: str, test_name: str, artifacts: str | _PurePath) -> None:
         """
-        Process `artifacts` (string/Path) for results reported and files
-        uploaded by a test ran by an Executor, aggregating them under
-        `platform` (string) as `test_name` (string).
+        Process `artifacts` for results reported and files uploaded by
+        a test ran by an Executor, aggregating them under `platform`
+        as `test_name`.
 
         This is **destructive**, the artifacts are consumed in the process.
         """
 
     @_abc.abstractmethod
-    def start(self):
+    def start(self) -> None:
         """
         Start the Aggregator instance, opening any files / allocating resources
         as necessary.
         """
 
     @_abc.abstractmethod
-    def stop(self):
+    def stop(self) -> None:
         """
         Stop the Aggregator instance, freeing all allocated resources.
         """

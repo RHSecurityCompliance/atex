@@ -1,4 +1,5 @@
 import abc as _abc
+import collections.abc as _cabc
 import importlib as _importlib
 import pkgutil as _pkgutil
 import subprocess as _subprocess
@@ -17,23 +18,23 @@ class Connection(_abc.ABC):
         self.disconnect()
 
     @_abc.abstractmethod
-    def connect(self):
+    def connect(self) -> None:
         """
         Establish a persistent connection to the remote.
         """
 
     @_abc.abstractmethod
-    def disconnect(self):
+    def disconnect(self) -> None:
         """
         Destroy the persistent connection to the remote.
         """
 
     @_abc.abstractmethod
-    def cmd(self, command, *, func=_subprocess.run, **func_args):
+    def cmd(self, command: _cabc.Sequence, func: _cabc.Callable = _subprocess.run, **func_args):
         """
         Execute a single command on the remote, using subprocess-like semantics.
 
-        - `command` is the command with arguments, as a tuple/list.
+        - `command` is the command with arguments.
 
         - `func` is the subprocess function to use (`.run()`, `.Popen()`, etc.).
 
@@ -41,7 +42,7 @@ class Connection(_abc.ABC):
         """
 
     @_abc.abstractmethod
-    def rsync(self, *args, func=_subprocess.run, **func_args):
+    def rsync(self, *args: str, func: _cabc.Callable = _subprocess.run, **func_args):
         """
         Synchronize local/remote files/directories via `rsync`.
 

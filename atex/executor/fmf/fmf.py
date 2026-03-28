@@ -225,9 +225,9 @@ class FMFExecutor(Executor):
                         env_vars["TMT_REBOOT_COUNT"] = str(reconnects)
                         env_vars["TMT_TEST_RESTART_COUNT"] = str(reconnects)
                         env_args = (f"{k}={v}" for k, v in env_vars.items())
+                        # open a pipe for test control
+                        control_fd, pipe_w = os.pipe()
                         try:
-                            # open a pipe for test control
-                            control_fd, pipe_w = os.pipe()
                             os.set_blocking(control_fd, False)
                             control.reassign(control_fd)
                             # run the test in the background, letting it log output directly to

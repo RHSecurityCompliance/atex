@@ -612,7 +612,7 @@ class Reserve:
         # re-construct the ssh pubkey in case the comment contains
         # a secret username or hostname
         pubkey_contents = ssh_pubkey.read_text().strip()
-        pubkey_type, pubkey_key, _ = pubkey_contents.split(" ")
+        pubkey_type, pubkey_key, *_ = pubkey_contents.split(maxsplit=2)
         pubkey_contents = f"{pubkey_type} {pubkey_key} foo@bar\n"
         # the TF native reserve test expects a base64-encoded pubkey
         encoded_pubkey = base64.b64encode(pubkey_contents.encode()).decode()

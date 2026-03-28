@@ -196,7 +196,7 @@ class FMFTests:
 
 def duration_to_seconds(string):
     string = str(string)  # just in case the YAML had an integer
-    match = re.fullmatch(r"([0-9]+)([a-z]*)", string)
+    match = re.fullmatch(r"([0-9]+)([mhds]?)", string)
     if not match:
         raise ValueError(f"invalid fmf duration format: {string}")
     length, unit = match.groups()

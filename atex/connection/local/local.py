@@ -17,7 +17,7 @@ class LocalConnection(Connection):
         return func(
             # rsync passes the literal 'remote' from the 'remote:foo/bar' arg
             # as first arg to -e, so use shell to strip it off and exec rsync
-            ("rsync", "-e", "/bin/bash -c 'shift; exec \"$@\"'", *args),
+            ("rsync", "-e", "/bin/bash -c 'exec \"$@\"'", *args),
             check=True,
             stdin=subprocess.DEVNULL,
             **func_args,

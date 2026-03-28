@@ -173,7 +173,7 @@ class FMFTests:
         # actually discover the tests
         for child in tree.prune(**prune_kwargs):
             # excludes not supported by .prune(), we have to do it here
-            if excludes and any(re.match(x, child.name) for x in excludes):
+            if excludes and any(re.search(x, child.name) for x in excludes):
                 continue
             # only tests
             if "test" not in child.data:

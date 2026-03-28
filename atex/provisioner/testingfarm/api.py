@@ -373,14 +373,7 @@ class PipelineLogStreamer:
         while True:
             self.request.wait_for_state("running")
 
-            try:
-                if "run" not in self.request or "artifacts" not in self.request["run"]:
-                    continue
-
-                artifacts = self.request["run"]["artifacts"]
-                if not artifacts:
-                    continue
-
+            if "run" in self.request and (artifacts := self.request["run"].get("artifacts")):
                 log = f"{artifacts}/pipeline.log"
                 reply = _http.request("HEAD", log)
                 # 404: TF has a race condition of adding the .log entry without
@@ -389,16 +382,13 @@ class PipelineLogStreamer:
                 #      due to similar reasons (folder exists without log)
                 if reply.status in (404,403):
                     self.logger.info(f"got {reply.status} for {log}, retrying")
-                    continue
                 elif reply.status != 200:
                     raise APIError(f"got HTTP {reply.status} on HEAD {log}", reply)
+                else:
+                    self.logger.info(f"artifacts: {artifacts}")
+                    return log
 
-                self.logger.info(f"artifacts: {artifacts}")
-
-                return log
-
-            finally:
-                time.sleep(self.pipeline_query_limit)
+            time.sleep(self.pipeline_query_limit)
 
     def __iter__(self):
         url = self._wait_for_entry()
@@ -407,29 +397,28 @@ class PipelineLogStreamer:
         while True:
             self.request.assert_alive()
 
-            try:
-                headers = {"Range": f"bytes={bytes_read}-"}
-                # load all returned data via .decode() rather than streaming it
-                # in chunks, because we don't want to leave the connection open
-                # (blocking others) while the user code runs between __next__ calls
-                reply = _http.request("GET", url, headers=headers)
+            headers = {"Range": f"bytes={bytes_read}-"}
+            # load all returned data via .decode() rather than streaming it
+            # in chunks, because we don't want to leave the connection open
+            # (blocking others) while the user code runs between __next__ calls
+            reply = _http.request("GET", url, headers=headers)
 
-                # 416=Range Not Satisfiable, typically meaning "no new data to send"
-                if reply.status == 416:
-                    continue
-                # 200=OK or 206=Partial Content
-                elif reply.status not in (200,206):
-                    raise BadHTTPError(f"got {reply.status} when trying to GET {url}", reply)
-
-                bytes_read += len(reply.data)
-                buffer += reply.data.decode(errors="ignore")
-
-                while (index := buffer.find("\n")) != -1:
-                    yield buffer[:index]
-                    buffer = buffer[index+1:]
-
-            finally:
+            # 416=Range Not Satisfiable, typically meaning "no new data to send"
+            if reply.status == 416:
                 time.sleep(self.pipeline_query_limit)
+                continue
+            # 200=OK or 206=Partial Content
+            elif reply.status not in (200,206):
+                raise BadHTTPError(f"got {reply.status} when trying to GET {url}", reply)
+
+            bytes_read += len(reply.data)
+            buffer += reply.data.decode(errors="ignore")
+
+            while (index := buffer.find("\n")) != -1:
+                yield buffer[:index]
+                buffer = buffer[index+1:]
+
+            time.sleep(self.pipeline_query_limit)
 
 
 class Reserve:

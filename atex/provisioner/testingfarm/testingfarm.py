@@ -137,6 +137,8 @@ class TestingFarmProvisioner(Provisioner):
                 self.reserving.remove(tf_reserve)
 
         except Exception:
+            with self.lock:
+                self.reserving.remove(tf_reserve)
             tf_reserve.release()
             raise
 

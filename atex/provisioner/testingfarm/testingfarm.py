@@ -99,44 +99,46 @@ class TestingFarmProvisioner(Provisioner):
         try:
             # 'machine' is api.Reserve.ReservedMachine namedtuple
             machine = tf_reserve.reserve()
+
+            # connect our Remote to the machine via its class Connection API
+            ssh_options = {
+                "Hostname": machine.host,
+                "User": machine.user,
+                "Port": machine.port,
+                "IdentityFile": machine.ssh_key.absolute(),
+                "ConnectionAttempts": 1000,
+                "Compression": "yes",
+            }
+
+            def release_hook(remote):
+                self.logger.debug(f"releasing {remote}")
+
+                # remove from the list of remotes inside this Provisioner
+                with self.lock:
+                    try:
+                        self.remotes.remove(remote)
+                    except ValueError:
+                        pass
+                # call TF API, cancel the request, etc.
+                tf_reserve.release()
+
+            remote = TestingFarmRemote(
+                tf_reserve.request.id,
+                ssh_options,
+                release_hook=release_hook,
+            )
+
+            remote.connect()
+
+            # since the system is fully ready, stop tracking its reservation
+            # and return the finished Remote instance
+            with self.lock:
+                self.remotes.append(remote)
+                self.reserving.remove(tf_reserve)
+
         except Exception:
             tf_reserve.release()
             raise
-
-        # connect our Remote to the machine via its class Connection API
-        ssh_options = {
-            "Hostname": machine.host,
-            "User": machine.user,
-            "Port": machine.port,
-            "IdentityFile": machine.ssh_key.absolute(),
-            "ConnectionAttempts": 1000,
-            "Compression": "yes",
-        }
-
-        def release_hook(remote):
-            self.logger.debug(f"releasing {remote}")
-
-            # remove from the list of remotes inside this Provisioner
-            with self.lock:
-                try:
-                    self.remotes.remove(remote)
-                except ValueError:
-                    pass
-            # call TF API, cancel the request, etc.
-            tf_reserve.release()
-
-        remote = TestingFarmRemote(
-            tf_reserve.request.id,
-            ssh_options,
-            release_hook=release_hook,
-        )
-        remote.connect()
-
-        # since the system is fully ready, stop tracking its reservation
-        # and return the finished Remote instance
-        with self.lock:
-            self.remotes.append(remote)
-            self.reserving.remove(tf_reserve)
 
         return remote
 

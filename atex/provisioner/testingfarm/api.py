@@ -407,12 +407,17 @@ class PipelineLogStreamer:
             if reply.status == 416:
                 time.sleep(self.pipeline_query_limit)
                 continue
-            # 200=OK or 206=Partial Content
-            elif reply.status not in (200,206):
+            # 200=OK, full content returned (server may not support Range);
+            # skip already-processed bytes
+            elif reply.status == 200:
+                buffer += reply.data[bytes_read:].decode(errors="ignore")
+                bytes_read = len(reply.data)
+            # 206=Partial Content, only the requested range from bytes_read onwards
+            elif reply.status == 206:
+                buffer += reply.data.decode(errors="ignore")
+                bytes_read += len(reply.data)
+            else:
                 raise BadHTTPError(f"got {reply.status} when trying to GET {url}", reply)
-
-            bytes_read += len(reply.data)
-            buffer += reply.data.decode(errors="ignore")
 
             while (index := buffer.find("\n")) != -1:
                 yield buffer[:index]

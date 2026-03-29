@@ -39,13 +39,14 @@ _http = urllib3.PoolManager(
     maxsize=10,
     block=True,
     retries=urllib3.Retry(
-        total=24,
-        # account for API restarts / short outages
-        backoff_factor=10,
-        backoff_max=3600,
+        total=130,
+        # account for API restarts / outages (up to ~4 hours),
+        # start with quick retries (2s, 4s, 8s, ..) and settle at 2min
+        backoff_factor=2,
+        backoff_max=120,
         # retry on API server errors too, not just connection issues
-        status=10,
-        status_forcelist={403,404,408,429,500,502,503,504},
+        status=130,
+        status_forcelist={408,429,500,502,503,504},
         # retry POST as well, even if risky
         allowed_methods=urllib3.Retry.DEFAULT_ALLOWED_METHODS | {"POST"},
     ),

@@ -632,7 +632,7 @@ class Reserve:
             # find hidden login details
             m = re.search(
                 # host address can be an IP address or a hostname
-                r"\] Guest is ready: ArtemisGuest\([^,]+, (\w+)@([^,]+), arch=",
+                r"\] Guest is ready: ArtemisGuest\([^,]+, ([^\s@,]+)@([^,]+), arch=",
                 line,
             )
             if m:

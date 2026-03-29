@@ -102,9 +102,9 @@ def _options_to_rsync_e(options, password=None):
     # no ignored_arg inside rsync -e
     if password:
         # force BatchMode=no to make sshpass(1) work
-        return " ".join(("ssh", "-oBatchMode=no", *cli_opts))
+        return " ".join(shlex.quote(x) for x in ("ssh", "-oBatchMode=no", *cli_opts))
     else:
-        return " ".join(("ssh", *cli_opts, "-oBatchMode=yes"))
+        return " ".join(shlex.quote(x) for x in ("ssh", *cli_opts, "-oBatchMode=yes"))
 
 
 def _rsync_host_cmd(*args, options, password=None, sudo=None):

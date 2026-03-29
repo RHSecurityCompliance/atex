@@ -463,7 +463,7 @@ class SharedVirtProvisioner(Provisioner):
         with self.lock:
             self.started = False
 
-            # stop the reserving thread
+            # signal the reserving thread to exit
             if (
                 self.reserving_thread is not None and
                 self.reserving_thread.is_alive() and
@@ -471,8 +471,16 @@ class SharedVirtProvisioner(Provisioner):
             ):
                 self.to_reserve = -math.inf
                 self.reserving_exit.set()
-                self.reserving_thread.join()
 
+        # join outside the lock - the thread needs it to finish appending
+        # to self.remotes before we can clean up
+        if (
+            self.reserving_thread is not None and
+            self.reserving_thread.is_alive()
+        ):
+            self.reserving_thread.join()
+
+        with self.lock:
             self.to_reserve = 0
             self.reserving_exit.clear()
             self.reserving_thread = None

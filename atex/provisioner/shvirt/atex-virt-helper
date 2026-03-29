@@ -204,7 +204,7 @@ def cmd_reservations(logger, reply, _args):
             else:
                 status[domain] = comm
         else:
-            status[domain] = None
+            status[domain] = "(free)"
     reply(True, domains=status)
 
 

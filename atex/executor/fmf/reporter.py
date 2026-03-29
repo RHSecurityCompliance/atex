@@ -54,11 +54,13 @@ class Reporter:
         """
         for key, value in src.items():
             # delete existing if new value is None (JSON null)
-            if value is None and key in dst:
-                del dst[key]
+            if value is None:
+                if key in dst:
+                    del dst[key]
+                # don't add a new key with None value
                 continue
             # add new key
-            elif key not in dst:
+            if key not in dst:
                 dst[key] = value
                 continue
 

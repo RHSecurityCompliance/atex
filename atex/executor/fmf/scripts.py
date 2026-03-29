@@ -1,5 +1,6 @@
 import collections
 import os
+import uuid
 from pathlib import PurePath
 
 import yaml
@@ -138,24 +139,26 @@ def test_setup(*, test, wrapper_exec, test_exec, test_yaml, **kwargs):
             [[ $not_installed ]] && dnf -y --setopt=install_weak_deps=False install $skip_bad $not_installed
         """) + "\n"  # noqa: E501
 
+    eof = f"EOF_{uuid.uuid4()}"
+
     # write out test data
-    out += f"cat > '{test_yaml}' <<'ATEX_SETUP_EOF'\n"
+    out += f"cat > '{test_yaml}' <<'{eof}'\n"
     out += yaml.dump(test.data).rstrip("\n")  # don't rely on trailing \n
-    out += "\nATEX_SETUP_EOF\n"
+    out += f"\n{eof}\n"
 
     # make the wrapper script
-    out += f"cat > '{wrapper_exec}' <<'ATEX_SETUP_EOF'\n"
+    out += f"cat > '{wrapper_exec}' <<'{eof}'\n"
     out += test_wrapper(
         test=test,
         test_exec=test_exec,
         **kwargs,
     )
-    out += "ATEX_SETUP_EOF\n"
+    out += f"{eof}\n"
     # make the test script
-    out += f"cat > '{test_exec}' <<'ATEX_SETUP_EOF'\n"
+    out += f"cat > '{test_exec}' <<'{eof}'\n"
     out += test.data["test"]
     out += "\n"  # for safety, in case 'test' doesn't have a newline
-    out += "ATEX_SETUP_EOF\n"
+    out += f"{eof}\n"
     # make both executable
     out += f"chmod 0755 '{wrapper_exec}' '{test_exec}'\n"
 

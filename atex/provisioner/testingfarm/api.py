@@ -112,6 +112,7 @@ class TestingFarmAPI:
             raise APIError(f"got HTTP {reply.status} on {method} {url}", reply)
 
         if not reply.headers.get("Content-Type", "").startswith("application/json"):
+            reply.drain_conn()
             raise BadHTTPError(
                 f"HTTP {reply.status} on {method} {url} is not application/json",
                 reply,

@@ -106,12 +106,15 @@ class JSONLinesAggregator(Aggregator):
 
     def ingest(self, platform, test_name, artifacts):
         unique_id = (platform, test_name)
-        if unique_id in self.seen_tests:
-            if not self.allow_duplicate:
-                raise AggregatorError(f"'{test_name}' was already ingested once for '{platform}'")
-            else:
-                test_name = f"{test_name} ({self.seen_tests[unique_id]})"
-        self.seen_tests[unique_id] += 1
+        with self.lock:
+            if unique_id in self.seen_tests:
+                if not self.allow_duplicate:
+                    raise AggregatorError(
+                        f"'{test_name}' was already ingested once for '{platform}'",
+                    )
+                else:
+                    test_name = f"{test_name} ({self.seen_tests[unique_id]})"
+            self.seen_tests[unique_id] += 1
 
         self.logger.info(f"ingesting '{platform}' / '{test_name}' from '{artifacts}'")
 

@@ -42,7 +42,18 @@ class NonblockLineReader:
         Returns None if nothing could be read (BlockingIOError) or if EOF
         was reached.
         """
-        while self.bytes_read < len(self.buffer):
+        while True:
+            # return a buffered line before trying to read more
+            if (idx := self.buffer.find(b"\n", 0, self.bytes_read)) != -1:
+                line = bytes(self.buffer[:idx])
+                remainder = self.bytes_read - idx - 1  # \n
+                self.buffer[:remainder] = memoryview(self.buffer)[idx+1 : self.bytes_read]
+                self.bytes_read -= idx+1
+                return line
+
+            if self.bytes_read >= len(self.buffer):
+                raise BufferFullError(f"line buffer reached {len(self.buffer)} bytes")
+
             space_left = len(self.buffer) - self.bytes_read
             try:
                 data = os.read(self.src, min(space_left, self.read_len))
@@ -56,12 +67,3 @@ class NonblockLineReader:
 
             self.buffer[self.bytes_read : self.bytes_read + len(data)] = data
             self.bytes_read += len(data)
-
-            if (idx := self.buffer.find(b"\n", 0, self.bytes_read)) != -1:
-                line = bytes(self.buffer[:idx])
-                remainder = self.bytes_read - idx - 1  # \n
-                self.buffer[:remainder] = memoryview(self.buffer)[idx+1 : self.bytes_read]
-                self.bytes_read -= idx+1
-                return line
-
-        raise BufferFullError(f"line buffer reached {len(self.buffer)} bytes")

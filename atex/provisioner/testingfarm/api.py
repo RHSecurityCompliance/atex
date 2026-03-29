@@ -308,10 +308,9 @@ class Request:
     def cancel(self):
         if not self.id:
             return
-        data = self.api.cancel_request(self.id)
+        self.data = self.api.cancel_request(self.id)
         self.id = None
-        self.data = {}
-        return data
+        return self.data
 
     def alive(self):
         if not self.id:

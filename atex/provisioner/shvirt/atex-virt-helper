@@ -380,8 +380,11 @@ def cmd_create_volume(logger, reply, args):
     # - try a few times to account for race conditions in type=dir pools
     for _ in range(10):
         code, output = virsh("pool-refresh", pool)
-        if code == 0 or "has asynchronous jobs running" not in output:
+        if code == 0:
             break
+        if "has asynchronous jobs running" not in output:
+            reply(False, f"failed refreshing pool '{pool}': {output}")
+            return
         time.sleep(0.1)
     else:
         reply(False, f"failed refreshing pool '{pool}': {output}")
@@ -497,8 +500,11 @@ def cmd_copy_volume(logger, reply, args):
     # - try a few times to account for race conditions in type=dir pools
     for _ in range(10):
         code, output = virsh("pool-refresh", pool)
-        if code == 0 or "has asynchronous jobs running" not in output:
+        if code == 0:
             break
+        if "has asynchronous jobs running" not in output:
+            reply(False, f"failed refreshing pool '{pool}': {output}")
+            return
         time.sleep(0.1)
     else:
         reply(False, f"failed refreshing pool '{pool}': {output}")

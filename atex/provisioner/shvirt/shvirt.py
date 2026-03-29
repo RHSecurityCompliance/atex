@@ -476,7 +476,8 @@ class SharedVirtProvisioner(Provisioner):
         # to self.remotes before we can clean up
         if (
             self.reserving_thread is not None and
-            self.reserving_thread.is_alive()
+            self.reserving_thread.is_alive() and
+            self.reserving_thread is not threading.current_thread()
         ):
             self.reserving_thread.join()
 

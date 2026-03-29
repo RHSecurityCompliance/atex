@@ -1,28 +1,15 @@
 import argparse
 import json
 import logging
-import os
 import re
 import subprocess
-from pathlib import Path
 
+from ... import util
 from .common import make_helper_cmd
 from .install import add_install_args
 from .install import install as install
 from .reserve import add_reserve_args
 from .reserve import reserve as reserve
-
-
-def _default_ssh_key():
-    home_dir = os.environ.get("HOME")
-    if home_dir is None:
-        return None
-    ssh_dir = Path(home_dir) / ".ssh"
-    if not ssh_dir.exists():
-        return None
-    for file in ssh_dir.iterdir():
-        if file.name.startswith("id_") and file.suffix != ".pub":
-            return file
 
 
 def _natural_sort(key):
@@ -98,7 +85,7 @@ def parse_args(parser):
     grp.add_argument(
         "--helper-sshkey",
         help="connect via ssh using this key, for reservations too",
-        default=_default_ssh_key(),
+        default=util.default_ssh_key(),
     )
     grp.add_argument("--helper-cmd", help="cmd + args instead of atex-virt-helper (shlex syntax)")
 

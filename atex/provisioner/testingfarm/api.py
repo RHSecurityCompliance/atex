@@ -475,8 +475,8 @@ class Reserve:
         - `ssh_key` (str) is a path to an OpenSSH private key file (with an
           associated public key file in .pub), to be added to the reserved OS.
 
-          If unspecified, an attempt to read `~/.ssh/id_rsa` will be made, and
-          if that is also unsuccessful, a temporary keypair will be generated.
+          If unspecified, the first `~/.ssh/id_*` key found will be used, and
+          if none is found, a temporary keypair will be generated.
 
         - `source_host` (str) is an IPv4 network specified as ie. `1.2.3.4/32`
           to be allowed incoming traffic to the reserved system (such as ssh).
@@ -593,11 +593,12 @@ class Reserve:
             else:
                 provisioning["security_group_rules_ingress"] = [ingress_rule]
 
-        # read user-provided ssh key, or generate one
-        ssh_key = self._ssh_key
-        if ssh_key:
+        # read user-provided ssh key, or try ~/.ssh/id_*, or generate one
+        if ssh_key := self._ssh_key:
             if not ssh_key.exists():
                 raise FileNotFoundError(f"{ssh_key} specified, but does not exist")
+            ssh_pubkey = Path(f"{ssh_key}.pub")
+        elif ssh_key := util.default_ssh_key():
             ssh_pubkey = Path(f"{ssh_key}.pub")
         else:
             with self.lock:

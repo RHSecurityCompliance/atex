@@ -326,8 +326,12 @@ def main(args):
     elif args._cmd == "cancel":
         cancel(args)
     elif args._cmd in ("search-requests", "sr"):
+        if args.page is not None and args.page < 1:
+            raise RuntimeError("--page must be a positive integer")
         search_requests(args)
     elif args._cmd == "stats":
+        if args.page is not None and args.page < 1:
+            raise RuntimeError("--page must be a positive integer")
         stats(args)
     elif args._cmd == "reserve":
         reserve(args)

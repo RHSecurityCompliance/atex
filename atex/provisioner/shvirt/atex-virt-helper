@@ -154,9 +154,8 @@ def cmd_reserve(logger, reply, args):
             return
 
     # don't try to lock domains already locked
-    domains -= state_locks.keys()
+    domains = [name for name in domains if name not in state_locks]
 
-    domains = list(domains)
     random.shuffle(domains)
     for domain in domains:
         if lock(domain):

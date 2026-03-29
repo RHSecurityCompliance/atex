@@ -64,8 +64,6 @@ def search_requests(args):
             page=args.page,
             **func_kwargs,
         )
-        if not reply:
-            return
     else:
         reply = api.search_requests(
             state=args.state,
@@ -145,25 +143,23 @@ def stats(args):
 
         if args.page is not None:
             for state in args.states.split(","):
-                reply = api.search_requests_paged(
+                yield from api.search_requests_paged(
                     state=state,
                     page=args.page,
                     mine=False,
                     ranch=args.ranch,
                     **func_kwargs,
                 )
-                if reply:
-                    yield from reply
         else:
             for state in args.states.split(","):
-                reply = api.search_requests(
+                found = api.search_requests(
                     state=state,
                     mine=False,
                     ranch=args.ranch,
                     **func_kwargs,
                 )
-                if reply:
-                    yield from reply
+                if found is not None:
+                    yield from found
 
     top_users_repos(request_search_results())
 

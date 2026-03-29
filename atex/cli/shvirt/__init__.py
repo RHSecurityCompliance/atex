@@ -131,6 +131,9 @@ def parse_args(parser):
 
 
 def main(args):
+    if args.helper_host and not args.helper_sshkey:
+        raise RuntimeError("--helper-sshkey is required when using --helper-host")
+
     if args._cmd == "reservations":
         reservations(args)
     elif args._cmd == "virsh":
@@ -138,6 +141,8 @@ def main(args):
     elif args._cmd == "install":
         install(args)
     elif args._cmd == "reserve":
+        if not args.helper_sshkey:
+            raise RuntimeError("--helper-sshkey is required for reserve")
         reserve(args)
     else:
         raise RuntimeError(f"unknown args: {args}")

@@ -1,9 +1,10 @@
 #!/usr/bin/python3
 
-import collections
 import logging
+import threading
 
-_instances = collections.Counter()
+_instances = {}
+_lock = threading.RLock()
 
 
 def get_loggers(name):
@@ -28,8 +29,9 @@ def get_loggers(name):
         second.info("abc")  # foo.bar.1: abc
     """
     def get_logger():
-        logger = logging.getLogger(f"{name}.{_instances[name]}")
-        _instances[name] += 1
-        return logger
+        with _lock:
+            nr = _instances.get(name, 0)
+            _instances[name] = nr + 1
+        return logging.getLogger(f"{name}.{nr}")
 
     return get_logger

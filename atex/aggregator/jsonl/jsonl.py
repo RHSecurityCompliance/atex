@@ -1,5 +1,4 @@
 import abc
-import collections
 import gzip
 import json
 import lzma
@@ -38,7 +37,7 @@ class JSONLinesAggregator(Aggregator):
         self.target = Path(target)
         self.files = Path(files)
         self.allow_duplicate = allow_duplicate
-        self.seen_tests = collections.Counter()
+        self.seen_tests = {}
         self.target_fobj = None
 
     def _open_target(self, target):  # noqa: PLR6301
@@ -114,7 +113,9 @@ class JSONLinesAggregator(Aggregator):
                     )
                 else:
                     test_name = f"{test_name} ({self.seen_tests[unique_id]})"
-            self.seen_tests[unique_id] += 1
+                    self.seen_tests[unique_id] += 1
+            else:
+                self.seen_tests[unique_id] = 1
 
         self.logger.info(f"ingesting '{platform}' / '{test_name}' from '{artifacts}'")
 

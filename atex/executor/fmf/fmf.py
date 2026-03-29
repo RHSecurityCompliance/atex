@@ -112,8 +112,7 @@ class FMFExecutor(Executor):
         self.plan_env_file = None
 
     def cancel(self):
-        with self.lock:
-            self.cancelled = True
+        self.cancelled = True
 
     def _run_plan_scripts(self, scripts):
         # make environment for 'prepare' / 'finish' scripts
@@ -216,9 +215,8 @@ class FMFExecutor(Executor):
                 self.logger.debug(f"'{test_name}': {state.name}")
 
                 while not duration.out_of_time():
-                    with self.lock:
-                        if self.cancelled:
-                            abort("cancel requested")
+                    if self.cancelled:
+                        abort("cancel requested")
 
                     if state == self.State.STARTING_TEST:
                         # reconnect/reboot count (for compatibility)

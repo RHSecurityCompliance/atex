@@ -1,5 +1,3 @@
-import collections
-
 from ...executor.fmf.metadata import duration_to_seconds, listlike
 
 
@@ -15,13 +13,14 @@ def LimitedRerunsMixin(reruns, cond=lambda code: code != 0):  # noqa: N802
     class LimitedRerunsMixin:
         def __init__(self, *args, **kwargs):
             super().__init__(*args, **kwargs)
-            self._counter = collections.Counter()
+            self._counter = {}
 
         def should_be_rerun(self, info, /):
-            if self._counter[info.test_name] >= reruns:
+            past_reruns = self._counter.get(info.test_name, 0)
+            if past_reruns >= reruns:
                 return False
             if info.exception or cond(info.exit_code):
-                self._counter[info.test_name] += 1
+                self._counter[info.test_name] = past_reruns + 1
                 return True
             return False
 

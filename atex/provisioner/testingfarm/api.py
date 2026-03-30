@@ -235,8 +235,8 @@ class TestingFarmAPI:
             # clamp to real 'before'
             end = min(end, before)
             new_kwargs = kwargs | {
-                "created_after": start.isoformat(),
-                "created_before": end.isoformat(),
+                "created_after": start.replace(tzinfo=None).isoformat(),
+                "created_before": end.replace(tzinfo=None).isoformat(),
             }
             found = self.search_requests(*args, **new_kwargs)
             if found is not None:

@@ -249,6 +249,7 @@ def cmd_virt_install(logger, reply, args):
 
     # simulate a TTY for virt-install, so that it can output console
     # via an (internal) 'virsh console' call
+    proc = None
     m_fd, s_fd = pty.openpty()
     try:
         try:
@@ -299,7 +300,8 @@ def cmd_virt_install(logger, reply, args):
             break
 
     except Exception as e:
-        proc.terminate()
+        if proc is not None:
+            proc.terminate()
         reply(False, f"{type(e).__name__}({e})")
         logger.exception("unknown error")
         destroy_if_requested()

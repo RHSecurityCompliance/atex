@@ -65,7 +65,7 @@ def _wait_for_sshd(host, port, event, logger=None):
             # connected, try receiving
             sshd_signature = False
             end = time.monotonic() + backoff_sleep
-            backoff_sleep *= 2
+            backoff_sleep = min(backoff_sleep * 2, 180)  # up to 3min
             while not sshd_signature and time.monotonic() < end:
                 if event.wait(timeout=0.1):
                     return False

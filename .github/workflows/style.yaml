@@ -39,7 +39,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      - name: Install flake8-picky-parentheses
+      - name: Install yamllint
         run: python3 -m pip install yamllint
       - name: Run yamllint check
         run: |

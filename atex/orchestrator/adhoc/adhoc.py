@@ -390,7 +390,6 @@ class AdHocOrchestrator(Orchestrator):
         self.test_queue.join()    # also ignore any exceptions raised
 
         # wait for all running ingestions to finish, print exceptions
-        # (we would rather stop provisioners further below than raise here)
         self.ingest_queue.join()
         while True:
             try:

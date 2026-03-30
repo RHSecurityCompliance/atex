@@ -68,7 +68,7 @@ of tmt features on top of what fmf already provides.
   - `exclude` support (custom `re`-based filter, not in fmf)
   - No remote git repo (aside from what fmf supports natively), no `check`,
     no `modified-only`, no `adjust-tests`, etc.
-  - Tests from multiple `discover` sections are added together, eg. any order
+  - Tests from multiple `discover` sections are added together, ie. any order
     of the `discover` sections in the fmf is (currently) not honored
 - `provision`
   - Ignored (not relevant to an ATEX Executor)
@@ -124,7 +124,7 @@ of tmt features on top of what fmf already provides.
 - `restart`
   - Ignored, restart how many times you want until `duration`
   - The only requirement is that you `disconnect` the control channel cleanly
-    before the connection disconnects (due to a OS reboot).
+    before the connection disconnects (due to an OS reboot).
     - See `disconnect` and `noop` in [TEST_CONTROL.md](TEST_CONTROL.md)
 - `path`
   - Currently not implemented, may be supported in the future
@@ -145,6 +145,6 @@ Not supported, but the `story` key exists, the fmf node is skipped/ignored.
   - Set to `1` to print out detailed runner-related trace within the test output
     stream (as if it was printed out by the test).
 - `ATEX_DEBUG_NO_EXITCODE`
-  - Set to anything other than `1` to avoid the test wrapper sending an
-    automatic `exitcode` keyword over [Test Control](TEST_CONTROL.md).
+  - Set to `1` to avoid the test wrapper sending an automatic `exitcode` keyword
+    over [Test Control](TEST_CONTROL.md).
   - Useful mainly for testing FMFExecutor itself.

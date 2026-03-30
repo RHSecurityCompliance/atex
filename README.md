@@ -1,6 +1,6 @@
 # ATEX
 
-ATEX is a framework for a configurable test execution.
+ATEX is a framework for configurable test execution.
 
 It is a set of Python-based abstract APIs and several implementations utilizing
 them, providing building blocks for you to make simple Python-based scripts
@@ -32,7 +32,7 @@ You can download / fetch tests from multiple repositories, modify their metadata
 on-the-fly, do anything you want via normal Python code, and also call ATEX
 building blocks to help you.
 
-There is no "vendor lock in" to one tool or ecosystem. You don't need ATEX to
+There is no "vendor lock-in" to one tool or ecosystem. You don't need ATEX to
 implement feature XYZ when you can write a trivial piece of Python code to
 do it (ie. pre-processing test metadata, post-processing results).
 
@@ -99,15 +99,15 @@ Currently, the recommended approach is to split the execution:
 
 ```
 # synchronously, because podman CLI has concurrency issues
-pytest tests/provision/test_podman.py
+pytest tests/provisioner/test_podman.py
 
 # in parallel, because provisioning takes a long time
 export TESTING_FARM_API_TOKEN=...
 export TESTING_FARM_COMPOSE=...
-pytest -n 20 tests/provision/test_podman.py
+pytest -n 20 tests/provisioner/test_testingfarm.py
 
 # fast enough for synchronous execution
-pytest tests/fmf
+pytest tests/executor
 ```
 
 ## Unsorted notes
@@ -136,4 +136,4 @@ it receives a test to run.
 
 This is in contrast to a more common approach of splitting a large list of
 N tests onto M workers like N/M, which yields significant time penalties due
-to tests having very varies runtimes.
+to tests having very varied runtimes.

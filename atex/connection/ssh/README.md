@@ -40,7 +40,7 @@ opts = {
     "IdentityFile": "/path/to/ssh_key"
 }
 
-with StatelessSSHConnection(opts):
+with StatelessSSHConnection(opts) as c:
     c.cmd(["ls", "/"])
     ...
 ```
@@ -70,7 +70,7 @@ opts = {
     "IdentityFile": "/path/to/ssh_key"
 }
 
-with ManagedSSHConnection(opts):
+with ManagedSSHConnection(opts) as c:
     c.cmd(["ls", "/"])
     c.cmd(["cat", "/etc/passwd"])
     c.cmd(["df", "-h"])

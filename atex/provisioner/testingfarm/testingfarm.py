@@ -97,7 +97,7 @@ class TestingFarmProvisioner(Provisioner):
             time.sleep(initial_delay)
 
         try:
-            # 'machine' is api.Reserve.ReservedMachine namedtuple
+            # 'machine' is api.Reserve.Reserved namedtuple
             machine = tf_reserve.reserve()
 
             # connect our Remote to the machine via its class Connection API

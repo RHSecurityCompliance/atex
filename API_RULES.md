@@ -57,9 +57,9 @@ pass non-API arguments:
 ```python
 def serve_to_employees(brewer):
     if isinstance(brewer, CoffeeBrewer):
-        intake(ingredients, grind=False)
+        brewer.intake(ingredients, grind=False)
     else:
-        intake(ingredients)
+        brewer.intake(ingredients)
 ```
 
 Using `inspect` to get a function signature is not recommended as the meaning

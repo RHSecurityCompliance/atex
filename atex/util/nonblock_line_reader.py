@@ -27,6 +27,8 @@ class NonblockLineReader:
 
         - `max_len` is a maximum potential line length, incl. the newline
           character - if reached, a BufferFullError is raised.
+
+        - `read_len` is how many bytes to read per `os.read()` call.
         """
         self.src = src
         self.read_len = read_len

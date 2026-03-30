@@ -51,7 +51,7 @@ user in `/etc/ssh/sshd_config` (or `ssh_config.d/123-your-name.conf`), ie.
 ```
 Match User libvirtuser
     DisableForwarding yes
-    ForceCommand /usr/bin/sudo /opt/atex-virt-helper --log info qemu:///system
+    ForceCommand /usr/bin/sudo /usr/local/bin/atex-virt-helper --log info qemu:///system
 ```
 
 Also recommended is to set global `ClientAliveInterval` to ie. `5` to quickly
@@ -72,7 +72,7 @@ The helper **DOES NOT PROVIDE SECURITY**, it allows users to run `virsh` and
 
 Treat it as giving the user full shell access.
 
-If you need extra security, use an unprivileged user authorized via Polkit,
+If you need extra security, use an unprivileged user with `qemu:///session`,
 see above.
 
 ## Libvirt itself
@@ -113,7 +113,7 @@ account for extra memory used by QEMU itself. Also note that Fedora/RHEL
 installed via Anaconda needs 4+ GB of RAM to install (stage2 downloaded
 to RAM), a cut-down running system is just ~1 GB.
 
-### Networking 
+### Networking
 
 The domains also need to use user networking (specifically passt, not SLIRP)
 to be reachable by the Provisioner. There needs to be at least one port
@@ -261,7 +261,7 @@ the `output` traffic and apply rules that way.
 table filter {
     set private_ranges {
         type ipv4_addr; flags interval
-        elements = { 10.0.0.0/8, 192.168.0.0/16, 172.16.0.0/20 }
+        elements = { 10.0.0.0/8, 192.168.0.0/16, 172.16.0.0/12 }
     }
 
     # allow outgoing traffic only to the Internet,
@@ -273,6 +273,7 @@ table filter {
         ip daddr != @private_ranges accept
     }
 }
+```
 
 (Substitute `qemu` for any other unprivileged user name if running with
 `qemu:///session`.)

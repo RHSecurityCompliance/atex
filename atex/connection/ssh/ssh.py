@@ -195,7 +195,7 @@ class ManagedSSHConnection(Connection):
         Prepare to connect to an SSH server specified in `options`.
 
         - If `password` is given, spawn the `ssh` command via `sshpass`
-        and pass the password to it.
+          and pass the password to it.
 
         - If `sudo` specifies a username, call `sudo(8)` on the remote shell
           to run under a different user on the remote host.

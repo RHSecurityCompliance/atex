@@ -52,6 +52,6 @@ An Aggregator must implement `.ingest()` in a thread-safe way, as it may be
 called from any thread, possibly at the same time.
 
 It may rely on `.start()` and `.stop()` to be called only by the thread
-which created the specific Provisioner instance.
+which created the specific Aggregator instance.
 
 It may also rely on `.ingest()` being called only after `.start()`.

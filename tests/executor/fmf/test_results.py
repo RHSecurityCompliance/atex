@@ -121,7 +121,7 @@ def test_subtest(provisioner, tmp_dir):
 
 
 def test_subtest_nested(provisioner, tmp_dir):
-    """Subresult using sub/dir/s."""
+    """Subtest using sub/dir/s."""
     results = run_fmf_test(provisioner, tmp_dir)
     assert results.count("\n") == 2
     first, second = results.rstrip("\n").split("\n")

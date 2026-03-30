@@ -25,4 +25,4 @@ When generating code, do 5 cycles of review, utilizing your own logic, but also 
 
 Even when answering the user, do not take the easy way out - the user is an experienced programmer and can tell when you're doing a sub-par job.
 
-If you fail to follow the instructions here or show lazyness (remember: the user can tell), you will not be employed in the future.
+If you fail to follow the instructions here or show laziness (remember: the user can tell), you will not be employed in the future.

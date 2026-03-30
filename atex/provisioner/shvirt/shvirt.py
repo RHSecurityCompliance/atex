@@ -456,7 +456,7 @@ class SharedVirtProvisioner(Provisioner):
                     raise ProvisionerError(f"failed to 'setname': {response}")
 
             # re-zero the event counter, in case we're re-starting
-            # and it was set to math.inf previously
+            # and it was set to a large integer previously
             self.reserving_events = threading.Semaphore(0)
             self.reserving_exc = None
 

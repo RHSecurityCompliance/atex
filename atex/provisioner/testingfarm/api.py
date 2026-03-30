@@ -506,7 +506,7 @@ class Reserve:
         - `api` is a TestingFarmAPI instance - if unspecified, a new one
           is instantiated.
 
-        - `logger` is an logging-API object to log messages to.
+        - `logger` is a logging-API object to log messages to.
         """
         self.logger = logger or logging.getLogger("atex")
 

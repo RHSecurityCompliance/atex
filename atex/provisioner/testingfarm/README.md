@@ -9,7 +9,7 @@ This Provisioner uses [Testing Farm](https://testing-farm.io/) by scheduling
 themselves), similarly to how the official `testing-farm reserve` CLI command
 does it.
 
-```json
+```python
 with TestingFarmProvisioner("CentOS-Stream-9", max_remotes=4) as p:
     p.provision(10)
     for _ in range(10):
@@ -18,7 +18,11 @@ with TestingFarmProvisioner("CentOS-Stream-9", max_remotes=4) as p:
         remote.release()
 ```
 
-The keyword arguments you can pass extends beyond just TestingFarmProvisioner,
+Note that `max_remotes` limits how many Testing Farm Requests are active at
+any one time. The remaining `.provision()` requests are queued internally and
+submitted when active Remotes are released.
+
+The keyword arguments you can pass extend beyond just TestingFarmProvisioner,
 any extra ones are passed to the underlying [Reserve API class](api.py).
 
 ## Reservation time
@@ -28,5 +32,5 @@ the Provisioner submits a "request" to Testing Farm (typically with the first
 `.provision()` call) and that, while Remotes are typically returned in the order
 they were requested from Testing Farm, it isn't a guarantee.
 
-So set the `timeout=` keyword argument to the maximum possible time your plan
+So set the `timeout=` keyword argument to the maximum possible time you plan
 to run for - ie. a 6h-limited CI job would set it to ~5h.

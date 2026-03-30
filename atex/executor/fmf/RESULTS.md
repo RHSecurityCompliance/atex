@@ -7,7 +7,7 @@ Specifically, this format is meant to be used as an argument to the `result`
 *control word*.
 
 Note that only one result may be sent using one `result` *control word*,
-eg. no top-level arrays/lists or multiple `{...}` objects allowed.
+ie. no top-level arrays/lists or multiple `{...}` objects allowed.
 
 ## Basic format
 
@@ -15,8 +15,8 @@ This protocol is **heavily** based on [Test Artifacts](..), specifically the
 `results` file line-JSON format.
 
 - `status`, `name`, `note` are exactly the same
-- `files` here contains nested dics/objects specifying file name + size (length)
-  instead of strings as file names
+- `files` here contains nested dicts/objects specifying file name + size
+  (length) instead of strings as file names
 - `partial` and `testout` keys are added extra (see below)
 
 ### JSON format details
@@ -26,7 +26,7 @@ generic ones in [Test Artifacts](..).
 
 ## Status, Name and Note
 
-These works the same as in [Test Artifacts](..), so that
+These work the same as in [Test Artifacts](..), so that
 
 ```json
 {"status": "fail", "name": "my-first-result"}
@@ -67,7 +67,7 @@ representing one file to be uploaded. Each object must specify
 ```
 
 After we receive such a result, we start treating any incoming data as binary
-`foobar.log` contents, reading exactly 100 bytes, after which we swich back
+`foobar.log` contents, reading exactly 100 bytes, after which we switch back
 to parsing results (see [TEST_CONTROL.md](TEST_CONTROL.md) for details).
 
 If a result specifies multiple `files` entries, we read their contents in the
@@ -76,11 +76,11 @@ data stream by the lengths specified.
 
 A file name may contain zero or more `/`, but it must not start with `/`.
 
-A sanity check will cause an error (discarding the result) if you specify
-multiple identical file names within one result.\
-However, this does not extend across results - a second result with the same
-`name` specifying the same `files` `name` causes `length` bytes to be
-**appended** to the existing file.
+If you specify multiple identical file names within one result, the `length`
+bytes of each are appended to the same file on disk.\
+Similarly, across results - a second result with the same `name` specifying
+the same `files` `name` causes `length` bytes to be **appended** to the
+existing file.
 
 ### Full binary stream example
 
@@ -180,7 +180,7 @@ we need to keep them in memory - excessive amounts will increase memory use.
 
 ## Test stdout and stderr
 
-If a result specifies `testout` in a result, we take the value as a file name
+If a test specifies `testout` in a result, we take the value as a file name
 to be added to `files` by us, with test stdout+stderr as the contents.
 
 ```
@@ -192,7 +192,7 @@ same result.\
 It must not specify a `files` entry with `name` identical to the name passed
 in `testout`, doing so triggers a sanity check error, discarding the result.
 
-`testout` may be specified in a `"partial": true` result, overriden in any
+`testout` may be specified in a `"partial": true` result, overridden in any
 later `"partial": true` result for the same test `name`, just like any other
 string. It is parsed by us only on a final `"partial": false` submission.
 

@@ -36,7 +36,7 @@ class TestControl:
 
         - `control_fd` is a non-blocking file descriptor to be read.
 
-        - `logger` is an logging-API object to log messages to.
+        - `logger` is a logging-API object to log messages to.
         """
         self.logger = logger or logging.getLogger("atex")
 

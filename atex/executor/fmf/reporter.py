@@ -29,7 +29,7 @@ class Reporter:
         - `files_dir` is a dir name inside `output_dir` any files will be
           uploaded to.
 
-        - `logger` is an logging-API object to log messages to.
+        - `logger` is a logging-API object to log messages to.
         """
         self.logger = logger or logging.getLogger("atex")
 
@@ -76,7 +76,7 @@ class Reporter:
             # extensible sequence, extend it
             elif isinstance(value, list):
                 orig_value += value
-            # immutable sequence, re-created a merged one
+            # immutable sequence, re-create a merged one
             elif isinstance(value, tuple):
                 dst[key] = (*orig_value, *value)
             # overridable types, doesn't make sense to extend them

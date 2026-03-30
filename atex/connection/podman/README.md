@@ -16,7 +16,7 @@ any functional network, sshd, etc. in the container.
 The `.connect()` and `.disconnect()` methods are a no-op.
 
 ```python
-with PodmanConnection("container_name_or_id"):
+with PodmanConnection("container_name_or_id") as c:
     c.cmd(["ls", "/"])
     ...
 ```

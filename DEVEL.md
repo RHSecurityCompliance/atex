@@ -4,29 +4,12 @@
 
 TODO - coding style
 
-## Executor and test results
-
-TODO: mention that tests output their own JSON + uploaded files
-to some temporary dir, which is then ingested by an Aggregator
-to (potentially) a very different JSON format - the JSON here
-is literally just a format, not a specific kind of data - like
-"INI" doesn't always mean "Midnight Commander config", but a generic
-format useful for many things
-
-TODO: also, test -> results+files --> Aggregator --> more files
-where results+files can have many different keys/values, but
-Aggregators typically only look for a few specific ones (ie. 'note')
-
 ## Release workflow
 
 NEVER commit these to git, they are ONLY for the PyPI release.
 
 1. Tag a new version in this repo and push the tag
 1. Increase `version = ` in `pyproject.toml`
-1. Tag a new version in the `atex-reserve` repo, push the tag
-1. Point to that tag from `atex/provisioner/testingfarm/api.py`,
-   `DEFAULT_RESERVE_TEST`
-1. ...
 1. `git status --ignored` to check what would be cleaned
 1. `git clean -fdx`
 1. `python3 -m build`
@@ -56,7 +39,7 @@ and there is no clear winner (in terms of cleanup on `SIGTERM` or Ctrl-C):
   - 3rd party libraries like `requests` or `urllib3` don't support it, one needs
     to resort to spawning these in separate threads anyway
   - same with `os.*` functions and syscalls
-  - every thing exposed via API needs to have 2 copies - async and non-async,
+  - everything exposed via API needs to have 2 copies - async and non-async,
     making it unbearable
   - other stdlib bugs, ie. "large" reads returning BlockingIOError sometimes
 
@@ -138,7 +121,7 @@ leaving `stdin` / `stderr` to be used by the test. However a clever test can
 either report EOF, or straight out lose the session with ie.
 
 ```
-TestAbortedError(test wrapper unexpectedly exited with 255 and reconnect was not sent via test control)
+TestAbortedError(test wrapper unexpectedly exited with 255 and disconnect was not sent via test control)
 ```
 
 To avoid this, we always treat the `ATEX<->SUT` connection as sacred, TTY-less,

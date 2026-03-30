@@ -43,7 +43,7 @@ compress the uploaded files.
 
 ## Format
 
-The results uses a top-level array (on each line) with a fixed item order:
+The results use a top-level array (on each line) with a fixed item order:
 
 ```
 [platform, status, test name, subtest name, files, note]
@@ -55,7 +55,7 @@ of strings.
 Note that test name is explicitly given to `ingest()`, and subtest name comes
 from test artifacts (the `name` result key, which may be non-existent,
 indicating the result is relevant to the test itself, not a subtest).\
-See also [RESULTS.md](../../executor/RESULTS.md).
+See also [RESULTS.md](../../executor/fmf/RESULTS.md).
 
 Further:
 - If subtest name or note missing in test artifacts, a `null` item is used.

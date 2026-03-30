@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "atex"
-description = "Ad-hoc Test EXecutor"
+description = "Ad-hoc Test EXecution"
 readme = "README.md"
 version = "99"
 license = "GPL-3.0-or-later"
@@ -110,7 +110,6 @@ ignore = [
     "E231",     # missing-whitespace
     "E265",     # no-space-after-block-comment
     "E266",     # multiple-leading-hashes-for-block-comment
-    "PLR0917",  # too-many-positional-arguments
     "PLR6201",  # literal-membership
     "PLW1514",  # unspecified-encoding
     "PLW1641",  # eq-without-hash

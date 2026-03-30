@@ -10,7 +10,7 @@ from .metadata import test_pkg_requires
 
 # name: fmf path to the test as string, ie. /some/test
 # data: dict of the parsed fmf metadata (ie. {'tag': ... , 'environment': ...})
-# dir:  relative pathlib.Path of the test .fmf to repo root, ie. some/test
+# dir:  relative PurePath of the test .fmf to repo root, ie. some/test
 #       (may be different from name for "virtual" tests that share the same dir)
 Test = collections.namedtuple("Test", ["name", "data", "dir"])
 
@@ -111,6 +111,9 @@ def test_setup(*, test, wrapper_exec, test_exec, test_yaml, **kwargs):
     - `wrapper_exec` is the remote path where the wrapper script should be put.
 
     - `test_exec` is the remote path where the test script should be put.
+
+    - `test_yaml` is the remote path where the test metadata YAML should be
+      written.
 
     Any `kwargs` are passed to `test_wrapper()`.
     """

@@ -28,7 +28,7 @@ word3 any arbitrary <data>12345</data> here\n
 ```
 
 There is a parser specific to each *control word*, and, when called, is given
-the remainder of the *control line*, without the *control word*`, the
+the remainder of the *control line*, without the *control word*, the
 optional space after it, and the terminating newline.
 
 This parser is also given full (binary!) access to the stream, allowing it to
@@ -75,7 +75,7 @@ The parent then read `word2 arg1 arg2\n` as another *control line*, calling
     the (real) test.
   - This exists to differentiate between a test returning 255 and the ssh client
     on the runner returning 255 due to a connection issue. For this reason,
-    the controler **always** expects the remote command (wrapper) to return 0,
+    the controller **always** expects the remote command (wrapper) to return 0,
     and treats anything else as a non-test failure.
   - If a remote test wrapper does not write this control word, that is also
     considered a fatal non-test failure.

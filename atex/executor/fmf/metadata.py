@@ -81,7 +81,7 @@ class FMFTests:
         self.plan_env = {}
         # dict indexed by test name, value is dict with fmf-parsed metadata
         self.tests = {}
-        # dict indexed by test name, value is pathlib.Path of relative path
+        # dict indexed by test name, value is pathlib.PurePath of relative path
         # of the fmf metadata root towards the test metadata location
         self.test_dirs = {}
 

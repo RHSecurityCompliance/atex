@@ -28,7 +28,7 @@ For example, imagine running 10 tests on 3 Remotes (A,B,C):
 1. We get a new Remote A, a replacement after the destroyed one, and start test 10 on it
 1. Test 9 finishes on C, no more tests to run, we release Remote C
 1. Test 10 finishes on A, no more tests to run, we release Remote A
-1. Test 2 (rerun) finally finishes B, fails again destructively, but its reruns were exhausted, so we just release Remote B and finish
+1. Test 2 (rerun) finally finishes on B, fails again destructively, but its reruns were exhausted, so we just release Remote B and finish
 
 ```python
 with SomeAggregator(...) as aggr, SomeProvisioner(...) as prov:
@@ -59,7 +59,7 @@ Namely,
 - **`should_be_rerun()`** which returns a boolean whether a finished failing
   test should be re-run or not.
 
-All these receive `info` as one of their (positional-only) arguments, which
+Most of these receive `info` as one of their (positional-only) arguments, which
 is a namespace that holds information about the Provisioner, Remote, the test
 and anything else that might be useful for the functions.
 
@@ -131,7 +131,7 @@ All of these can be combined (chained) together, see their docstrings.
 
 - **`FMFDestructiveMixin`** to throw away a Remote after a destructive test.
   - If a test has 'destructive' as a tag in its metadata, the Remote it ran on
-    will the released and a new one provisioned in its place.
+    will be released and a new one provisioned in its place.
   - Useful for tests that need to "destroy" the OS in order to exercise the
     functionality under test (ie. tools that "harden" the OS).
   - It takes `fmf_tests` so it can inspect discovered test metadata.

@@ -44,7 +44,8 @@ channel.
   ```
 
 - `virsh`
-  - Bypass to `virsh` running on the server (so the client doesn't require it).
+  - Passthrough to `virsh` running on the server (so the client doesn't
+    require it).
   - The `-c` (connect) argument is handled automatically.
   - Any outputs are always from `--quiet` mode (stripping off the extra `\n`).
 
@@ -88,14 +89,14 @@ channel.
   - List all domains and whether anybody has them reserved.
   - The response contains `domains` as a JSON object (dict) with keys being
     domain names and values one of:
-    - `null` when not reserved,
+    - `"(free)"` when not reserved,
     - a string containing process name that holds the reservation, see also `setname`,
     - special string `(reserved for us)` when our process holds the reservation,
     - other special strings inside `()`, such as when a process name is empty
 
   ```json
   C: {"cmd": "reservations"}
-  S: {"success": true, "cmd": "reservations", "domains": {"vmname1": "(reserved for us)", "vmname3": null, "vmname2": "fanthomas"}}
+  S: {"success": true, "cmd": "reservations", "domains": {"vmname1": "(reserved for us)", "vmname3": "(free)", "vmname2": "fanthomas"}}
   ```
 
 - `upload`
@@ -115,11 +116,11 @@ channel.
   ```json
   C: {"cmd": "upload", "name": "ks.cfg", "length": 4}
   C: abc\n
-  S: {"cmd": "upload", "success": true, "file": "ks.cfg", "length": 4}
+  S: {"cmd": "upload", "success": true, "name": "ks.cfg", "length": 4}
   ```
 
 - `virt-install`
-  - Bypass to `virt-install` running on the server.
+  - Passthrough to `virt-install` running on the server.
   - The `--connect` argument is handled automatically.
   - Any `virt-install` output is routed to the stderr of the server-side helper,
     and the client must read it (to empty buffers).
@@ -146,7 +147,7 @@ channel.
   C: {"cmd": "virt-install", "args": ["asds"]}
   S (stderr): usage: virt-install OPTIONS
   S (stderr): virt-install: error: unrecognized arguments: asds
-  S (stdout): {"success": false, "args": ["asds"], "reply": "virt-install exited with 2"}
+  S (stdout): {"cmd": "virt-install", "success": false, "args": ["asds"], "reply": "virt-install exited with 2"}
   ```
 
 - `create-volume`
@@ -166,10 +167,10 @@ channel.
 
   ```json
   C: {"cmd": "create-volume", "pool": "default", "name": "volname.img", "format": "raw", "size": 42949672960}
-  C: {"cmd": "create-volume", "success": true, "pool": "default", "name": "volname.img", "format": "raw", "size": 42949672960}
+  S: {"cmd": "create-volume", "success": true, "pool": "default", "name": "volname.img", "format": "raw", "size": 42949672960}
 
   C: {"cmd": "create-volume", "pool": "default", "name": "volname.qcow2", "format": "qcow2", "size": 42949672960, "remove_existing": true}
-  C: {"cmd": "create-volume", "success": true, "pool": "default", "name": "volname.qcow2", "format": "qcow2", "size": 42949672960, "remove_existing": true}
+  S: {"cmd": "create-volume", "success": true, "pool": "default", "name": "volname.qcow2", "format": "qcow2", "size": 42949672960, "remove_existing": true}
   ```
 
 - `copy-volume`

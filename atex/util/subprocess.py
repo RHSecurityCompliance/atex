@@ -5,7 +5,7 @@ import subprocess
 def subprocess_stream(cmd, *, stream="stdout", check=False, input=None, **kwargs):
     """
     Run `cmd` via `subprocess.Popen()` and return an iterator over any lines
-    the command outputs on stdout, in text mode.
+    the command outputs on the specified stream, in text mode.
 
     - The `stream` is a subprocess.Popen attribute (either `stdout` or `stderr`)
       to read from.
@@ -56,7 +56,7 @@ def subprocess_log(cmd, *, logger=None, **kwargs):
 
     Runs `cmd` via `subprocess_stream()` to gather the lines.
 
-    - `logger` is an logging-API object to log messages to.
+    - `logger` is a logging-API object to log messages to.
     """
     logger = logger or logging.getLogger("atex")
     proc, lines = subprocess_stream(cmd, **kwargs)

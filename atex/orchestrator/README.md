@@ -9,7 +9,7 @@
 
 A scheduler for organizing complex multi-test execution.
 
-It uses one more more [Provisioners](../provisioner) to get resources
+It uses one or more [Provisioners](../provisioner) to get resources
 (systems/machines) for [Executors](../executor) to run tests on them, collecting
 any test results via an [Aggregator](../aggregator) common to all.
 

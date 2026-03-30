@@ -131,7 +131,7 @@ def main(args):
 
 
 CLI_SPEC = {
-    "help": "simple CLI interface to atex.fmf",
+    "help": "simple CLI interface to atex.executor.fmf",
     "args": parse_args,
     "main": main,
 }

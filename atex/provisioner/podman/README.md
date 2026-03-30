@@ -7,7 +7,7 @@
 This creates podman containers on the local OS and provides the Provisioner
 API for them.
 
-```json
+```python
 with PodmanProvisioner("fedora:latest") as p:
     p.provision(3)
     for _ in range(3):
@@ -17,7 +17,7 @@ with PodmanProvisioner("fedora:latest") as p:
 ```
 
 This works by running some background command (customizable as `run_command`
-passed to `__init__()`) to keep the container alive while the `.cmd()` run
+passed to `__init__()`) to keep the container alive while `.cmd()` calls run
 on the running container.
 
 Note that `podman exec`, **not ssh**, is used for `.cmd()` and `.rsync()`,

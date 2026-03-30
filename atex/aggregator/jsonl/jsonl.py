@@ -78,7 +78,7 @@ class JSONLinesAggregator(Aggregator):
         """
         Yield complete output JSON objects, one for each input result.
         """
-        # 'testout' , 'files' and others are standard fields in the
+        # 'testout', 'files' and others are standard fields in the
         # test control interface, see RESULTS.md for the Executor
         for raw_line in input_fobj:
             result_line = json.loads(raw_line)
@@ -209,8 +209,8 @@ class CompressedJSONLinesAggregator(JSONLinesAggregator, abc.ABC):
 
 class GzipJSONLinesAggregator(CompressedJSONLinesAggregator):
     """
-    Identical to JSONLinesAggregator, but transparently Gzips either or both of
-    the output line-JSON file with results and the uploaded files.
+    Identical to JSONLinesAggregator, but transparently Gzips the output
+    line-JSON file with results and optionally the uploaded files.
     """
     def compressed_open(self, *args, **kwargs):
         return gzip.open(*args, compresslevel=self.level, **kwargs)
@@ -249,8 +249,7 @@ class GzipJSONLinesAggregator(CompressedJSONLinesAggregator):
 class LZMAJSONLinesAggregator(CompressedJSONLinesAggregator):
     """
     Identical to JSONLinesAggregator, but transparently compresses (via LZMA/XZ)
-    either or both of the output line-JSON file with results and the uploaded
-    files.
+    the output line-JSON file with results and optionally the uploaded files.
     """
     def compressed_open(self, *args, **kwargs):
         return lzma.open(*args, preset=self.preset, **kwargs)

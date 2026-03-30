@@ -16,7 +16,7 @@ class Duration:
         duration = duration_to_seconds(fmf_duration)
         self.end = time.monotonic() + duration
         # keep track of only the first 'save' and the last 'restore',
-        # ignore any nested ones (as tracked by '_count')
+        # ignore any nested ones (as tracked by 'saved_count')
         self.saved = None
         self.saved_count = 0
 

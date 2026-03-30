@@ -244,10 +244,15 @@ class SharedVirtProvisioner(Provisioner):
 
     def _helper_query(self, data):
         with self.helper_lock:
-            json.dump(data, self.helper.stdin)
-            self.helper.stdin.write("\n")
-            self.helper.stdin.flush()
-            response = self.helper.stdout.readline()
+            # capture into a local to avoid racing with stop() setting
+            # self.helper = None under a different lock (self.lock)
+            helper = self.helper
+            if helper is None:
+                raise ProvisionerError("helper not running")
+            json.dump(data, helper.stdin)
+            helper.stdin.write("\n")
+            helper.stdin.flush()
+            response = helper.stdout.readline()
             if not response:
                 raise ProvisionerError("empty response from helper")
             return json.loads(response)

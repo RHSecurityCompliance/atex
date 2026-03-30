@@ -23,17 +23,14 @@ def install(args):
         for regex in args.ks_del:
             ks_contents = re.sub(regex, "", ks_contents, flags=re.MULTILINE | re.DOTALL)
 
-        for cmd in args.ks_cmd:
-            cmd_cmd, _, _ = cmd.partition(" ")
-            if re.search(f"^{cmd_cmd}( |$)", ks_contents, flags=re.MULTILINE):
-                ks_contents = re.sub(
-                    f"^{cmd_cmd}( .*)?$",
-                    cmd,
-                    ks_contents,
-                    flags=re.MULTILINE,
-                )
-            else:
-                ks_contents += f"\n{cmd}\n"
+        if args.ks_cmd:
+            cmds = {cmd.partition(" ")[0]: cmd for cmd in args.ks_cmd}
+            new_ks_lines = ks_contents.splitlines()
+            for i, line in enumerate(new_ks_lines):
+                line_cmd = line.partition(" ")[0]
+                if new_content := cmds.get(line_cmd):
+                    new_ks_lines[i] = new_content
+            ks_contents = "\n".join(new_ks_lines) + "\n"
 
         if args.ks_packages:
             ks_contents += (

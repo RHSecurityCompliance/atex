@@ -566,8 +566,12 @@ class Reserve:
             r = _http.request("GET", "https://ifconfig.me", headers=curl_agent)
             if r.status != 200:
                 raise ConnectionError
-        except (ConnectionError, urllib3.exceptions.RequestError):
+        except (ConnectionError, urllib3.exceptions.HTTPError):
             r = _http.request("GET", "https://ifconfig.co", headers=curl_agent)
+            if r.status != 200:
+                raise urllib3.exceptions.HTTPError(
+                    f"failed to determine public IP (returned {r.status})",
+                ) from None
         return r.data.decode().strip()
 
     def reserve(self):

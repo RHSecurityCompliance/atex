@@ -114,7 +114,9 @@ def reserve(args):
         raise RuntimeError(f"copy-volume failed: {output}")
 
     logging.info(f"starting up {domain}")
-    helper_query({"cmd": "virsh", "args": ["start", domain]})
+    response = helper_query({"cmd": "virsh", "args": ["start", domain]})
+    if not response["success"]:
+        raise RuntimeError(f"'virsh start {domain}' failed: {response['reply']}")
 
     # -------------------------------------------------------------------------
 

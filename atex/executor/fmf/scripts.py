@@ -1,5 +1,6 @@
 import collections
 import os
+import shlex
 import uuid
 from pathlib import PurePath
 
@@ -73,14 +74,15 @@ def test_wrapper(*, test, tests_dir, test_exec):
     # TODO: custom PATH with tmt-* style commands?
 
     # join the directory with all tests and nested path of our test inside it
-    test_cwd = PurePath(tests_dir) / test.dir
-    out += f"cd '{test_cwd}' || exit 1\n"
+    test_cwd = shlex.quote(str(PurePath(tests_dir) / test.dir))
+    out += f"cd {test_cwd} || exit 1\n"
 
     # run the test script
     # - the '-e -o pipefail' is to mimic what full fat tmt uses
+    test_title = shlex.quote(f"bash: atex running {test.name}")
     out += (
         "ATEX_TEST_CONTROL=$orig_stdout"
-        f" exec -a 'bash: atex running {test.name}'"
+        f" exec -a {test_title}"
         f" bash -e -o pipefail '{test_exec}'\n"
     )
 

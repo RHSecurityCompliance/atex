@@ -1,0 +1,154 @@
+#!/usr/bin/env python
+#
+# test wrapper to be executed on the remote system (via a Connection),
+# to safeguard test execution, provide ATEX_TEST_CONTROL, and kill the test
+# on sudden abort or disconnect
+#
+# needs to be compatible with python 2.7 and all python 3 releases
+
+import ctypes
+import errno
+import fcntl
+import os
+import select
+import signal
+import struct
+import sys
+import termios
+
+cli_args = sys.argv[1:]
+(
+    test_exec,  # executable script created from 'test:' fmf metadata
+    fmf_dir,    # original CWD of the fmf metadata tree to become test CWD
+) = cli_args[:2]
+
+# valid flags:
+#   'pty' to allocate a pseudotty for test_exec
+#   'noexitcode' to not issue 'exitcode rc\n' via test control
+cli_flags = set(cli_args[2:])
+
+# do chdir here, so we can exit on error before fork+exec
+try:
+    os.chdir(fmf_dir)
+except EnvironmentError:
+    sys.exit(2)
+
+# move stdout fd to stderr, to prevent python itself from corrupting
+# Test Control via exceptions, the warnings module, etc.
+control_fd = os.dup(1)
+os.environ["ATEX_TEST_CONTROL"] = str(control_fd)
+os.dup2(2, 1)
+
+# inherit control_fd to children on modern python 3
+if hasattr(os, "set_inheritable"):
+    os.set_inheritable(control_fd, True)
+
+# self-SIGTERM on parent process change (ssh disconnect, etc.)
+libc = ctypes.CDLL(None)
+libc.prctl(1, signal.SIGTERM)  # 1 == PR_SET_PDEATHSIG
+
+test_pid = None
+
+def fullwrite(fd, data):
+    if not isinstance(data, bytes):
+        data = data.encode(errors="ignore")
+    while data:
+        try:
+            written = os.write(fd, data)
+        except EnvironmentError as e:
+            if e.errno != errno.EINTR:
+                sys.exit(3)
+        else:
+            data = data[written:]
+
+def waitpid(pid, options=0):
+    while True:
+        try:
+            _, status = os.waitpid(pid, options)
+            return status
+        except EnvironmentError as e:
+            if e.errno != errno.EINTR:
+                sys.exit(4)
+
+def on_terminate(signum, _frame):
+    if test_pid is not None:
+        try:
+            os.killpg(test_pid, signal.SIGHUP)
+        except EnvironmentError:
+            pass
+        else:
+            waitpid(test_pid)  # reap the zombie
+    sys.exit(128 + signum)
+
+signal.signal(signal.SIGHUP, on_terminate)
+signal.signal(signal.SIGTERM, on_terminate)
+signal.signal(signal.SIGINT, on_terminate)
+
+if "pty" in cli_flags:
+    m_fd, s_fd = os.openpty()
+
+test_pid = os.fork()
+if test_pid == 0:
+    try:
+        os.setsid()
+
+        # restore signals (Python uses SIG_IGN which gets inherited)
+        signal.signal(signal.SIGPIPE, signal.SIG_DFL)
+        signal.signal(signal.SIGXFSZ, signal.SIG_DFL)
+
+        if "pty" in cli_flags:
+            os.environ["TERM"] = "vt100"
+            # make the new terminal into a ctty
+            fcntl.ioctl(s_fd, termios.TIOCSCTTY, 0)
+            # resize to 80x24
+            winsize = struct.pack("HHHH", 24, 80, 0, 0)
+            fcntl.ioctl(s_fd, termios.TIOCSWINSZ, winsize)
+            # make into stdio
+            os.dup2(s_fd, 0)
+            os.dup2(s_fd, 1)
+            os.dup2(s_fd, 2)
+            os.close(s_fd)
+            os.close(m_fd)
+
+        os.execl(test_exec, test_exec)
+    except EnvironmentError as e:
+        os._exit(126 if e.errno == errno.EACCES else 127)
+    except:
+        os._exit(127)
+
+# if spawned with a pseudotty, start relaying data between
+# the test and our parent (bi-directionally)
+if "pty" in cli_flags:
+    os.close(s_fd)
+    fds = [0, m_fd]
+    while fds:
+        try:
+            rlist, _, _ = select.select(fds, (), ())
+            for fd in rlist:
+                data = os.read(fd, 65536)
+                if not data:
+                    fds.remove(fd)
+                else:
+                    # write to test if coming from stdin,
+                    # else write to stderr because it's coming from the test
+                    to = m_fd if fd == 0 else 2
+                    fullwrite(to, data)
+        except EnvironmentError as e:
+            if e.errno == errno.EINTR:
+                continue
+            break
+    os.close(m_fd)
+
+# wait for the fork()ed test to finish
+status = waitpid(test_pid)
+if os.WIFEXITED(status):
+    rc = os.WEXITSTATUS(status)
+elif os.WIFSIGNALED(status):
+    rc = 128 + os.WTERMSIG(status)
+else:
+    sys.exit(5)
+
+if "noexitcode" not in cli_flags:
+    fullwrite(control_fd, "exitcode {}\n".format(rc))
+
+sys.exit(0)

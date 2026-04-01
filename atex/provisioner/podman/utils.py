@@ -17,7 +17,9 @@ def pull_image(origin):
 def build_container_with_deps(origin, tag=None, *, extra_pkgs=None, extra_content=""):
     tag_args = ("-t", tag) if tag else ()
 
-    pkgs = ["rsync"]
+    # python is needed by FMFExecutor,
+    # rsync is needed by PodmanConnection
+    pkgs = ["python", "rsync"]
     if extra_pkgs:
         pkgs += extra_pkgs
     pkgs_str = " ".join(pkgs)

@@ -1,0 +1,46 @@
+/plan:
+  execute:
+    how: tmt
+  prepare:
+    how: shell
+    script: |
+      # 200 is more than terminal height (24), so more(1) should
+      # show the --More-- prompt to scroll, on a terminal
+      for i in {1..200}; do
+        echo test$i
+      done > testfile
+
+# The --foreground is needed, without it:
+#
+# 1. Bash runs timeout 2 more /etc/passwd in a script
+#    - bash forks (no exec optimization because it needs to run cleanup)
+# 2. timeout (GNU coreutils) calls setpgid(0, 0) to create its own process group,
+#    then tcsetpgrp() to claim the foreground
+# 3. But tcsetpgrp() may fail or race — leaving more in a background process group
+# 4. When more calls tcsetattr() to enter cbreak mode, the kernel sends SIGTTOU
+#    (background process modifying terminal)
+# 5. more is stopped — never writes a single byte
+# 6. After 2 seconds, timeout kills it without any output
+#
+# With --foreground, timeout skips the setpgid/tcsetpgrp dance, more stays
+# in the foreground group. tcsetattr() succeeds. Output flows.
+#
+# To "fix" it, we could run 'bash -l test.sh' from the wrapper (instead of
+# os.execl() on the script path), but then the script would never exit
+# without an explicit 'exit 0'.
+#
+
+/test_with_pty:
+  test: timeout --foreground 1 cat testfile
+  tty: true
+
+/test_more_with_pty:
+  test: timeout --foreground 1 more testfile
+  tty: true
+
+/test_with_pty_false:
+  test: timeout --foreground 1 more testfile
+  tty: false
+
+/test_without_pty:
+  test: timeout --foreground 1 more testfile

@@ -124,6 +124,7 @@ class FMFExecutor(Executor):
         env_args = tuple(f"{k}={v}" for k, v in env.items())
         # run the scripts
         for script in scripts:
+            # TODO: inject TMT_PLAN_ENVIRONMENT_FILE sourcing before 'script' body
             self.conn.cmd(
                 ("env", "-C", self.tests_dir, *env_args, "bash"),
                 func=util.subprocess_log,
@@ -148,6 +149,7 @@ class FMFExecutor(Executor):
         self.logger.info(f"'{test_name}': running, {artifacts=}")
 
         test_data = self.fmf_tests.tests[test_name]
+        test_fmf_dir = self.tests_dir / self.fmf_tests.test_dirs[test_name]
 
         # start with fmf-plan-defined environment
         env_vars = {
@@ -165,6 +167,16 @@ class FMFExecutor(Executor):
         if env:
             env_vars.update(env)
 
+        # passed to test-wrapper as CLI args
+        wrapper_args = [
+            f"{self.work_dir}/test.sh",  # test_exec
+            test_fmf_dir,                # fmf_dir
+        ]
+        if test_data.get("tty", False):  # flags
+            wrapper_args.append("pty")
+        if os.environ.get("ATEX_DEBUG_NO_EXITCODE") == "1":
+            wrapper_args.append("noexitcode")
+
         self.logger.debug(f"'{test_name}': {env_vars=}")
 
         with contextlib.ExitStack() as stack:
@@ -176,9 +188,8 @@ class FMFExecutor(Executor):
 
             # run a setup script, preparing wrapper + test scripts
             setup_script = scripts.test_setup(
-                test=scripts.Test(test_name, test_data, self.fmf_tests.test_dirs[test_name]),
-                tests_dir=self.tests_dir,
-                wrapper_exec=f"{self.work_dir}/wrapper.sh",
+                test_data=test_data,
+                wrapper_exec=f"{self.work_dir}/wrapper.py",
                 test_exec=f"{self.work_dir}/test.sh",
                 test_yaml=f"{self.work_dir}/metadata.yaml",
             )
@@ -232,7 +243,12 @@ class FMFExecutor(Executor):
                             # an opened file (we don't handle it, cmd client sends it to kernel)
                             with reporter.open_testout() as testout_fd:
                                 test_proc = self.conn.cmd(
-                                    ("env", *env_args, f"{self.work_dir}/wrapper.sh"),
+                                    # call python interpreter directly to avoid a second
+                                    # lookup by the kernel running 'env' from shebang
+                                    (
+                                        "env", *env_args, "python",
+                                        f"{self.work_dir}/wrapper.py", *wrapper_args,
+                                    ),
                                     stdin=subprocess.DEVNULL,
                                     stdout=pipe_w,
                                     stderr=testout_fd,

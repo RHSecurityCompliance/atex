@@ -63,3 +63,4 @@ def subprocess_log(cmd, *, logger=None, **kwargs):
     logger.info(f"subprocess_log {proc.pid}: '{cmd}' with {kwargs=}")
     for line in lines:
         logger.info(f"subprocess_log {proc.pid}: {line}")
+    return proc.returncode

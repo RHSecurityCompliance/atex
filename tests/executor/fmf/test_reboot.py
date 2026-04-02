@@ -1,23 +1,10 @@
 import json
-import time
 
 from atex.executor.fmf import FMFExecutor, FMFTests, TestAbortedError
+from atex.provisioner.podman import wait_for_systemd
 
-
-def wait_for_systemd(remote):
-    # wait for systemd itself to create its socket
-    for _ in range(100):
-        proc = remote.cmd(("test", "-S", "/run/systemd/private"))
-        if proc.returncode == 0:
-            break
-        time.sleep(0.1)
-    else:
-        raise RuntimeError("waiting for systemd socket failed")
-
-    # wait for the full system to be up
-    proc = remote.cmd(("systemctl", "is-system-running", "--wait"))
-    if proc.returncode != 0:
-        raise RuntimeError("systemctl is-system-running failed to wait")
+# these don't work with RHEL-7 podman when running on modern Fedora
+# (as a host) due to cgroup v1 / v2 conflict, and possibly more
 
 
 def test_reboot(provisioner_systemd, tmp_dir):

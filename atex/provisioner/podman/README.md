@@ -49,7 +49,11 @@ To boot up a container with full systemd init, pre-build an image with systemd,
 and pass it to the Provisioner.
 
 ```python
-from atex.provisioner.podman import build_container_with_deps, pull_image
+from atex.provisioner.podman import (
+    build_container_with_deps,
+    pull_image,
+    wait_for_systemd,
+)
 
 pulled = pull_image("fedora:latest")
 custom_image = build_container_with_deps(
@@ -69,7 +73,10 @@ p = PodmanProvisioner(
 )
 
 with p:
-    ...
+    p.provision(1)
+    remote = p.get_remote()
+    wait_for_systemd(remote)
+    remote.cmd(["systemctl", "status", "1"])
 ```
 
 This loosely follows various web sources for how to run systemd under podman.

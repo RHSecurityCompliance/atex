@@ -1,5 +1,6 @@
 import subprocess
 import tempfile
+import time
 
 from ... import util
 
@@ -39,3 +40,19 @@ def build_container_with_deps(origin, tag=None, *, extra_pkgs=None, extra_conten
             stdout=subprocess.PIPE,
         )
         return proc.stdout.rstrip("\n")
+
+
+def wait_for_systemd(conn):
+    # wait for the full system to be up
+    # (--wait doesn't exist on old RHELs and needs extra waiting
+    #  for /run/systemd/private)
+    for _ in range(300):
+        proc = conn.cmd(
+            ("systemctl", "is-system-running"),
+            stdout=subprocess.PIPE,
+        )
+        if b"running" in proc.stdout or b"degraded" in proc.stdout:
+            break
+        time.sleep(0.1)
+    else:
+        raise RuntimeError("systemctl is-system-running failed")

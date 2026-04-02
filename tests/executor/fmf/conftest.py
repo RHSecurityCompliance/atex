@@ -1,3 +1,4 @@
+import os
 import subprocess
 import tempfile
 from pathlib import Path
@@ -11,8 +12,10 @@ from tests.provisioner.test_podman import IMAGE
 
 @pytest.fixture(scope="module")
 def provisioner():
-    pulled = pull_image(IMAGE)
-    custom_image = build_container_with_deps(pulled)
+    base_image = os.environ.get("BASE_IMAGE")
+    if base_image is None:
+        base_image = pull_image(IMAGE)
+    custom_image = build_container_with_deps(base_image)
     try:
         with PodmanProvisioner(custom_image) as prov:
             yield prov
@@ -26,11 +29,13 @@ def provisioner():
 
 @pytest.fixture(scope="module")
 def provisioner_systemd():
-    pulled = pull_image(IMAGE)
+    base_image = os.environ.get("BASE_IMAGE")
+    if base_image is None:
+        base_image = pull_image(IMAGE)
 
     pkgs = ("systemd",)
     content = "RUN systemctl mask systemd-oomd systemd-resolved systemd-hostnamed"
-    custom_image = build_container_with_deps(pulled, extra_pkgs=pkgs, extra_content=content)
+    custom_image = build_container_with_deps(base_image, extra_pkgs=pkgs, extra_content=content)
 
     opts = ("--systemd=always", "--restart=always")
     cmd = ("/sbin/init",)

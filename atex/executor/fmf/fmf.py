@@ -10,10 +10,10 @@ from pathlib import Path
 from ... import util
 from ...connection.ssh import ManagedSSHConnection
 from .. import Executor, ExecutorError
-from . import scripts
 from .duration import Duration
 from .metadata import listlike
 from .reporter import Reporter
+from .scripts import make_plan_script, make_test_setup
 from .testcontrol import TestControl
 
 get_logger = util.get_loggers("atex.executor.fmf")
@@ -124,12 +124,15 @@ class FMFExecutor(Executor):
         env_args = tuple(f"{k}={v}" for k, v in env.items())
         # run the scripts
         for script in scripts:
-            # TODO: inject TMT_PLAN_ENVIRONMENT_FILE sourcing before 'script' body
+            full_script = make_plan_script(
+                contents=script,
+                cwd=self.tests_dir,
+            )
             self.conn.cmd(
-                ("env", "-C", self.tests_dir, *env_args, "bash"),
+                ("env", *env_args, "bash"),
                 func=util.subprocess_log,
                 logger=self.logger,
-                input=script,
+                input=full_script,
                 stderr=subprocess.STDOUT,
                 check=True,
             )
@@ -187,7 +190,7 @@ class FMFExecutor(Executor):
             control = TestControl(reporter=reporter, duration=duration, logger=self.logger)
 
             # run a setup script, preparing wrapper + test scripts
-            setup_script = scripts.test_setup(
+            setup_script = make_test_setup(
                 test_data=test_data,
                 wrapper_exec=f"{self.work_dir}/wrapper.py",
                 test_exec=f"{self.work_dir}/test.sh",
@@ -243,10 +246,8 @@ class FMFExecutor(Executor):
                             # an opened file (we don't handle it, cmd client sends it to kernel)
                             with reporter.open_testout() as testout_fd:
                                 test_proc = self.conn.cmd(
-                                    # call python interpreter directly to avoid a second
-                                    # lookup by the kernel running 'env' from shebang
                                     (
-                                        "env", *env_args, "python",
+                                        "env", *env_args,
                                         f"{self.work_dir}/wrapper.py", *wrapper_args,
                                     ),
                                     stdin=subprocess.DEVNULL,

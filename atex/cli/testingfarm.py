@@ -180,6 +180,7 @@ def reserve(args):
         hardware=hardware,
         ssh_key=args.ssh_key,
         os_cleaning=not args.no_cleaning,
+        skip_guest_setup=not args.no_skip_guest_setup,
         api=api,
     )
     with res as m:
@@ -300,6 +301,11 @@ def parse_args(parser):
     cmd.add_argument(
         "--no-cleaning",
         help="do not run OS cleaning script on the system",
+        action="store_true",
+    )
+    cmd.add_argument(
+        "--no-skip-guest-setup",
+        help="do not avoid the TF-native Ansible setup scripts",
         action="store_true",
     )
 

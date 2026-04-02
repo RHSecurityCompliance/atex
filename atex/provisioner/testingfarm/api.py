@@ -448,7 +448,7 @@ class Reserve:
 
     def __init__(
         self, *, compose, arch="x86_64", pool=None, hardware=None, kickstart=None,
-        timeout=60, ssh_key=None, source_host=None,
+        timeout=60, ssh_key=None, source_host=None, skip_guest_setup=False,
         variables=None, secrets=None, tags=None,
         os_cleaning=False, api=None, logger=None,
     ):
@@ -487,6 +487,10 @@ class Reserve:
 
           Ignored on the `redhat` ranch.
 
+        - `skip_guest_setup' decides whether to run TF-native Ansible playbooks
+          meant to set up the reserved system. Set to True for a more "vanilla"
+          OS environment.
+
         - `variables` and `secrets` are dicts with environment variable
           key/values exported for the reserve test - variables are visible via
           TF API, secrets are not (but can still be extracted from pipeline
@@ -520,9 +524,6 @@ class Reserve:
                     "compose": compose,
                 },
                 "settings": {
-                    "pipeline": {
-                        "skip_guest_setup": True,
-                    },
                     "provisioning": {
                         "tags": {
                             "ArtemisUseSpot": "false",
@@ -543,6 +544,8 @@ class Reserve:
             spec_env["hardware"] = hardware
         if kickstart:
             spec_env["kickstart"] = kickstart
+        if skip_guest_setup:
+            spec_env["settings"]["pipeline"] = {"skip_guest_setup": True}
         if variables:
             spec_env["variables"] = variables
         spec_env["secrets"] = secrets.copy() if secrets else {}  # we need it for ssh pubkey

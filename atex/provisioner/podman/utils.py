@@ -28,8 +28,17 @@ def build_container_with_deps(origin, tag=None, *, extra_pkgs=None, extra_conten
     with tempfile.NamedTemporaryFile("w+t", delete_on_close=False) as tmpf:
         tmpf.write(util.dedent(fr"""
             FROM {origin}
-            RUN dnf -y -q --setopt=install_weak_deps=False install {pkgs_str} >/dev/null
-            RUN dnf -y -q clean packages >/dev/null
+            RUN <<EOF
+            if command -v dnf >/dev/null; then
+                pkg_tool="dnf -y -q --setopt=install_weak_deps=False"
+            else
+                pkg_tool="yum -y -q"
+            fi
+            have_dnf5=$(command -v dnf5)
+            skip_bad="--skip-broken${{have_dnf5:+ --skip-unavailable}}"
+            $pkg_tool install $skip_bad {pkgs_str} >/dev/null
+            $pkg_tool clean packages >/dev/null
+            EOF
             {extra_content}
         """))
         tmpf.close()

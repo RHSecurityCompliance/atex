@@ -49,7 +49,7 @@ def subprocess_stream(cmd, *, stream="stdout", check=False, input=None, **kwargs
     return (proc, generate_lines())
 
 
-def subprocess_log(cmd, *, logger=None, **kwargs):
+def subprocess_log(cmd, *, logger=None, level=logging.DEBUG, **kwargs):
     """
     A wrapper to stream every (text) line output from the process to the
     logging module.
@@ -60,7 +60,7 @@ def subprocess_log(cmd, *, logger=None, **kwargs):
     """
     logger = logger or logging.getLogger("atex")
     proc, lines = subprocess_stream(cmd, **kwargs)
-    logger.info(f"subprocess_log {proc.pid}: '{cmd}' with {kwargs=}")
+    logger.log(level, f"subprocess_log {proc.pid}: '{cmd}' with {kwargs=}")
     for line in lines:
-        logger.info(f"subprocess_log {proc.pid}: {line}")
+        logger.log(level, f"subprocess_log {proc.pid}: {line}")
     return proc.returncode

@@ -34,21 +34,21 @@ def build_container_with_deps(origin, tag=None, *, extra_pkgs=None, extra_conten
     pkgs_str = " ".join(pkgs)
 
     with tempfile.NamedTemporaryFile("w+t", delete_on_close=False) as tmpf:
-        tmpf.write(util.dedent(fr"""
+        template = util.dedent(fr"""
             FROM {origin}
-            RUN <<EOF
-            if command -v dnf >/dev/null; then
-                pkg_tool="dnf -y -q --setopt=install_weak_deps=False"
-            else
-                pkg_tool="yum -y -q"
-            fi
-            have_dnf5=$(command -v dnf5)
-            skip_bad="--skip-broken${{have_dnf5:+ --skip-unavailable}}"
-            $pkg_tool install $skip_bad {pkgs_str} >/dev/null
-            $pkg_tool clean packages >/dev/null
-            EOF
-            {extra_content}
-        """))
+            RUN if command -v dnf >/dev/null; then \
+                  pkg_tool="dnf -y -q --setopt=install_weak_deps=False"; \
+              else \
+                  pkg_tool="yum -y -q"; \
+              fi; \
+              have_dnf5=$(command -v dnf5); \
+              skip_bad="--skip-broken${{have_dnf5:+ --skip-unavailable}}"; \
+              $pkg_tool install $skip_bad {pkgs_str} >/dev/null; \
+              $pkg_tool clean packages >/dev/null
+        """) + "\n"
+        tmpf.write(template)
+        if extra_content:
+            tmpf.write(extra_content)
         tmpf.close()
         proc = subprocess.run(
             ("podman", "image", "build", "-q", "-t", tag, "-f", tmpf.name, "."),

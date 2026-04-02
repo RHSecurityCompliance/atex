@@ -32,10 +32,65 @@ jobs:
 
   executor-fmf:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: centos7
+            url: quay.io/centos/centos:centos7.9.2009
+          - name: cs8
+            url: quay.io/centos/centos:stream8
+          - name: cs9
+            url: quay.io/centos/centos:stream9
+          - name: cs10
+            url: quay.io/centos/centos:stream10
+          - name: fedora
+            url: registry.fedoraproject.org/fedora:latest
+    name: executor-fmf-${{ matrix.name }}
     steps:
       - uses: actions/checkout@v6
       - run: sudo apt-get install -y python3-pytest podman
       - run: python3 -m pip install .
+      - name: Prepare the source podman image
+        run: |
+          set -x -e
+          img=$(podman pull -q '${{ matrix.url }}')
+          case "${{ matrix.name }}" in
+            centos7|cs8)
+              # swap repos to vault
+              printf '%s\n' \
+                "FROM $img" \
+                "RUN sed -i \\" \
+                "  -e 's/^mirrorlist/#mirrorlist/' \\" \
+                "  -e 's/^#baseurl/baseurl/' \\" \
+                "  -e 's/mirror\\.centos\\.org/vault.centos.org/' \\" \
+                "  /etc/yum.repos.d/CentOS-*.repo" \
+                "RUN if command -v dnf >/dev/null; then \\" \
+                "    dnf -q clean all; \\" \
+                "  else \\" \
+                "    yum -q clean all; \\" \
+                "  fi" \
+                > Containerfile
+              built=$(podman build -q -t with_repos -f Containerfile .)
+              echo "BASE_IMAGE=$built" >> "$GITHUB_ENV"
+              ;;
+            *)
+              # just use the image as-is
+              echo "BASE_IMAGE=$img" >> "$GITHUB_ENV"
+              ;;
+          esac
       - name: Run tests
         run: |
-          python3 -m pytest -s tests/executor/fmf
+          case "${{ matrix.name }}" in
+            centos7)
+              # see test code comments
+              args=(
+                --ignore tests/executor/fmf/test_reboot.py
+                --deselect tests/executor/fmf/test_pkgs.py::test_require_fail
+              )
+              ;;
+            *)
+              args=()
+              ;;
+          esac
+          python3 -m pytest "${args[@]}" -s tests/executor/fmf

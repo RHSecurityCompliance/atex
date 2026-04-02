@@ -3,19 +3,19 @@
     how: tmt
   prepare:
     how: install
-    package: bsd-games
+    package: words
 
 /test_prepare:
-  test: rpm -q bsd-games
+  test: rpm -q words
 
 /test_require:
-  require: rogue
-  test: rpm -q rogue
+  require: units
+  test: rpm -q units
 
 /test_require_fail:
-  require: [rogue, nonexistent_pkg]
-  test: rpm -q rogue
+  require: [units, nonexistent_pkg]
+  test: rpm -q units
 
 /test_recommend:
-  recommend: [rogue, nonexistent_pkg]
-  test: rpm -q rogue
+  recommend: [units, nonexistent_pkg]
+  test: rpm -q units

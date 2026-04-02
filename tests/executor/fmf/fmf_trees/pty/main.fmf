@@ -2,13 +2,15 @@
   execute:
     how: tmt
   prepare:
-    how: shell
-    script: |
-      # 200 is more than terminal height (24), so more(1) should
-      # show the --More-- prompt to scroll, on a terminal
-      for i in {1..200}; do
-        echo test$i
-      done > testfile
+    - how: install
+      package: util-linux  # 'timeout' cmd, missing on CS9 container
+    - how: shell
+      script: |
+        # 200 is more than terminal height (24), so more(1) should
+        # show the --More-- prompt to scroll, on a terminal
+        for i in {1..200}; do
+          echo test$i
+        done > testfile
 
 # The --foreground is needed, without it:
 #

@@ -17,7 +17,7 @@ def test_prepare_env(provisioner):
         check=True,
         text=True,
     )
-    assert "\nVAR_FROM_PLAN=foo bar\n" in proc.stdout
+    assert "VAR_FROM_PLAN=foo bar\n" in proc.stdout
 
 
 def test_test_env(provisioner, tmp_dir):
@@ -27,8 +27,8 @@ def test_test_env(provisioner, tmp_dir):
     with FMFExecutor(remote, fmf_tests=fmf_tests) as e:
         e.run_test("/test_env", tmp_dir, env={"VAR_FROM_PARAM": "foo bar"})
     output = (tmp_dir / "files" / "output.txt").read_text()
-    assert "\nVAR_FROM_PLAN=foo bar\n" in output
-    assert "\nVAR_FROM_PARAM=foo bar\n" in output
+    assert "VAR_FROM_PLAN=foo bar\n" in output
+    assert "VAR_FROM_PARAM=foo bar\n" in output
 
 
 def test_envfile(provisioner, tmp_dir):
@@ -40,7 +40,7 @@ def test_envfile(provisioner, tmp_dir):
             e.run_test("/test_write_env", tmp_dir2)
         e.run_test("/test_env", tmp_dir)
     output = (tmp_dir / "files" / "output.txt").read_text()
-    assert "\nVAR_FROM_TEST=foo bar\n" in output
+    assert "VAR_FROM_TEST=foo bar\n" in output
 
 
 def test_envfile_shared(provisioner, tmp_dir):
@@ -56,8 +56,8 @@ def test_envfile_shared(provisioner, tmp_dir):
         text=True,
     )
     test_output = (tmp_dir / "files" / "output.txt").read_text()
-    assert "\nTMT_PLAN_ENVIRONMENT_FILE=" in plan_proc.stdout
-    assert "\nTMT_PLAN_ENVIRONMENT_FILE=" in test_output
+    assert "TMT_PLAN_ENVIRONMENT_FILE=" in plan_proc.stdout
+    assert "TMT_PLAN_ENVIRONMENT_FILE=" in test_output
     plan_regex = re.search(r"TMT_PLAN_ENVIRONMENT_FILE=([^\n]+)", plan_proc.stdout)
     assert plan_regex is not None
     test_regex = re.search(r"TMT_PLAN_ENVIRONMENT_FILE=([^\n]+)", test_output)

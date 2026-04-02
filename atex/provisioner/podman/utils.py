@@ -1,6 +1,7 @@
 import subprocess
 import tempfile
 import time
+import uuid
 
 from ... import util
 
@@ -16,7 +17,14 @@ def pull_image(origin):
 
 
 def build_container_with_deps(origin, tag=None, *, extra_pkgs=None, extra_content=""):
-    tag_args = ("-t", tag) if tag else ()
+    # podman *requires* tags for images
+    # - this is an undocumented quirk; any image without a tag is considered
+    # a build artifact or otherwise a dangling image, and filtered internally
+    # by buildah / other layers, so a second 'podman build' (using FROM purely
+    # by hash, on an untagged image) fails with a cryptic error message
+    # ... so just always assign some random tag, because this is really stupid
+    if not tag:
+        tag = str(uuid.uuid4())
 
     # python is needed by FMFExecutor,
     # rsync is needed by PodmanConnection
@@ -43,7 +51,7 @@ def build_container_with_deps(origin, tag=None, *, extra_pkgs=None, extra_conten
         """))
         tmpf.close()
         proc = subprocess.run(
-            ("podman", "image", "build", "-q", "-f", tmpf.name, *tag_args, "."),
+            ("podman", "image", "build", "-q", "-t", tag, "-f", tmpf.name, "."),
             check=True,
             text=True,
             stdout=subprocess.PIPE,

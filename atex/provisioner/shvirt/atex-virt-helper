@@ -705,8 +705,9 @@ def main():
 
         # create state dir
         global state_dir
-        if home := os.environ.get("HOME"):
-            state_dir = Path(home) / ".atex-virt-helper"
+        home_dir = Path.home()
+        if os.geteuid() != 0 and home_dir.is_dir():
+            state_dir = home_dir / ".atex-virt-helper"
         else:
             state_dir = Path("/var/lib/atex-virt-helper")
         try:

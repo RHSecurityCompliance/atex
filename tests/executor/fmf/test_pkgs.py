@@ -1,10 +1,10 @@
 import json
 
-from atex.executor.fmf import FMFExecutor, FMFTests, TestSetupError
+from atex.executor.fmf import FMFExecutor, TestSetupError, discover
 
 
 def test_prepare(provisioner, tmp_dir):
-    fmf_tests = FMFTests("fmf_trees/pkgs", plan="/plan")
+    fmf_tests = discover("fmf_trees/pkgs", plan="/plan")
     provisioner.provision(1)
     remote = provisioner.get_remote()
     with FMFExecutor(remote, fmf_tests=fmf_tests) as e:
@@ -14,7 +14,7 @@ def test_prepare(provisioner, tmp_dir):
 
 
 def test_require(provisioner, tmp_dir):
-    fmf_tests = FMFTests("fmf_trees/pkgs", plan="/plan")
+    fmf_tests = discover("fmf_trees/pkgs", plan="/plan")
     provisioner.provision(1)
     remote = provisioner.get_remote()
     with FMFExecutor(remote, fmf_tests=fmf_tests) as e:
@@ -32,7 +32,7 @@ def test_require(provisioner, tmp_dir):
 # if at least one of the mentioned packages installed successfully,
 # only noting that 'No package asdsd available.'
 def test_require_fail(provisioner, tmp_dir):
-    fmf_tests = FMFTests("fmf_trees/pkgs", plan="/plan")
+    fmf_tests = discover("fmf_trees/pkgs", plan="/plan")
     provisioner.provision(1)
     remote = provisioner.get_remote()
     with FMFExecutor(remote, fmf_tests=fmf_tests) as e:
@@ -50,7 +50,7 @@ def test_require_fail(provisioner, tmp_dir):
 
 
 def test_recommend(provisioner, tmp_dir):
-    fmf_tests = FMFTests("fmf_trees/pkgs", plan="/plan")
+    fmf_tests = discover("fmf_trees/pkgs", plan="/plan")
     provisioner.provision(1)
     remote = provisioner.get_remote()
     with FMFExecutor(remote, fmf_tests=fmf_tests) as e:

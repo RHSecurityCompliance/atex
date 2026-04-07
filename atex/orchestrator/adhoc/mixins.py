@@ -41,8 +41,8 @@ def FMFDurationMixin(fmf_tests):  # noqa: N802
         def next_test(self, to_run, previous, /):
             # only pick tests with 'duration' explicitly set
             best = max(
-                (name for name in to_run if "duration" in fmf_tests.tests[name]),
-                key=lambda name: duration_to_seconds(fmf_tests.tests[name]["duration"]),
+                (name for name in to_run if "duration" in fmf_tests.data[name]),
+                key=lambda name: duration_to_seconds(fmf_tests.data[name]["duration"]),
                 default=None,
             )
             if best is not None:
@@ -67,7 +67,7 @@ def FMFPriorityMixin(fmf_tests):  # noqa: N802
     class FMFPriorityMixin:
         def next_test(self, to_run, previous, /):
             def priority(name):
-                return fmf_tests.tests[name].get("extra-priority", 0)
+                return fmf_tests.data[name].get("extra-priority", 0)
 
             # this will be >0 if there are higher-than-0 priority tests,
             # and <0 if there are no 0-priority tests left
@@ -93,7 +93,7 @@ def FMFDestructiveMixin(fmf_tests):  # noqa: N802
     """
     class FMFDestructiveMixin:
         def destructive(self, info, /):
-            tags = listlike(fmf_tests.tests[info.test_name], "tag")
+            tags = listlike(fmf_tests.data[info.test_name], "tag")
             if "destructive" in tags:
                 return True
             return super().destructive(info)

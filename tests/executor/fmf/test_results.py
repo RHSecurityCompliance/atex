@@ -3,13 +3,13 @@ import os
 import sys
 from pathlib import Path
 
-from atex.executor.fmf import FMFExecutor, FMFTests, TestAbortedError
+from atex.executor.fmf import FMFExecutor, TestAbortedError, discover
 from atex.executor.fmf.testcontrol import BadControlError, BadReportJSONError
 
 
 def run_fmf_test(provisioner, tmp_dir, *, read_results=True):
     test = sys._getframe(1).f_code.co_name  # same as parent func name
-    fmf_tests = FMFTests("fmf_trees/results", plan="/plan")
+    fmf_tests = discover("fmf_trees/results", plan="/plan")
     provisioner.provision(1)
     remote = provisioner.get_remote()
     with FMFExecutor(remote, fmf_tests=fmf_tests) as e:

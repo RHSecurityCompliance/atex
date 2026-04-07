@@ -1,8 +1,8 @@
-from atex.executor.fmf import FMFExecutor, FMFTests
+from atex.executor.fmf import FMFExecutor, discover
 
 
 def test_with_pty(provisioner, tmp_dir):
-    fmf_tests = FMFTests("fmf_trees/pty", plan="/plan")
+    fmf_tests = discover("fmf_trees/pty", plan="/plan")
     provisioner.provision(1)
     remote = provisioner.get_remote()
     with FMFExecutor(remote, fmf_tests=fmf_tests) as e:
@@ -13,7 +13,7 @@ def test_with_pty(provisioner, tmp_dir):
 
 
 def test_more_with_pty(provisioner, tmp_dir):
-    fmf_tests = FMFTests("fmf_trees/pty", plan="/plan")
+    fmf_tests = discover("fmf_trees/pty", plan="/plan")
     provisioner.provision(1)
     remote = provisioner.get_remote()
     with FMFExecutor(remote, fmf_tests=fmf_tests) as e:
@@ -25,7 +25,7 @@ def test_more_with_pty(provisioner, tmp_dir):
 
 
 def test_with_pty_false(provisioner, tmp_dir):
-    fmf_tests = FMFTests("fmf_trees/pty", plan="/plan")
+    fmf_tests = discover("fmf_trees/pty", plan="/plan")
     provisioner.provision(1)
     remote = provisioner.get_remote()
     with FMFExecutor(remote, fmf_tests=fmf_tests) as e:
@@ -37,7 +37,7 @@ def test_with_pty_false(provisioner, tmp_dir):
 
 
 def test_without_pty(provisioner, tmp_dir):
-    fmf_tests = FMFTests("fmf_trees/pty", plan="/plan")
+    fmf_tests = discover("fmf_trees/pty", plan="/plan")
     provisioner.provision(1)
     remote = provisioner.get_remote()
     with FMFExecutor(remote, fmf_tests=fmf_tests) as e:

@@ -1,6 +1,7 @@
 import pprint
 
-from ..executor.fmf import FMFTests, all_pkg_requires
+from ..executor.fmf import all_pkg_requires
+from ..executor.fmf import discover as fmf_discover
 
 
 def _get_context(args):
@@ -13,7 +14,7 @@ def _get_context(args):
 
 
 def make_fmftests(args):
-    return FMFTests(
+    return fmf_discover(
         args.root,
         args.plan,
         names=args.test or None,
@@ -35,33 +36,15 @@ def requires(args):
 
 def discover(args):
     result = make_fmftests(args)
-    for name in result.tests:
+    for name in result.data:
         print(name)
 
 
 def show(args):
     result = make_fmftests(args)
-    for name, data in result.tests.items():
+    for name, data in result.data.items():
         print(f"\n--- {name} ---")
         pprint.pprint(data)
-
-
-def prepare(args):
-    result = make_fmftests(args)
-    print("--- fmf root ---")
-    print(str(result.root))
-    print("\n--- prepare packages ---")
-    print("\n".join(result.prepare_pkgs))
-    print("\n--- plan environment ---")
-    print("\n".join(f"{k}={v}" for k,v in result.plan_env.items()))
-    for script in result.prepare_scripts:
-        print("\n--- prepare script ---")
-        print(script.rstrip("\n"))
-        print("----------------------")
-    for script in result.finish_scripts:
-        print("\n--- finish script ---")
-        print(script.rstrip("\n"))
-        print("----------------------")
 
 
 def add_fmf_options(parser):
@@ -111,11 +94,6 @@ def parse_args(parser):
         help="show fmf metadata of test(s)",
     )
 
-    cmds.add_parser(
-        "prepare",
-        help="show prepare-related details from a plan",
-    )
-
 
 def main(args):
     if args._cmd in ("requires", "req"):
@@ -124,8 +102,6 @@ def main(args):
         discover(args)
     elif args._cmd == "show":
         show(args)
-    elif args._cmd == "prepare":
-        prepare(args)
     else:
         raise RuntimeError(f"unknown args: {args}")
 

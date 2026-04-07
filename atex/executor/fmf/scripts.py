@@ -43,7 +43,7 @@ def make_test_setup(*, test_data, wrapper_exec, test_exec, test_yaml):
         pkgs_str = " ".join(require)
         out += util.dedent(fr"""
             not_installed=$(rpm -q --qf '' {pkgs_str} | sed -nr 's/^package ([^ ]+) is not installed$/\1/p')
-            [[ $not_installed ]] && $pkg_tool install $not_installed
+            if [[ $not_installed ]]; then $pkg_tool install $not_installed; fi
         """) + "\n"  # noqa: E501
     if recommend := list(test_pkg_requires(test_data, "recommend")):
         pkgs_str = " ".join(recommend)
@@ -51,7 +51,7 @@ def make_test_setup(*, test_data, wrapper_exec, test_exec, test_yaml):
             have_dnf5=$(command -v dnf5) || true
             skip_bad="--skip-broken${{have_dnf5:+ --skip-unavailable}}"
             not_installed=$(rpm -q --qf '' {pkgs_str} | sed -nr 's/^package ([^ ]+) is not installed$/\1/p')
-            [[ $not_installed ]] && $pkg_tool install $skip_bad $not_installed
+            if [[ $not_installed ]]; then $pkg_tool install $skip_bad $not_installed; fi
         """) + "\n"  # noqa: E501
 
     eof = f"EOF_{uuid.uuid4()}"
@@ -122,3 +122,20 @@ def make_plan_script(*, contents, cwd):
     """) + "\n"
     out += contents
     return out
+
+
+def make_plan_pkg_install(packages):
+    """
+    Generate a bash script for installing RPM `packages`, avoiding yum/dnf
+    overhead if everything is already installed.
+    """
+    pkgs_str = " ".join(packages)
+    return util.dedent(fr"""
+        if command -v dnf >/dev/null; then
+            pkg_tool="dnf -y --setopt=install_weak_deps=False"
+        else
+            pkg_tool="yum -y"
+        fi
+        not_installed=$(rpm -q --qf '' {pkgs_str} | sed -nr 's/^package ([^ ]+) is not installed$/\1/p')
+        if [[ $not_installed ]]; then $pkg_tool install $not_installed; fi
+    """) + "\n"  # noqa: E501

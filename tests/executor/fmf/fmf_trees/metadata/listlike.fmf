@@ -1,3 +1,0 @@
-summary: Checks whether dict gets converted to list internally
-test: ./test.sh
-require: pkg

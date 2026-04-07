@@ -10,8 +10,10 @@ use [tmt](https://github.com/teemtee/tmt) to execute tests, but does emulate
 several tmt features (see further below).
 
 ```python
+from atex.executor.fmf import FMFExecutor, discover
+
 # discover tests
-fmf_tests = FMFTests(
+fmf_tests = discover(
     "path/to/repo_with_tests",
     plan="/plans/sanity",
     context={"distro": "rhel-9.6", "arch": "x86_64"},
@@ -23,13 +25,13 @@ with FMFExecutor(conn, fmf_tests=fmf_tests) as e:
 ```
 
 You are free to modify the discovered FMFTests prior to passing them to
-the Executor. See FMFTests instance attributes (commented in code).\
+the Executor. See documented FMFTests instance attributes.\
 Ie. to double allowed 'duration':
 
 ```python
 from atex.executor.fmf import duration_to_seconds
 
-for data in fmf_tests.tests.values():
+for data in fmf_tests.data.values():
     duration = data.get("duration", "5m")
     secs = duration_to_seconds(duration)
     data["duration"] = str(secs * 2)

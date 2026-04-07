@@ -13,7 +13,7 @@ from .. import Executor, ExecutorError
 from .duration import Duration
 from .metadata import listlike
 from .reporter import Reporter
-from .scripts import make_plan_script, make_test_setup
+from .scripts import make_plan_pkg_install, make_plan_script, make_test_setup
 from .testcontrol import TestControl
 
 get_logger = util.get_loggers("atex.executor.fmf")
@@ -79,30 +79,13 @@ class FMFExecutor(Executor):
             logger=self.logger,
         )
 
-        # install packages from the plan on the remote
-        if self.fmf_tests.prepare_pkgs:
-            self.conn.cmd(
-                (
-                    "dnf", "-y", "--setopt=install_weak_deps=False",
-                    "install", *self.fmf_tests.prepare_pkgs,
-                ),
-                func=util.subprocess_log,
-                logger=self.logger,
-                stdin=subprocess.DEVNULL,
-                stderr=subprocess.STDOUT,
-                check=True,
-            )
-
         # run 'prepare' scripts from the plan on the remote
-        if scripts := self.fmf_tests.prepare_scripts:
-            self._run_plan_scripts(scripts)
+        self._run_plan_prepare_finish("prepare")
 
     def stop(self):
         self.logger.debug(f"stopping: {self}")
 
-        # run 'finish' scripts from the plan on the remote
-        if scripts := self.fmf_tests.finish_scripts:
-            self._run_plan_scripts(scripts)
+        self._run_plan_prepare_finish("finish")
 
         if self.work_dir:
             self.conn.cmd(("rm", "-rf", self.work_dir), check=True)
@@ -114,28 +97,41 @@ class FMFExecutor(Executor):
     def cancel(self):
         self.cancelled = True
 
-    def _run_plan_scripts(self, scripts):
+    def _run_plan_prepare_finish(self, plugin_type):
         # make environment for 'prepare' / 'finish' scripts
         env = {
-            **self.fmf_tests.plan_env,
+            **self.fmf_tests.plan.get("environment", {}),
             **self.env,
             "TMT_PLAN_ENVIRONMENT_FILE": self.plan_env_file,
         }
         env_args = tuple(f"{k}={v}" for k, v in env.items())
-        # run the scripts
-        for script in scripts:
-            full_script = make_plan_script(
-                contents=script,
-                cwd=self.tests_dir,
-            )
-            self.conn.cmd(
-                ("env", *env_args, "bash"),
-                func=util.subprocess_log,
-                logger=self.logger,
-                input=full_script,
-                stderr=subprocess.STDOUT,
-                check=True,
-            )
+
+        for item in listlike(self.fmf_tests.plan, plugin_type):
+            how = item.get("how")
+            if how == "install":
+                if packages := listlike(item, "package"):
+                    self.conn.cmd(
+                        ("bash",),
+                        func=util.subprocess_log,
+                        logger=self.logger,
+                        input=make_plan_pkg_install(packages),
+                        stderr=subprocess.STDOUT,
+                        check=True,
+                    )
+            elif how == "shell":
+                for script in listlike(item, "script"):
+                    full_script = make_plan_script(
+                        contents=script,
+                        cwd=self.tests_dir,
+                    )
+                    self.conn.cmd(
+                        ("env", *env_args, "bash"),
+                        func=util.subprocess_log,
+                        logger=self.logger,
+                        input=full_script,
+                        stderr=subprocess.STDOUT,
+                        check=True,
+                    )
 
     class State(enum.Enum):
         STARTING_TEST = enum.auto()
@@ -151,12 +147,12 @@ class FMFExecutor(Executor):
         """
         self.logger.info(f"'{test_name}': running, {artifacts=}")
 
-        test_data = self.fmf_tests.tests[test_name]
-        test_fmf_dir = self.tests_dir / self.fmf_tests.test_dirs[test_name]
+        test_data = self.fmf_tests.data[test_name]
+        test_fmf_dir = self.tests_dir / self.fmf_tests.dirs[test_name]
 
         # start with fmf-plan-defined environment
         env_vars = {
-            **self.fmf_tests.plan_env,
+            **self.fmf_tests.plan.get("environment", {}),
             "TMT_PLAN_ENVIRONMENT_FILE": self.plan_env_file,
             "TMT_TEST_NAME": test_name,
             "TMT_TEST_METADATA": f"{self.work_dir}/metadata.yaml",

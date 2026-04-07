@@ -5,6 +5,7 @@ from .fmf import (  # noqa: F401, I001
 )
 from .metadata import (  # noqa: F401, I001
     FMFTests,
+    discover,
     duration_to_seconds,
     test_pkg_requires,
     all_pkg_requires,
@@ -16,4 +17,5 @@ from . import testcontrol  # noqa: F401
 __all__ = (
     "FMFExecutor",
     "FMFTests",
+    "discover",
 )

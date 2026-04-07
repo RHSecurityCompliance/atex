@@ -7,12 +7,11 @@ class Duration:
     """
     A helper for parsing, keeping and manipulating test run time based on
     FMF-defined 'duration' attribute.
+
+    - `fmf_duration` is the string specified as 'duration' in FMF metadata.
     """
 
     def __init__(self, fmf_duration):
-        """
-        - `fmf_duration` is the string specified as 'duration' in FMF metadata.
-        """
         duration = duration_to_seconds(fmf_duration)
         self.end = time.monotonic() + duration
         # keep track of only the first 'save' and the last 'restore',

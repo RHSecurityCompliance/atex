@@ -25,19 +25,18 @@ class TestControl:
     """
     An implementation of the protocol described by TEST_CONTROL.md,
     processing test-issued commands, results and uploaded files.
+
+    - `reporter` is an instance of class Reporter all the results
+      and uploaded files will be written to.
+
+    - `duration` is a class Duration instance.
+
+    - `control_fd` is a non-blocking file descriptor to be read.
+
+    - `logger` is a logging-API object to log messages to.
     """
 
     def __init__(self, *, reporter, duration, control_fd=None, logger=None):
-        """
-        - `reporter` is an instance of class Reporter all the results
-          and uploaded files will be written to.
-
-        - `duration` is a class Duration instance.
-
-        - `control_fd` is a non-blocking file descriptor to be read.
-
-        - `logger` is a logging-API object to log messages to.
-        """
         self.logger = logger or logging.getLogger("atex")
 
         self.reporter = reporter

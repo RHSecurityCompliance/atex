@@ -11,6 +11,48 @@ class FailedSetupError(OrchestratorError):
 
 
 class AdHocOrchestrator(Orchestrator):
+    """
+    - `platform` is an arbitrary name that identifies this Orchestrator
+      in the aggregated outputs.
+
+      Ie. `9.6` or `rhel-9.6` or `9@x86_64` or `centos-10 Gitlab`.
+
+    - `tests` may be any `str()`-capable objects, typically strings,
+      for the Orchestrator to iterate and pass to an Executor as test
+      names.
+
+    - `provisioners` are initialized and started Provisioner instances
+      to source Remotes from, for test execution.
+
+    - `executor` is a factory (function or class) that, when given
+      a connected Connection, produces an initialized Executor instance,
+      to be used for running tests.
+
+      This could be an Executor class itself (as a type) or ie. a wrapper
+      for instantiating the class with extra arguments.
+
+    - `aggregator` is an initialized and started Aggregator instance
+      for ingesting final test results from test artifacts produced
+      by an Executor.
+
+    - `old_aggregator` is a started class Aggregator instance for ingesting
+      "old" test results (from tests that were later re-run). If left
+      as None, these results are discarded.
+
+      Collecting these may be useful for debugging why tests fail randomly.
+      Note that the Aggregator needs to support ingesting duplicated
+      test names.
+
+    - `max_spares` is how many set-up Remotes to hold reserved and unused,
+      ready to replace a Remote destroyed by test. Values above 0 can
+      greatly speed up test reruns for Provisioners that take a long time
+      to reserve a Remote.
+
+    - `max_failed_setups` is an integer of how many times a setup (preparing
+      a reserved Remote for test execution) may fail before FailedSetupError
+      is raised.
+    """
+
     class SetupInfo(
         util.NamedMapping,
         required=(
@@ -53,47 +95,6 @@ class AdHocOrchestrator(Orchestrator):
         self, platform, tests, provisioners, executor, aggregator, *,
         old_aggregator=None, max_spares=0, max_failed_setups=10,
     ):
-        """
-        - `platform` is an arbitrary name that identifies this Orchestrator
-          in the aggregated outputs.
-
-          Ie. `9.6` or `rhel-9.6` or `9@x86_64` or `centos-10 Gitlab`.
-
-        - `tests` may be any `str()`-capable objects, typically strings,
-          for the Orchestrator to iterate and pass to an Executor as test
-          names.
-
-        - `provisioners` are initialized and started Provisioner instances
-          to source Remotes from, for test execution.
-
-        - `executor` is a factory (function or class) that, when given
-          a connected Connection, produces an initialized Executor instance,
-          to be used for running tests.
-
-          This could be an Executor class itself (as a type) or ie. a wrapper
-          for instantiating the class with extra arguments.
-
-        - `aggregator` is an initialized and started Aggregator instance
-          for ingesting final test results from test artifacts produced
-          by an Executor.
-
-        - `old_aggregator` is a started class Aggregator instance for ingesting
-          "old" test results (from tests that were later re-run). If left
-          as None, these results are discarded.
-
-          Collecting these may be useful for debugging why tests fail randomly.
-          Note that the Aggregator needs to support ingesting duplicated
-          test names.
-
-        - `max_spares` is how many set-up Remotes to hold reserved and unused,
-          ready to replace a Remote destroyed by test. Values above 0 can
-          greatly speed up test reruns for Provisioners that take a long time
-          to reserve a Remote.
-
-        - `max_failed_setups` is an integer of how many times a setup (preparing
-          a reserved Remote for test execution) may fail before FailedSetupError
-          is raised.
-        """
         self.logger = get_logger()
 
         self.platform = platform

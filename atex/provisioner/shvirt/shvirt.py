@@ -88,20 +88,21 @@ def _wait_for_sshd(host, port, event, logger=None):
 
 
 class SharedVirtRemote(Remote, connection.ssh.ManagedSSHConnection):
+    """
+    - `ssh_options` are a dict, passed to ManagedSSHConnection `__init__()`.
+
+    - `host` is a str of libvirt host name (used for `str(self)`).
+
+    - `domain` is a str of libvirt domain name.
+
+    - `source_image` is a str of libvirt volume name that was cloned
+      for the domain to boot from (used for `str(self)`).
+
+    - `release_hook` is a callable called on `.release()` in addition
+      to disconnecting the connection.
+    """
+
     def __init__(self, ssh_options, host, domain, source_image, *, release_hook):
-        """
-        - `ssh_options` are a dict, passed to ManagedSSHConnection `__init__()`.
-
-        - `host` is a str of libvirt host name (used for `str(self)`).
-
-        - `domain` is a str of libvirt domain name.
-
-        - `source_image` is a str of libvirt volume name that was cloned
-          for the domain to boot from (used for `str(self)`).
-
-        - `release_hook` is a callable called on `.release()` in addition
-          to disconnecting the connection.
-        """
         # NOTE: self.lock inherited from ManagedSSHConnection
         super().__init__(options=ssh_options)
         self.host = host
@@ -132,6 +133,44 @@ class SharedVirtRemote(Remote, connection.ssh.ManagedSSHConnection):
 
 
 class SharedVirtProvisioner(Provisioner):
+    """
+    - `host` is a Connection class instance, connected to a libvirt host.
+
+    - `image` is a string with a libvirt storage volume name inside the
+      given storage `pool` that should be used as the source for cloning.
+
+    - `pool` is a libvirt storage pool used by all relevant domains on the
+      libvirt host **as well as** the would-be-cloned images.
+
+    - `domain_filter` is a regex string matching libvirt domain names to
+      attempt reservation on. Useful for including only ie. `auto-.*`
+      domains while leaving other domains on the same libvirt host
+      untouched.
+
+    - `domain_user` and `domain_sshkey` (strings) specify how to connect to
+      an OS booted from the pre-installed `image`, as these credentials are
+      known only to the logic that created the `image` in the first place.
+
+      The `domain_sshkey` is a file path to the private key.
+
+    - `domain_host` (string) is a hostname or an IP address through which
+      to connect to the domains' ssh ports, as stored in the libvirt domain
+      XML (`<backend type='passt'>`, `<portForward ...>`).
+
+      Normally, this is extracted from `host` if it is *SSHConnection
+      (the Hostname `options` attribute) and doesn't need to be provided
+      here, but is necessary for non-SSH `host`.
+
+      For example, for a LocalConnection, it would be `127.0.0.1`.
+
+    - `reserve_delay` is an int of how many seconds to wait between trying
+      to reserve a libvirt domain, reducing reservation bursting.
+
+    - `reserve_name` is a custom user name, to be set for any reservations
+      this Provisioner makes, seen in the list of reservations when queried
+      by a user. Must be at most 15 characters long (per PR_SET_NAME).
+    """
+
     helper_command = ("atex-virt-helper",)
 
     # DESIGN NOTES:
@@ -168,44 +207,6 @@ class SharedVirtProvisioner(Provisioner):
         domain_filter=None, domain_user="root", domain_sshkey, domain_host=None,
         reserve_delay=3, reserve_name=None,
     ):
-        """
-
-        - `host` is a Connection class instance, connected to a libvirt host.
-
-        - `image` is a string with a libvirt storage volume name inside the
-          given storage `pool` that should be used as the source for cloning.
-
-        - `pool` is a libvirt storage pool used by all relevant domains on the
-          libvirt host **as well as** the would-be-cloned images.
-
-        - `domain_filter` is a regex string matching libvirt domain names to
-          attempt reservation on. Useful for including only ie. `auto-.*`
-          domains while leaving other domains on the same libvirt host
-          untouched.
-
-        - `domain_user` and `domain_sshkey` (strings) specify how to connect to
-          an OS booted from the pre-installed `image`, as these credentials are
-          known only to the logic that created the `image` in the first place.
-
-          The `domain_sshkey` is a file path to the private key.
-
-        - `domain_host` (string) is a hostname or an IP address through which
-          to connect to the domains' ssh ports, as stored in the libvirt domain
-          XML (`<backend type='passt'>`, `<portForward ...>`).
-
-          Normally, this is extracted from `host` if it is *SSHConnection
-          (the Hostname `options` attribute) and doesn't need to be provided
-          here, but is necessary for non-SSH `host`.
-
-          For example, for a LocalConnection, it would be `127.0.0.1`.
-
-        - `reserve_delay` is an int of how many seconds to wait between trying
-          to reserve a libvirt domain, reducing reservation bursting.
-
-        - `reserve_name` is a custom user name, to be set for any reservations
-          this Provisioner makes, seen in the list of reservations when queried
-          by a user. Must be at most 15 characters long (per PR_SET_NAME).
-        """
         self.lock = threading.RLock()
         self.logger = get_logger()
 

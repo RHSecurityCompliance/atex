@@ -32,15 +32,16 @@ class TestAbortedError(ExecutorError):
 
 
 class FMFExecutor(Executor):
+    """
+    - `connection` is a connected class Connection instance.
+
+    - `fmf_tests` is a class FMFTests instance with (discovered) tests.
+
+    - `env` is a dict of extra environment variables to pass to the
+      plan prepare/finish scripts and to all tests.
+    """
+
     def __init__(self, connection, fmf_tests, *, env=None):
-        """
-        - `connection` is a connected class Connection instance.
-
-        - `fmf_tests` is a class FMFTests instance with (discovered) tests.
-
-        - `env` is a dict of extra environment variables to pass to the
-          plan prepare/finish scripts and to all tests.
-        """
         self.lock = threading.RLock()
         self.logger = get_logger()
 

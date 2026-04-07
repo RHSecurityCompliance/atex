@@ -19,18 +19,19 @@ def _verbatim_move(src, dst):
 
 
 class JSONLinesAggregator(Aggregator):
+    """
+    - `target` is a string/Path to a `.jsonl` file for all ingested
+      results to be aggregated (written) to.
+
+    - `files` is a string/Path of the top-level parent for all per-platform
+      / per-test files uploaded by tests.
+
+    - `allow_duplicate` permits any one test name to be ingested more than
+      once, appending ` (1)` to the second test name entry, ` (2)` to the
+      third, etc.
+    """
+
     def __init__(self, target, files, *, allow_duplicate=False):
-        """
-        - `target` is a string/Path to a `.jsonl` file for all ingested
-          results to be aggregated (written) to.
-
-        - `files` is a string/Path of the top-level parent for all per-platform
-          / per-test files uploaded by tests.
-
-        - `allow_duplicate` permits any one test name to be ingested more than
-          once, appending ` (1)` to the second test name entry, ` (2)` to the
-          third, etc.
-        """
         self.lock = threading.RLock()
         self.logger = get_logger()
 
@@ -211,7 +212,25 @@ class GzipJSONLinesAggregator(CompressedJSONLinesAggregator):
     """
     Identical to JSONLinesAggregator, but transparently Gzips the output
     line-JSON file with results and optionally the uploaded files.
+
+    - `args` and `kwargs` are passed to JSONLinesAggregator().
+
+    - `compress_level` specifies how much effort should be spent compressing,
+      (1 = fast, 9 = slow).
+
+    - If `compress_files` is `True`, compress also any files uploaded by
+      tests.
+
+    - The `compress_files_suffix` is appended to any processed test-uploaded
+      files, and the respective `files` results array is modified with the
+      new file names (as if the test uploaded compressed files already).
+      Set to `""` (empty string) to use original file names and just
+      compress them transparently in-place.
+
+    - `compress_files_exclude` is a tuple/list of strings (input `files`
+      names) to skip when compressing. Their names also won't be modified.
     """
+
     def compressed_open(self, *args, **kwargs):
         return gzip.open(*args, compresslevel=self.level, **kwargs)
 
@@ -221,24 +240,6 @@ class GzipJSONLinesAggregator(CompressedJSONLinesAggregator):
         compress_files=True, compress_files_suffix=".gz", compress_files_exclude=None,
         **kwargs,
     ):
-        """
-        - `args` and `kwargs` are passed to JSONLinesAggregator().
-
-        - `compress_level` specifies how much effort should be spent compressing,
-          (1 = fast, 9 = slow).
-
-        - If `compress_files` is `True`, compress also any files uploaded by
-          tests.
-
-        - The `compress_files_suffix` is appended to any processed test-uploaded
-          files, and the respective `files` results array is modified with the
-          new file names (as if the test uploaded compressed files already).
-          Set to `""` (empty string) to use original file names and just
-          compress them transparently in-place.
-
-        - `compress_files_exclude` is a tuple/list of strings (input `files`
-          names) to skip when compressing. Their names also won't be modified.
-        """
         super().__init__(*args, **kwargs)
         self.level = compress_level
         self.compress_files = compress_files
@@ -250,7 +251,26 @@ class LZMAJSONLinesAggregator(CompressedJSONLinesAggregator):
     """
     Identical to JSONLinesAggregator, but transparently compresses (via LZMA/XZ)
     the output line-JSON file with results and optionally the uploaded files.
+
+    - `args` and `kwargs` are passed to JSONLinesAggregator().
+
+    - `compress_preset` specifies how much effort should be spent
+      compressing (1 = fast, 9 = slow). Optionally ORed with
+      `lzma.PRESET_EXTREME` to spend even more CPU time compressing.
+
+    - If `compress_files` is `True`, compress also any files uploaded by
+      tests.
+
+    - The `compress_files_suffix` is appended to any processed test-uploaded
+      files, and the respective `files` results array is modified with the
+      new file names (as if the test uploaded compressed files already).
+      Set to `""` (empty string) to use original file names and just
+      compress them transparently in-place.
+
+    - `compress_files_exclude` is a tuple/list of strings (input `files`
+      names) to skip when compressing. Their names also won't be modified.
     """
+
     def compressed_open(self, *args, **kwargs):
         return lzma.open(*args, preset=self.preset, **kwargs)
 
@@ -260,25 +280,6 @@ class LZMAJSONLinesAggregator(CompressedJSONLinesAggregator):
         compress_files_exclude=None,
         **kwargs,
     ):
-        """
-        - `args` and `kwargs` are passed to JSONLinesAggregator().
-
-        - `compress_preset` specifies how much effort should be spent
-          compressing (1 = fast, 9 = slow). Optionally ORed with
-          `lzma.PRESET_EXTREME` to spend even more CPU time compressing.
-
-        - If `compress_files` is `True`, compress also any files uploaded by
-          tests.
-
-        - The `compress_files_suffix` is appended to any processed test-uploaded
-          files, and the respective `files` results array is modified with the
-          new file names (as if the test uploaded compressed files already).
-          Set to `""` (empty string) to use original file names and just
-          compress them transparently in-place.
-
-        - `compress_files_exclude` is a tuple/list of strings (input `files`
-          names) to skip when compressing. Their names also won't be modified.
-        """
         super().__init__(*args, **kwargs)
         self.preset = compress_preset
         self.compress_files = compress_files

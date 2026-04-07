@@ -12,6 +12,17 @@ class Reporter:
     """
     Collects reported results (in a format specified by RESULTS.md) for
     a specific test, storing them persistently.
+
+    - `output_dir` is a destination dir (string or Path) for results
+      reported and files uploaded.
+
+    - `results_file` is a file name inside `output_dir` the results
+      will be reported into.
+
+    - `files_dir` is a dir name inside `output_dir` any files will be
+      uploaded to.
+
+    - `logger` is a logging-API object to log messages to.
     """
 
     # internal name, stored inside 'output_dir' and hardlinked to
@@ -19,18 +30,6 @@ class Reporter:
     TESTOUT = "testout.temp"
 
     def __init__(self, output_dir, results_file, files_dir, *, logger=None):
-        """
-        - `output_dir` is a destination dir (string or Path) for results
-          reported and files uploaded.
-
-        - `results_file` is a file name inside `output_dir` the results
-          will be reported into.
-
-        - `files_dir` is a dir name inside `output_dir` any files will be
-          uploaded to.
-
-        - `logger` is a logging-API object to log messages to.
-        """
         self.logger = logger or logging.getLogger("atex")
 
         self.output_dir = Path(output_dir)

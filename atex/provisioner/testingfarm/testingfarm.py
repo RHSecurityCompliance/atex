@@ -11,16 +11,17 @@ get_logger = util.get_loggers("atex.provisioner.testingfarm")
 
 
 class TestingFarmRemote(Remote, connection.ssh.ManagedSSHConnection):
+    """
+    - `request_id` is a string with Testing Farm request UUID
+      (for printouts).
+
+    - `ssh_options` are a dict, passed to ManagedSSHConnection `__init__()`.
+
+    - `release_hook` is a callable called on `.release()` in addition
+      to disconnecting the connection.
+    """
+
     def __init__(self, request_id, ssh_options, *, release_hook):
-        """
-        - `request_id` is a string with Testing Farm request UUID
-          (for printouts).
-
-        - `ssh_options` are a dict, passed to ManagedSSHConnection `__init__()`.
-
-        - `release_hook` is a callable called on `.release()` in addition
-          to disconnecting the connection.
-        """
         # NOTE: self.lock inherited from ManagedSSHConnection
         super().__init__(options=ssh_options)
         self.request_id = request_id
@@ -46,6 +47,18 @@ class TestingFarmRemote(Remote, connection.ssh.ManagedSSHConnection):
 
 
 class TestingFarmProvisioner(Provisioner):
+    """
+    - `compose` is a Testing Farm compose to prepare.
+
+    - `arch` is an architecture associated with the compose.
+
+    - `max_remotes` is how many Testing Farm Requests to keep running at any
+      one time (both queued / pending, and already reserved).
+
+    - `max_retries` is a maximum number of provisioning (Testing Farm) errors
+      that will be reprovisioned before giving up.
+    """
+
     # maximum number of TF requests the user can .provision(),
     # as a safety measure against somebody passing huge max_remotes
     absolute_max_remotes = 50
@@ -54,17 +67,6 @@ class TestingFarmProvisioner(Provisioner):
     stop_release_workers = 10
 
     def __init__(self, compose, arch="x86_64", max_remotes=3, *, max_retries=10, **reserve_kwargs):
-        """
-        - `compose` is a Testing Farm compose to prepare.
-
-        - `arch` is an architecture associated with the compose.
-
-        - `max_remotes` is how many Testing Farm Requests to keep running at any
-          one time (both queued / pending, and already reserved).
-
-        - `max_retries` is a maximum number of provisioning (Testing Farm) errors
-          that will be reprovisioned before giving up.
-        """
         self.lock = threading.RLock()
         self.logger = get_logger()
 

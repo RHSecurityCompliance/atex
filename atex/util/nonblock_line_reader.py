@@ -19,17 +19,16 @@ class NonblockLineReader:
     It can take extra care to read one-byte-at-a-time (with `read_len=1`)
     to not read (and buffer) more data from the source descriptor, allowing it
     to be used for in-kernel move, such as via `os.sendfile()` or `os.splice()`.
+
+    - `src` is an opened file descriptor (integer).
+
+    - `max_len` is a maximum potential line length, incl. the newline
+      character - if reached, a BufferFullError is raised.
+
+    - `read_len` is how many bytes to read per `os.read()` call.
     """
 
     def __init__(self, src, *, max_len=4096, read_len=1024):
-        """
-        - `src` is an opened file descriptor (integer).
-
-        - `max_len` is a maximum potential line length, incl. the newline
-          character - if reached, a BufferFullError is raised.
-
-        - `read_len` is how many bytes to read per `os.read()` call.
-        """
         self.src = src
         self.read_len = read_len
         self.eof = False

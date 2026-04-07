@@ -8,15 +8,16 @@ get_logger = util.get_loggers("atex.provisioner.podman")
 
 
 class PodmanRemote(Remote, connection.podman.PodmanConnection):
+    """
+    - `image` is an image tag (used for `str(self)`).
+
+    - `container` is a podman container ID / name.
+
+    - `release_hook` is a callable called on `.release()` in addition
+      to disconnecting the connection.
+    """
+
     def __init__(self, image, container, *, release_hook):
-        """
-        - `image` is an image tag (used for `str(self)`).
-
-        - `container` is a podman container ID / name.
-
-        - `release_hook` is a callable called on `.release()` in addition
-          to disconnecting the connection.
-        """
         super().__init__(container=container)
         self.lock = threading.RLock()
         self.image = image
@@ -84,17 +85,18 @@ class _SettableCounter:
 
 
 class PodmanProvisioner(Provisioner):
+    """
+    - `image` is a string of image tag/ID to create containers from.
+      It can be a local identifier or an URL.
+
+    - `run_options` is an iterable with additional CLI options passed
+      to `podman container run`.
+
+    - `run_command` is an iterable (cmd + args) specifying the command
+      to execute as the "init system" in the container.
+    """
+
     def __init__(self, image, *, run_options=None, run_command=("sleep", "inf")):
-        """
-        - `image` is a string of image tag/ID to create containers from.
-          It can be a local identifier or an URL.
-
-        - `run_options` is an iterable with additional CLI options passed
-          to `podman container run`.
-
-        - `run_command` is an iterable (cmd + args) specifying the command
-          to execute as the "init system" in the container.
-        """
         self.lock = threading.RLock()
         self.logger = get_logger()
 

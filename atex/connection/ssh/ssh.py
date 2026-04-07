@@ -125,16 +125,17 @@ def _rsync_host_cmd(*args, options, password=None, sudo=None):
 
 
 class StatelessSSHConnection(Connection):
+    """
+    Prepare to connect to an SSH server specified in `options`.
+
+    - If `password` is given, spawn the `ssh` command via `sshpass` and
+      pass the password to it.
+
+    - If `sudo` specifies a username, call `sudo(8)` on the remote shell
+      to run under a different user on the remote host.
+    """
+
     def __init__(self, options, *, password=None, sudo=None):
-        """
-        Prepare to connect to an SSH server specified in `options`.
-
-        - If `password` is given, spawn the `ssh` command via `sshpass` and
-          pass the password to it.
-
-        - If `sudo` specifies a username, call `sudo(8)` on the remote shell
-          to run under a different user on the remote host.
-        """
         self.options = DEFAULT_OPTIONS.copy()
         self.options.update(options)
         self.password = password
@@ -188,18 +189,19 @@ class StatelessSSHConnection(Connection):
 # when it gets DisconnectedError from it.
 
 class ManagedSSHConnection(Connection):
+    """
+    Prepare to connect to an SSH server specified in `options`.
+
+    - If `password` is given, spawn the `ssh` command via `sshpass`
+      and pass the password to it.
+
+    - If `sudo` specifies a username, call `sudo(8)` on the remote shell
+      to run under a different user on the remote host.
+    """
+
     # TODO: thread safety and locking via self.lock ?
 
     def __init__(self, options, *, password=None, sudo=None):
-        """
-        Prepare to connect to an SSH server specified in `options`.
-
-        - If `password` is given, spawn the `ssh` command via `sshpass`
-          and pass the password to it.
-
-        - If `sudo` specifies a username, call `sudo(8)` on the remote shell
-          to run under a different user on the remote host.
-        """
         self.lock = threading.RLock()
         self.logger = get_logger()
 

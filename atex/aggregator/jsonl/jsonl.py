@@ -12,10 +12,12 @@ from .. import Aggregator, AggregatorError
 get_logger = util.get_loggers("atex.aggregator.jsonl")
 
 
-def _verbatim_move(src, dst):
-    def copy_without_symlinks(src, dst):
-        return shutil.copy2(src, dst, follow_symlinks=False)
-    shutil.move(src, dst, copy_function=copy_without_symlinks)
+def verbatim_move(src, dst):
+    return shutil.move(
+        src,
+        dst,
+        copy_function=lambda src, dst: shutil.copy2(src, dst, follow_symlinks=False),
+    )
 
 
 class JSONLinesAggregator(Aggregator):
@@ -73,7 +75,7 @@ class JSONLinesAggregator(Aggregator):
         by the test, into the pre-computed `target_dir` location (inside
         a hierarchy of all files from all tests).
         """
-        _verbatim_move(test_files, target_dir)
+        verbatim_move(test_files, target_dir)
 
     def _gen_test_results(self, input_fobj, platform, test_name):
         """
@@ -146,7 +148,7 @@ class JSONLinesAggregator(Aggregator):
         # clean up the source test_results (Aggregator should 'mv', not 'cp')
         Path(artifacts_results).unlink()
 
-        # if the test_files dir is not empty
+        # if the artifacts files directory is not empty
         if any(artifacts_files.iterdir()):
             platform_files.mkdir(exist_ok=True)
             # TODO: why does this work without .mkdir(target_test_files.parent) ?
@@ -192,7 +194,7 @@ class CompressedJSONLinesAggregator(JSONLinesAggregator, abc.ABC):
 
                 # skip dirs, symlinks, device files, etc.
                 if not src_path.is_file(follow_symlinks=False) or file_name in self.exclude:
-                    _verbatim_move(src_path, dst_path)
+                    verbatim_move(src_path, dst_path)
                     continue
 
                 if self.suffix:

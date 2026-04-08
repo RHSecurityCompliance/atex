@@ -22,6 +22,7 @@ For example
 
   ["11.0@x86_64", "pass", "/ltp", "syscalls/alarm01", ["test.out"], null]
   ["11.0@x86_64", "pass", "/ltp", "syscalls/socketpair02", ["server/test.out", "client/test.out"], null]
+  ["11.0@x86_64", "pass", "/ltp", null, [], "Suite version: 20260130"]
   ```
 
 - `aggregated/uploaded_files/`
@@ -52,10 +53,9 @@ The results use a top-level array (on each line) with a fixed item order:
 All these are strings except `files`, which is another (nested) array
 of strings.
 
-Note that test name is explicitly given to `ingest()`, and subtest name comes
-from test artifacts (the `name` result key, which may be non-existent,
-indicating the result is relevant to the test itself, not a subtest).\
-See also [RESULTS.md](../../executor/fmf/RESULTS.md).
+- `platform` and `test name` are the strings given to `.ingest()`,
+- `status`, `subtest name`, `files` and `note` come from the ingested
+  [Test Artifacts](../../executor)
 
 Further:
 - If subtest name or note missing in test artifacts, a `null` item is used.

@@ -25,7 +25,7 @@ def test_noresult_pass(provisioner, tmp_dir):
     """Automatic fallback result based on exit code."""
     results = run_fmf_test(provisioner, tmp_dir)
     assert results.count("\n") == 1
-    assert json.loads(results) == {"status": "pass", "testout": "output.txt"}  # default
+    assert json.loads(results) == {"status": "pass", "files": ["output.txt"]}  # default
     output = (tmp_dir / "files" / "output.txt").read_text()
     assert output == "passing the script\n"
 
@@ -34,7 +34,7 @@ def test_noresult_fail(provisioner, tmp_dir):
     """Automatic fallback result based on exit code."""
     results = run_fmf_test(provisioner, tmp_dir)
     assert results.count("\n") == 1
-    assert json.loads(results) == {"status": "fail", "testout": "output.txt"}
+    assert json.loads(results) == {"status": "fail", "files": ["output.txt"]}
     output = (tmp_dir / "files" / "output.txt").read_text()
     assert output == "failing the script\n"
 
@@ -51,7 +51,7 @@ def test_noresult_abort(provisioner, tmp_dir):
     assert json.loads(results) == {
         "status": "infra",
         "note": "TestAbortedError(test duration timeout reached)",
-        "testout": "output.txt",
+        "files": ["output.txt"],
     }
     output = (tmp_dir / "files" / "output.txt").read_text()
     assert output == "sleeping forever-ish\n"
@@ -63,7 +63,7 @@ def test_trivial(provisioner, tmp_dir):
     results = run_fmf_test(provisioner, tmp_dir)
     assert results.count("\n") == 1
     assert json.loads(results) == {"status": "pass"}
-    # no automatic testout created
+    # no automatic test output written
     files = list((tmp_dir / "files").iterdir())
     assert len(files) == 0
 
@@ -73,7 +73,7 @@ def test_trivial_multiline(provisioner, tmp_dir):
     results = run_fmf_test(provisioner, tmp_dir)
     assert results.count("\n") == 1
     assert json.loads(results) == {"status": "pass"}
-    # no automatic testout created
+    # no automatic test output written
     files = list((tmp_dir / "files").iterdir())
     assert len(files) == 0
 
@@ -104,7 +104,7 @@ def test_trivial_abort(provisioner, tmp_dir):
     results = (tmp_dir / "results").read_text()
     assert results.count("\n") == 1
     assert json.loads(results) == {"status": "pass"}
-    # no output.txt, the reported result has no testout,
+    # no output.txt, the reported result has no files,
     # despite the test having written to stdout (output discarded)
     files = list((tmp_dir / "files").iterdir())
     assert len(files) == 0
@@ -137,7 +137,25 @@ def test_subtest_no_status(provisioner, tmp_dir):
     assert results.count("\n") == 2
     first, second = results.rstrip("\n").split("\n")
     assert json.loads(first) == {"name": "subtest"}
-    assert json.loads(second) == {"status": "pass", "testout": "output.txt"}
+    assert json.loads(second) == {"status": "pass", "files": ["output.txt"]}
+
+
+def test_subtest_testout(provisioner, tmp_dir):
+    """Testout should be linked only to the subtest."""
+    results = run_fmf_test(provisioner, tmp_dir)
+    assert results.count("\n") == 2
+    first, second = results.rstrip("\n").split("\n")
+    assert json.loads(first) == {
+        "status": "fail",
+        "name": "subtest",
+        "files": ["subtest/out.txt"],
+    }
+    assert json.loads(second) == {
+        "status": "pass",  # no automatic testout
+    }
+    assert (tmp_dir / "files" / "subtest" / "out.txt").exists()
+    # no automatic test output written for the main test result
+    assert not (tmp_dir / "files" / "output.txt").exists()
 
 
 # -----------------------------------------------------------------------------
@@ -235,7 +253,7 @@ def test_files_subtest(provisioner, tmp_dir):
         "name": "sub/res/ult",
         "files": ["some_file"],
     }
-    assert json.loads(second) == {"status": "pass", "testout": "output.txt"}
+    assert json.loads(second) == {"status": "pass", "files": ["output.txt"]}
     output = (tmp_dir / "files" / "sub" / "res" / "ult" / "some_file").read_bytes()
     assert output == b"\x00\x10\x20\x30\x40"
 
@@ -278,7 +296,7 @@ def test_partial(provisioner, tmp_dir):
     results = run_fmf_test(provisioner, tmp_dir)
     assert results.count("\n") == 1
     assert json.loads(results) == {"status": "pass"}
-    # no automatic testout created
+    # no automatic test output written
     files = list((tmp_dir / "files").iterdir())
     assert len(files) == 0
 
@@ -288,7 +306,7 @@ def test_partial_false(provisioner, tmp_dir):
     results = run_fmf_test(provisioner, tmp_dir)
     assert results.count("\n") == 1
     assert json.loads(results) == {"status": "pass"}
-    # no automatic testout created
+    # no automatic test output written
     files = list((tmp_dir / "files").iterdir())
     assert len(files) == 0
 
@@ -298,7 +316,7 @@ def test_partial_abrupt(provisioner, tmp_dir):
     results = run_fmf_test(provisioner, tmp_dir)
     assert results.count("\n") == 1
     assert json.loads(results) == {"status": "fail"}
-    # no automatic testout created
+    # no automatic test output written
     files = list((tmp_dir / "files").iterdir())
     assert len(files) == 0
 
@@ -383,11 +401,11 @@ def test_testout(provisioner, tmp_dir):
     assert results.count("\n") == 1
     assert json.loads(results) == {
         "status": "pass",
-        "testout": "here.txt",
+        "files": ["here.txt"],
     }
     output = (tmp_dir / "files" / "here.txt").read_bytes()
     assert output == b"first line\nsecond line\n"
-    # no automatic testout created
+    # no automatic test output written
     assert not (tmp_dir / "files" / "output.txt").exists()
 
 
@@ -397,7 +415,7 @@ def test_testout_fallback(provisioner, tmp_dir):
     assert results.count("\n") == 1
     assert json.loads(results) == {
         "status": "pass",
-        "testout": "output.txt",
+        "files": ["output.txt"],
     }
     output = (tmp_dir / "files" / "output.txt").read_bytes()
     assert output == b"some line\n"
@@ -409,13 +427,13 @@ def test_testout_partial(provisioner, tmp_dir):
     assert results.count("\n") == 1
     assert json.loads(results) == {
         "status": "pass",
-        "testout": "there.txt",
+        "files": ["there.txt"],
     }
     output = (tmp_dir / "files" / "there.txt").read_bytes()
     assert output == b"some line\n"
     # the partial:True entry should not exist
     assert not (tmp_dir / "files" / "here.txt").exists()
-    # no automatic testout created
+    # no automatic test output written
     assert not (tmp_dir / "files" / "output.txt").exists()
 
 
@@ -426,17 +444,17 @@ def test_testout_multiple(provisioner, tmp_dir):
     first, second = results.rstrip("\n").split("\n")
     assert json.loads(first) == {
         "status": "fail",
-        "testout": "here.txt",
+        "files": ["here.txt"],
     }
     assert json.loads(second) == {
         "status": "pass",
-        "testout": "there.txt",
+        "files": ["there.txt"],
     }
     first_output = (tmp_dir / "files" / "here.txt").read_bytes()
     assert first_output == b"some line\n"
     second_output = (tmp_dir / "files" / "there.txt").read_bytes()
     assert second_output == b"some line\n"
-    # no automatic testout created
+    # no automatic test output written
     assert not (tmp_dir / "files" / "output.txt").exists()
 
 

@@ -57,10 +57,7 @@ of strings.
 - `status`, `subtest name`, `files` and `note` come from the ingested
   [Test Artifacts](../../executor)
 
-Further:
-- If subtest name or note missing in test artifacts, a `null` item is used.
-- If `testout` is present inside test artifacts (in the result for the test
-  itself), it is prepended to the list of `files`.
+If subtest name or note missing in test artifacts, a `null` item is used.
 
 Also note that the aggregated JSONL file **is not related** to any JSON usage
 inside test artifacts - both might use JSON as a data format, but for

@@ -73,6 +73,12 @@
     . functions
     report '{"name": "subtest"}'
 
+/test_subtest_testout:
+  test: |
+    . functions
+    report '{"status": "fail", "name": "subtest", "testout": "out.txt"}'
+    report '{"status": "pass"}'
+
 # -----------------------------------------------------------------------------
 
 /test_files:

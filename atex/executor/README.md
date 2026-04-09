@@ -82,6 +82,7 @@ Valid JSON object keys include:
   - Test-provided file paths.
   - Paths relative to (inside) the `files` dir.
   - If the result contains `name`, it is prepended to each of the file paths.
+  - The first `name`-less entry typically contains test stdout+stderr output.
 
 ```json
 {"status": "error", "name": "syncfs1", "note": "ENOSPC while running test()"}

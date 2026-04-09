@@ -81,19 +81,12 @@ class JSONLinesAggregator(Aggregator):
         """
         Yield complete output JSON objects, one for each input result.
         """
-        # 'testout', 'files' and others are standard fields in the
-        # test control interface, see RESULTS.md for the Executor
+        # these are standard fields defined in the Test Artifacts,
+        # see README.md for an Executor
         for raw_line in input_fobj:
             result_line = json.loads(raw_line)
 
-            file_names = []
-            # process the file specified by the 'testout' key
-            if "testout" in result_line:
-                file_names.append(result_line["testout"])
-            # process any additional files in the 'files' key
-            if "files" in result_line:
-                file_names += result_line["files"]
-
+            file_names = result_line.get("files", ())
             file_names = self._modify_file_list(file_names)
 
             output_line = (
@@ -173,10 +166,10 @@ class CompressedJSONLinesAggregator(JSONLinesAggregator, abc.ABC):
 
     def _modify_file_list(self, test_files):
         if self.compress_files and self.suffix:
-            return [
+            return (
                 (path if Path(path).name in self.exclude else f"{path}{self.suffix}")
                 for path in test_files
-            ]
+            )
         else:
             return super()._modify_file_list(test_files)
 

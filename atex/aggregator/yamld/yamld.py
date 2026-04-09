@@ -95,6 +95,9 @@ class YAMLDocumentAggregator(Aggregator):
             for raw_line in f:
                 result_line = json.loads(raw_line)
 
+                # these are standard fields defined in the Test Artifacts,
+                # see README.md for an Executor
+
                 # if it is a subtest, add it to subtests
                 if name := result_line.get("name"):
                     subtest = {"name": name}
@@ -112,16 +115,8 @@ class YAMLDocumentAggregator(Aggregator):
                         document["status"] = status
                     if note := result_line.get("note"):
                         document["note"] = note
-
-                    file_names = []
-                    # process the file specified by the 'testout' key
-                    if "testout" in result_line:
-                        file_names.append(result_line["testout"])
-                    # process any additional files in the 'files' key
                     if files := result_line.get("files"):
-                        file_names += files
-                    if file_names:
-                        document["files"] += file_names
+                        document["files"] += files
 
         if document["status"] is None:
             del document["status"]

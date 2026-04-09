@@ -88,11 +88,8 @@ For example,
   /11.0@x86_64/ltp/syscalls/socketpair02/client/test.out
   ```
 
-Further:
-- If subtest name or note missing in test artifacts, it is omitted in the YAML
-  (eg. `note: null` never appears).
-- If `testout` is present inside test artifacts (in the result for the test
-  itself), it is prepended to the list of `files`.
+If subtest name or note missing in test artifacts, it is omitted in the YAML
+(eg. `note: null` never appears).
 
 ## Examples
 

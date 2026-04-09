@@ -88,17 +88,25 @@ class Reporter:
                 raise BadReportJSONError(f"cannot merge type {type(value)}")
 
     def _report_to_file(self, result_line):
+        # convert the set() of files into a sorted list
+        if "files" in result_line:
+            result_line["files"] = sorted(result_line["files"])
+
         # if testout was specified and is valid, link output to it
         if "testout" in result_line:
             testout = result_line["testout"]
             try:
-                self.link_testout(testout, result_line.get("name"))
+                testout_name = self.link_testout(testout, result_line.get("name"))
             except FileExistsError:
                 raise BadReportJSONError(f"file '{testout}' already exists") from None
 
-        # convert the set() of files into a sorted list
-        if "files" in result_line:
-            result_line["files"] = sorted(result_line["files"])
+            # prepend to files since Test Artifacts don't need
+            # the concept of a 'testout' key
+            del result_line["testout"]
+            if "files" in result_line:
+                result_line["files"].insert(0, str(testout_name))
+            else:
+                result_line["files"] = (str(testout_name),)
 
         # write persistently to the results file
         json.dump(result_line, self.results_fobj, indent=None)
@@ -167,12 +175,16 @@ class Reporter:
 
             self._report_to_file(final)
 
-    def _dest_path(self, file_name, result_name=None):
+    @staticmethod
+    def _test_files_path(file_name, result_name=None):
+        """
+        Calculates a path for a specific `file_name` as relative to the test
+        'files' dir root, possibly including `result_name` as a subtest name.
+
+        The result can be used inside the 'files' results key.
+        """
         result_name = util.normalize_path(result_name) if result_name else "."
-        # /path/to/files_dir / path/to/subtest / path/to/file.log
-        file_path = self.files_dir / result_name / util.normalize_path(file_name)
-        file_path.parent.mkdir(parents=True, exist_ok=True)
-        return file_path
+        return result_name / util.normalize_path(file_name)
 
     @contextlib.contextmanager
     def open_file(self, file_name, mode, result_name=None):
@@ -183,7 +195,10 @@ class Reporter:
         If `result_name` (typically a subtest) is not given, open the file
         for the test (name) itself.
         """
-        fd = os.open(self._dest_path(file_name, result_name), mode)
+        # /path/to/files_dir / path/to/subtest / path/to/file.log
+        full_path = self.files_dir / self._test_files_path(file_name, result_name)
+        full_path.parent.mkdir(parents=True, exist_ok=True)
+        fd = os.open(full_path, mode)
         try:
             yield fd
         finally:
@@ -203,7 +218,11 @@ class Reporter:
 
     def link_testout(self, file_name, result_name=None):
         # TODO: docstring
-        os.link(self.testout_file, self._dest_path(file_name, result_name))
+        rel_path = self._test_files_path(file_name, result_name)
+        full_path = self.files_dir / rel_path
+        full_path.parent.mkdir(parents=True, exist_ok=True)
+        os.link(self.testout_file, full_path)
+        return rel_path
 
     def start(self):
         if self.results_file.exists(follow_symlinks=False):

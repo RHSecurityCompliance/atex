@@ -191,6 +191,44 @@
     . functions
     report '{"status": "fail", "partial": true}'
 
+/test_partial_abrupt_nostatus:
+  test: |
+    . functions
+    report '{"partial": true}'
+    exit 1
+
+/test_partial_abrupt_files:
+  test: |
+    . functions
+    report '{"status": "pass", "partial": true, "files": [{"name": "output.txt", "length": 13}]}'
+    write 'custom output'
+    echo "stdout output"
+    exit 1
+
+/test_partial_abrupt_nofiles:
+  test: |
+    . functions
+    report '{"status": "pass", "partial": true, "files": [{"name": "custom.txt", "length": 13}]}'
+    write 'custom output'
+    echo "stdout output"
+    exit 1
+
+/test_partial_abrupt_fileonly:
+  test: |
+    . functions
+    report '{"partial": true, "files": [{"name": "custom.txt", "length": 13}]}'
+    write 'custom output'
+    echo "stdout output"
+    exit 1
+
+/test_partial_abrupt_abort:
+  test: |
+    . functions
+    report '{"status": "pass", "partial": true}'
+    echo "sleeping forever-ish"
+    sleep 60
+  duration: 5
+
 /test_partial_merging:
   test: |
     . functions
@@ -274,11 +312,6 @@
     report '{"status": "pass", "testout": "here.txt"}'
     echo second line
 
-/test_testout_fallback:
-  test: |
-    . functions
-    echo some line
-
 /test_testout_partial:
   test: |
     . functions
@@ -292,6 +325,18 @@
     echo some line
     report '{"status": "fail", "testout": "here.txt"}'
     report '{"status": "pass", "testout": "there.txt"}'
+
+/test_testout_fallback:
+  test: |
+    . functions
+    echo some line
+
+/test_testout_fallback_partial:
+  test: |
+    . functions
+    echo some line
+    report '{"testout": "here.txt", "partial": true}'
+    exit 1
 
 # -----------------------------------------------------------------------------
 

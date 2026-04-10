@@ -30,7 +30,7 @@ jobs:
         run: |
           python3 -m pytest -s tests/provisioner/test_podman.py
 
-  executor-fmf:
+  executors:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -46,7 +46,7 @@ jobs:
             url: quay.io/centos/centos:stream10
           - name: fedora
             url: registry.fedoraproject.org/fedora:latest
-    name: executor-fmf-${{ matrix.name }}
+    name: executors-${{ matrix.name }}
     steps:
       - uses: actions/checkout@v6
       - run: sudo apt-get install -y python3-pytest podman
@@ -85,7 +85,7 @@ jobs:
             centos7)
               # see test code comments
               args=(
-                --ignore tests/executor/fmf/test_reboot.py
+                --ignore-glob 'tests/executor/*/test_reboot.py'
                 --deselect tests/executor/fmf/test_pkgs.py::test_require_fail
               )
               ;;
@@ -93,4 +93,4 @@ jobs:
               args=()
               ;;
           esac
-          python3 -m pytest "${args[@]}" -s tests/executor/fmf
+          python3 -m pytest "${args[@]}" -s tests/executor

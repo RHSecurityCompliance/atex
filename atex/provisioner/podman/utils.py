@@ -63,7 +63,7 @@ def wait_for_systemd(conn):
     # wait for the full system to be up
     # (--wait doesn't exist on old RHELs and needs extra waiting
     #  for /run/systemd/private)
-    for _ in range(300):
+    for _ in range(600):
         proc = conn.cmd(
             ("systemctl", "is-system-running"),
             stdout=subprocess.PIPE,

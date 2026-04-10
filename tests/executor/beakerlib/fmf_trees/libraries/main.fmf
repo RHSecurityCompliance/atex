@@ -1,0 +1,13 @@
+/plan:
+  execute:
+    how: tmt
+
+/test_library_require_paren:
+  test: ./rlimport.sh
+  require: library(example/name)
+
+/test_library_require_url:
+  test: ./rlimport.sh
+  require:
+    type: library
+    url: https://github.com/beakerlib/example

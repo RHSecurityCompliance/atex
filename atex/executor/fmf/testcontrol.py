@@ -166,6 +166,7 @@ class TestControl:
                 raise BadReportJSONError(f"file entry {file_name} length: {str(e)}") from None
 
             with self.reporter.open_file(file_name, os.O_WRONLY | os.O_CREAT, name) as fd:
+                self.logger.debug(f"receiving file: {file_name}")
                 # Linux can't do splice(2) on O_APPEND fds, so we open it above
                 # as O_WRONLY and just seek to the end, simulating append
                 os.lseek(fd, 0, os.SEEK_END)
@@ -187,6 +188,8 @@ class TestControl:
                         raise BadControlError("EOF when reading data")
                     file_length -= written
                     yield
+
+                self.logger.debug("file recv ended")
 
         # let class Reporter handle everything else
         self.reporter.report(result)

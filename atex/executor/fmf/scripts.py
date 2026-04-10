@@ -10,7 +10,7 @@ from .metadata import test_pkg_requires
 test_wrapper = importlib.resources.files(__package__).joinpath("test-wrapper")
 
 
-def make_test_setup(*, test_data, test_dir, wrapper_exec, test_exec, test_yaml):
+def make_test_setup(*, test_data, test_dir, wrapper_exec, test_exec, test_yaml, bin_dir):
     """
     Generate a bash script that should prepare the remote end for test
     execution.
@@ -31,18 +31,21 @@ def make_test_setup(*, test_data, test_dir, wrapper_exec, test_exec, test_yaml):
 
     - `test_yaml` is a file, inside `test_dir`, into which the test YAML data
       is to be written.
+
+    - `bin_dir` is a Path of a remote directory to be prepended to PATH.
     """
     test_dir_path = shlex.quote(str(test_dir))
     wrapper_exec_path = shlex.quote(str(test_dir / wrapper_exec))
     test_exec_path = shlex.quote(str(test_dir / test_exec))
     test_yaml_path = shlex.quote(str(test_dir / test_yaml))
+    bin_dir_path = shlex.quote(str(bin_dir))
 
     out = "#!/bin/bash\n"
     out += "set -xe\n"
 
     # re-create test_dir
     out += f"rm -rf {test_dir_path}\n"
-    out += f"mkdir -p {test_dir_path}\n"
+    out += f"mkdir {test_dir_path}\n"
 
     # install test dependencies
     out += util.dedent(r"""
@@ -101,6 +104,13 @@ def make_test_setup(*, test_data, test_dir, wrapper_exec, test_exec, test_yaml):
             set -o allexport
             . "$TMT_PLAN_ENVIRONMENT_FILE"
             set +o allexport
+        fi
+    """) + "\n"
+    # some users (like BeakerlibExecutor) use additional helpers by creating
+    # a bin/ dir in the remote work_dir - if it exists, add it to PATH
+    out += util.dedent(fr"""
+        if [[ -d {bin_dir_path} ]]; then
+            export PATH={bin_dir_path}:"$PATH"
         fi
     """) + "\n"
     # mimic what tmt does

@@ -17,6 +17,7 @@
         echo noop >&$ATEX_TEST_CONTROL || break
         sleep 0.1
       done
+      sync
       reboot
       sleep inf
     fi
@@ -32,6 +33,7 @@
           echo noop >&$ATEX_TEST_CONTROL || break
           sleep 0.1
         done
+        sync
         reboot
         sleep inf
         ;;
@@ -42,6 +44,7 @@
           echo noop >&$ATEX_TEST_CONTROL || break
           sleep 0.1
         done
+        sync
         reboot
         sleep inf
         ;;
@@ -57,5 +60,6 @@
 /test_reboot_unexpected:
   duration: 5m
   test: |
+    sync
     reboot
     sleep inf

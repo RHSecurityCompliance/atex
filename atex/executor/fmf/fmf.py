@@ -54,15 +54,14 @@ class FMFExecutor(Executor):
     def start(self):
         self.logger.debug(f"starting: {self}")
 
-        tmp_dir = self.conn.cmd(
+        proc = self.conn.cmd(
             # /var is not cleaned up by bootc, /var/tmp is
             ("mktemp", "-d", "-p", "/var", "atex-XXXXXXXXXX"),
             stdout=subprocess.PIPE,
             text=True,
             check=True,
         )
-        tmp_dir = Path(tmp_dir.stdout.rstrip("\n"))
-        self.work_dir = tmp_dir
+        self.work_dir = Path(proc.stdout.rstrip("\n"))
 
         # create / truncate the TMT_PLAN_ENVIRONMENT_FILE
         self.conn.cmd(("truncate", "-s", "0", self.work_dir / "plan_env"), check=True)
@@ -129,7 +128,7 @@ class FMFExecutor(Executor):
                         check=True,
                     )
 
-    def _report_fallback_result(self, reporter, control, exception, test_name):
+    def _report_fallback_result(self, reporter, exit_code, exception, test_name):
         """
         Report a fallback result for a test that hasn't reported a full
         name-less result for itself. See RESULTS.md.
@@ -176,7 +175,7 @@ class FMFExecutor(Executor):
         if partial and "status" in partial:
             status_addition = {"status": partial["status"]}
         else:
-            status_addition = {"status": "pass" if control.exit_code == 0 else "fail"}
+            status_addition = {"status": "pass" if exit_code == 0 else "fail"}
 
         # regular fallback result - use pass/fail based on exitcode
         self.logger.debug(f"'{test_name}': reporting fallback result")
@@ -244,6 +243,7 @@ class FMFExecutor(Executor):
                 wrapper_exec="wrapper.py",
                 test_exec="test.sh",
                 test_yaml="metadata.yaml",
+                bin_dir=self.work_dir / "bin",
             )
             setup_proc = self.conn.cmd(
                 ("bash",),
@@ -391,7 +391,7 @@ class FMFExecutor(Executor):
                 raise
 
             finally:
-                self._report_fallback_result(reporter, control, exception, test_name)
+                self._report_fallback_result(reporter, control.exit_code, exception, test_name)
 
     def __str__(self):
         class_name = self.__class__.__name__

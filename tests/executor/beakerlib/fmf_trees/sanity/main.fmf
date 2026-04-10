@@ -1,0 +1,8 @@
+/plan:
+  execute:
+    how: tmt
+
+/test_fallback_status_pass:
+  test: ./fallback_status.sh pass
+/test_fallback_status_fail:
+  test: ./fallback_status.sh fail

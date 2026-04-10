@@ -9,7 +9,7 @@ function report {
 }
 
 function sizeof {
-    stat -c %s "$1"
+    stat -L -c %s "$1"
 }
 
 function write {

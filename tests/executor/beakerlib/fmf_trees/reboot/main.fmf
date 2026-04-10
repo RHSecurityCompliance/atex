@@ -1,0 +1,26 @@
+/plan:
+  execute:
+    how: tmt
+
+
+/test_reboot_rhts:
+  test: ./reboot.sh rhts-reboot
+  duration: 5m
+/test_reboot_tmt:
+  test: ./reboot.sh tmt-reboot
+  duration: 5m
+
+/test_reboot_fail_before:
+  test: ./reboot_fail.sh before
+  duration: 5m
+/test_reboot_fail_after:
+  test: ./reboot_fail.sh after
+  duration: 5m
+
+/test_reboot_no_phase_end:
+  test: ./reboot_noend.sh
+  duration: 5m
+
+/test_reboot_rlrun:
+  test: ./reboot_rlrun.sh
+  duration: 5m

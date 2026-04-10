@@ -1,0 +1,9 @@
+/plan:
+  execute:
+    how: tmt
+
+/test_report_result:
+  test: ./report_result.sh
+
+/test_submit_log:
+  test: ./submit_log.sh

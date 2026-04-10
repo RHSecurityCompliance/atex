@@ -134,6 +134,63 @@ class FMFExecutor(Executor):
                         check=True,
                     )
 
+    def _report_fallback_result(self, reporter, control, exception, test_name):
+        """
+        Report a fallback result for a test that hasn't reported a full
+        name-less result for itself. See RESULTS.md.
+
+        If the test reported a partial:true nameless result, merge some of
+        the fallback logic into it, allowing tests to upload logs on-the-fly
+        without setting a name/status and thus using this fallback logic.
+
+        Also, this always reports any fallback result as partial:true, letting
+        the Reporter's stop() to finish them - this is to simplify our code and
+        make it work for both non-partial and partial cases.
+        """
+        # if the test reported a full (non-partial) result for itself
+        if reporter.nameless_result_seen:
+            return
+
+        # get a nameless partial:true result if it exists
+        partial = reporter.partial.get(None)
+
+        # avoid adding testout to partial results that already use output.txt
+        if (
+            partial is None or
+            ("testout" not in partial and "output.txt" not in partial.get("files", ()))
+        ):
+            testout_addition = {"testout": "output.txt"}
+        else:
+            testout_addition = {}
+
+        # if an unexpected infrastructure-related exception happened, override
+        # any partial:true status and note since we likely have higher priority
+        # - note that TestAbortedError is already raised by run_test(), this is
+        #   just a nice-to-have convenience
+        if exception:
+            self.logger.debug(f"'{test_name}': reporting fallback exception")
+            reporter.report({
+                "status": "infra",
+                "note": f"{type(exception).__name__}({exception})",
+                "partial": True,
+                **testout_addition,
+            })
+            return
+
+        # if the partial result has at least status, prefer it
+        if partial and "status" in partial:
+            status_addition = {"status": partial["status"]}
+        else:
+            status_addition = {"status": "pass" if control.exit_code == 0 else "fail"}
+
+        # regular fallback result - use pass/fail based on exitcode
+        self.logger.debug(f"'{test_name}': reporting fallback result")
+        reporter.report({
+            **status_addition,
+            "partial": True,
+            **testout_addition,
+        })
+
     class State(enum.Enum):
         STARTING_TEST = enum.auto()
         READING_CONTROL = enum.auto()
@@ -339,35 +396,7 @@ class FMFExecutor(Executor):
                 raise
 
             finally:
-                # finish any unfinished partial:true results
-                reporter.replay_partial()
-
-                # if the test hasn't reported a result for itself
-                if not reporter.nameless_result_seen:
-                    # link testout to the fallback result if the test hasn't
-                    if not reporter.testout_seen:
-                        testout_addition = {"testout": "output.txt"}
-                    else:
-                        testout_addition = {}
-
-                    # if an unexpected infrastructure-related exception happened
-                    # - we already raise it upwards as an exception, but log it
-                    #   to results as well as a fallback result, why not
-                    if exception:
-                        self.logger.debug(f"'{test_name}': reporting fallback exception")
-                        reporter.report({
-                            "status": "infra",
-                            "note": f"{type(exception).__name__}({exception})",
-                            **testout_addition,
-                        })
-
-                    # regular fallback result - use pass/fail based on exitcode
-                    else:
-                        self.logger.debug(f"'{test_name}': reporting fallback result")
-                        reporter.report({
-                            "status": "pass" if control.exit_code == 0 else "fail",
-                            **testout_addition,
-                        })
+                self._report_fallback_result(reporter, control, exception, test_name)
 
     def __str__(self):
         class_name = self.__class__.__name__

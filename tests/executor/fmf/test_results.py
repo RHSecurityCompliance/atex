@@ -315,10 +315,84 @@ def test_partial_abrupt(provisioner, tmp_dir):
     """Abrupt test exit relying on partial:True."""
     results = run_fmf_test(provisioner, tmp_dir)
     assert results.count("\n") == 1
-    assert json.loads(results) == {"status": "fail"}
-    # no automatic test output written
-    files = list((tmp_dir / "files").iterdir())
-    assert len(files) == 0
+    assert json.loads(results) == {
+        "status": "fail",
+        "files": ["output.txt"],  # from fallback result
+    }
+
+
+def test_partial_abrupt_nostatus(provisioner, tmp_dir):
+    """Abrupt test exit without reported status (uses exit code)."""
+    results = run_fmf_test(provisioner, tmp_dir)
+    assert results.count("\n") == 1
+    assert json.loads(results) == {
+        "status": "fail",  # because of exit 1
+        "files": ["output.txt"],  # from fallback result
+    }
+
+
+def test_partial_abrupt_files(provisioner, tmp_dir):
+    """No output.txt is added in fallback result if files contains it."""
+    results = run_fmf_test(provisioner, tmp_dir)
+    assert results.count("\n") == 1
+    assert json.loads(results) == {
+        "status": "pass",
+        "files": ["output.txt"],  # from test, not fallback
+    }
+    first = (tmp_dir / "files" / "output.txt").read_bytes()
+    assert first == b"custom output"
+
+
+def test_partial_abrupt_nofiles(provisioner, tmp_dir):
+    """Fallback output.txt is added if none given in files."""
+    results = run_fmf_test(provisioner, tmp_dir)
+    assert results.count("\n") == 1
+    assert json.loads(results) == {
+        "status": "pass",
+        "files": [
+            "output.txt",  # from fallback result
+            "custom.txt",  # from test
+        ],
+    }
+    first = (tmp_dir / "files" / "custom.txt").read_bytes()
+    assert first == b"custom output"
+    second = (tmp_dir / "files" / "output.txt").read_bytes()
+    assert second == b"stdout output\n"
+
+
+def test_partial_abrupt_fileonly(provisioner, tmp_dir):
+    """Only a file provided by test, no status/testout, fallback finishes it."""
+    results = run_fmf_test(provisioner, tmp_dir)
+    assert results.count("\n") == 1
+    assert json.loads(results) == {
+        "status": "fail",  # because of exit 1
+        "files": [
+            "output.txt",  # from fallback result
+            "custom.txt",  # from test
+        ],
+    }
+    first = (tmp_dir / "files" / "custom.txt").read_bytes()
+    assert first == b"custom output"
+    second = (tmp_dir / "files" / "output.txt").read_bytes()
+    assert second == b"stdout output\n"
+
+
+def test_partial_abrupt_abort(provisioner, tmp_dir):
+    """Exception overrides status/note via a fallback result."""
+    try:
+        run_fmf_test(provisioner, tmp_dir, read_results=False)
+    except TestAbortedError as e:
+        if str(e) != "test duration timeout reached":
+            raise
+    results = (tmp_dir / "results").read_text()
+    assert results.count("\n") == 1
+    assert json.loads(results) == {
+        "status": "infra",
+        "note": "TestAbortedError(test duration timeout reached)",
+        "files": ["output.txt"],  # from fallback result
+    }
+    output = (tmp_dir / "files" / "output.txt").read_bytes()
+    assert output == b"sleeping forever-ish\n"
 
 
 def test_partial_merging(provisioner, tmp_dir):
@@ -409,18 +483,6 @@ def test_testout(provisioner, tmp_dir):
     assert not (tmp_dir / "files" / "output.txt").exists()
 
 
-def test_testout_fallback(provisioner, tmp_dir):
-    """Fallback testout if test doesn't report anything."""
-    results = run_fmf_test(provisioner, tmp_dir)
-    assert results.count("\n") == 1
-    assert json.loads(results) == {
-        "status": "pass",
-        "files": ["output.txt"],
-    }
-    output = (tmp_dir / "files" / "output.txt").read_bytes()
-    assert output == b"some line\n"
-
-
 def test_testout_partial(provisioner, tmp_dir):
     """Overwriting a partial:True specified testout:file."""
     results = run_fmf_test(provisioner, tmp_dir)
@@ -454,6 +516,32 @@ def test_testout_multiple(provisioner, tmp_dir):
     assert first_output == b"some line\n"
     second_output = (tmp_dir / "files" / "there.txt").read_bytes()
     assert second_output == b"some line\n"
+    # no automatic test output written
+    assert not (tmp_dir / "files" / "output.txt").exists()
+
+
+def test_testout_fallback(provisioner, tmp_dir):
+    """Fallback testout if test doesn't report anything."""
+    results = run_fmf_test(provisioner, tmp_dir)
+    assert results.count("\n") == 1
+    assert json.loads(results) == {
+        "status": "pass",
+        "files": ["output.txt"],
+    }
+    output = (tmp_dir / "files" / "output.txt").read_bytes()
+    assert output == b"some line\n"
+
+
+def test_testout_fallback_partial(provisioner, tmp_dir):
+    """Fallback testout doesn't contain testout if partial did."""
+    results = run_fmf_test(provisioner, tmp_dir)
+    assert results.count("\n") == 1
+    assert json.loads(results) == {
+        "status": "fail",  # because of exit 1
+        "files": ["here.txt"],
+    }
+    output = (tmp_dir / "files" / "here.txt").read_bytes()
+    assert output == b"some line\n"
     # no automatic test output written
     assert not (tmp_dir / "files" / "output.txt").exists()
 

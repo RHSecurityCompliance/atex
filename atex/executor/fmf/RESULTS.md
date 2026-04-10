@@ -178,6 +178,37 @@ new additions/updates don't change the order.
 For obvious reasons, please don't send too many `"partial": true` results, as
 we need to keep them in memory - excessive amounts will increase memory use.
 
+### Fallback result vs partial results
+
+If there's an unfinished `"partial": true` result for the test itself (not
+a subtest) present when the test exits, the fallback result logic activates,
+with this in mind:
+
+- The `"testout": "output.txt"` is added only when no `testout` was specified
+  and when `files` doesn't contain `output.txt` already.
+- If the test was terminated by the runner (ie. duration timing out), both
+  `status` and `note` are overwritten to indicate the problem.
+
+This ensures the fallback logic never duplicates a result for the test itself,
+always merging with the pre-existing test-reported partial result.
+
+One notable use case is the test uploading files on-the-fly *while* still using
+the fallback result logic to fill in status (based on exit code), the equivalent
+of this:
+
+```
+{"partial": true, "files": [{"name": "some.log", "length": 123}]}
+...
+{"partial": true, "files": [{"name": "another.log", "length": 234}]}
+...
+```
+
+(with the fallback finally adding status/testout any time the test exits)
+
+```
+{"partial": true, "status": "fail", "testout": "output.txt"}
+```
+
 ## Test stdout and stderr
 
 If a test specifies `testout` in a result, we take the value as a file name

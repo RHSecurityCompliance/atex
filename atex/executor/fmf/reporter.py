@@ -42,8 +42,6 @@ class Reporter:
         # whether any one of the results was without a 'name' key,
         # indicating a result for the test itself was reported
         self.nameless_result_seen = False
-        # whether any one of the results ever linked testout to a file
-        self.testout_seen = False
 
     @classmethod
     def _merge_partial(cls, dst, src):
@@ -108,6 +106,9 @@ class Reporter:
             else:
                 result_line["files"] = (str(testout_name),)
 
+        if "name" not in result_line:
+            self.nameless_result_seen = True
+
         # write persistently to the results file
         json.dump(result_line, self.results_fobj, indent=None)
         self.results_fobj.write("\n")
@@ -143,12 +144,8 @@ class Reporter:
             # do not store the 'partial' key in the result, even if False
             del result_line["partial"]
 
-        if "name" not in result_line:
-            self.nameless_result_seen = True
-        if "testout" in result_line:
-            if not result_line["testout"]:
-                raise BadReportJSONError("'testout' specified, but empty")
-            self.testout_seen = True
+        if "testout" in result_line and not result_line["testout"]:
+            raise BadReportJSONError("'testout' specified, but empty")
 
         # None is valid too
         name = result_line.get("name")
@@ -247,7 +244,6 @@ class Reporter:
         self.testout_file.unlink(missing_ok=True)
 
         self.nameless_result_seen = False
-        self.testout_seen = False
 
     def __enter__(self):
         try:

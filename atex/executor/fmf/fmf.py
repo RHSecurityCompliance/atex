@@ -49,8 +49,6 @@ class FMFExecutor(Executor):
         self.conn = connection
         self.env = env or {}
         self.work_dir = None
-        self.tests_dir = None
-        self.plan_env_file = None
         self.cancelled = False
 
     def start(self):
@@ -65,17 +63,15 @@ class FMFExecutor(Executor):
         )
         tmp_dir = Path(tmp_dir.stdout.rstrip("\n"))
         self.work_dir = tmp_dir
-        self.tests_dir = tmp_dir / "tests"
-        self.plan_env_file = tmp_dir / "plan_env"
 
         # create / truncate the TMT_PLAN_ENVIRONMENT_FILE
-        self.conn.cmd(("truncate", "-s", "0", self.plan_env_file), check=True)
+        self.conn.cmd(("truncate", "-s", "0", self.work_dir / "plan_env"), check=True)
 
         # upload tests to the remote
         self.conn.rsync(
             "-r", "--delete", "--exclude=.git/",
             f"{self.fmf_tests.root}/",
-            f"remote:{self.tests_dir}",
+            f"remote:{self.work_dir}/tests",
             func=util.subprocess_log,
             logger=self.logger,
         )
@@ -92,8 +88,6 @@ class FMFExecutor(Executor):
             self.conn.cmd(("rm", "-rf", self.work_dir), check=True)
 
         self.work_dir = None
-        self.tests_dir = None
-        self.plan_env_file = None
 
     def cancel(self):
         self.cancelled = True
@@ -103,7 +97,7 @@ class FMFExecutor(Executor):
         env = {
             **self.fmf_tests.plan.get("environment", {}),
             **self.env,
-            "TMT_PLAN_ENVIRONMENT_FILE": self.plan_env_file,
+            "TMT_PLAN_ENVIRONMENT_FILE": str(self.work_dir / "plan_env"),
         }
         env_args = tuple(f"{k}={v}" for k, v in env.items())
 
@@ -123,7 +117,7 @@ class FMFExecutor(Executor):
                 for script in listlike(item, "script"):
                     full_script = make_plan_script(
                         contents=script,
-                        cwd=self.tests_dir,
+                        cwd=self.work_dir / "tests",
                     )
                     self.conn.cmd(
                         ("env", *env_args, "bash"),
@@ -206,14 +200,14 @@ class FMFExecutor(Executor):
         self.logger.info(f"'{test_name}': running, {artifacts=}")
 
         test_data = self.fmf_tests.data[test_name]
-        test_fmf_dir = self.tests_dir / self.fmf_tests.dirs[test_name]
+        test_fmf_dir = self.work_dir / "tests" / self.fmf_tests.dirs[test_name]
 
         # start with fmf-plan-defined environment
         env_vars = {
             **self.fmf_tests.plan.get("environment", {}),
-            "TMT_PLAN_ENVIRONMENT_FILE": self.plan_env_file,
+            "TMT_PLAN_ENVIRONMENT_FILE": str(self.work_dir / "plan_env"),
             "TMT_TEST_NAME": test_name,
-            "TMT_TEST_METADATA": f"{self.work_dir}/metadata.yaml",
+            "TMT_TEST_METADATA": str(self.work_dir / "test" / "metadata.yaml"),
         }
         # append fmf-test-defined environment into it
         for item in listlike(test_data, "environment"):
@@ -226,8 +220,8 @@ class FMFExecutor(Executor):
 
         # passed to test-wrapper as CLI args
         wrapper_args = [
-            f"{self.work_dir}/test.sh",  # test_exec
-            test_fmf_dir,                # fmf_dir
+            self.work_dir / "test" / "test.sh",  # test_exec
+            test_fmf_dir,  # fmf_dir
         ]
         if test_data.get("tty", False):  # flags
             wrapper_args.append("pty")
@@ -243,12 +237,12 @@ class FMFExecutor(Executor):
             duration = Duration(test_data.get("duration", "5m"))
             control = TestControl(reporter=reporter, duration=duration, logger=self.logger)
 
-            # run a setup script, preparing wrapper + test scripts
             setup_script = make_test_setup(
                 test_data=test_data,
-                wrapper_exec=f"{self.work_dir}/wrapper.py",
-                test_exec=f"{self.work_dir}/test.sh",
-                test_yaml=f"{self.work_dir}/metadata.yaml",
+                test_dir=self.work_dir / "test",
+                wrapper_exec="wrapper.py",
+                test_exec="test.sh",
+                test_yaml="metadata.yaml",
             )
             setup_proc = self.conn.cmd(
                 ("bash",),
@@ -302,7 +296,7 @@ class FMFExecutor(Executor):
                                 test_proc = self.conn.cmd(
                                     (
                                         "env", *env_args,
-                                        f"{self.work_dir}/wrapper.py", *wrapper_args,
+                                        self.work_dir / "test" / "wrapper.py", *wrapper_args,
                                     ),
                                     stdin=subprocess.DEVNULL,
                                     stdout=pipe_w,

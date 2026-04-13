@@ -75,6 +75,7 @@ class FMFExecutor(Executor):
             func=util.subprocess_log,
             logger=self.logger,
         )
+        self.env["TMT_TREE"] = str(self.work_dir / "tests")
 
         # run 'prepare' scripts from the plan on the remote
         self._run_plan_prepare_finish("prepare")

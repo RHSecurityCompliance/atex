@@ -166,6 +166,7 @@ class TestingFarmProvisioner(Provisioner):
                     arch=self.arch,
                     ssh_key=self.ssh_key,
                     api=self.tf_api,
+                    logger=self.logger,
                     **self.reserve_kwargs,
                 )
                 # add it to self.reserving even before we schedule a provision,

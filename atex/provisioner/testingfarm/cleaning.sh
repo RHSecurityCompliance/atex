@@ -109,6 +109,7 @@ fi
 # get around all of that by trying to extract known-good data and re-create
 # sensible GPG-enabled entries from scratch
 if [[ $os_id == rhel ]]; then
+    shopt -s nullglob
     gpgkeys=()
     for key in /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat*; do
         gpgkeys+=("file://$key")
@@ -133,6 +134,7 @@ if [[ $os_id == rhel ]]; then
             sed '/^gpgcheck=1$/a'" gpgkey=${gpgkeys[*]}" -i /etc/yum.repos.d/rhel.repo
         fi
     fi
+    shopt -u nullglob
 fi
 
 # ------------------------------------------------------------------------------

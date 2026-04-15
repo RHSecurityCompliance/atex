@@ -52,7 +52,7 @@ def listlike(data, key):
 
     and, for simplicity, we want to always deal with iterables/sequences.
     """
-    if value := data.get(key):
+    if (value := data.get(key)) is not None:
         return value if isinstance(value, list) else (value,)
     else:
         return ()

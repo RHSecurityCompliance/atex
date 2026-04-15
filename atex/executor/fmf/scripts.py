@@ -10,6 +10,37 @@ from .metadata import test_pkg_requires
 test_wrapper = importlib.resources.files(__package__).joinpath("test-wrapper")
 
 
+def make_pkg_install(required=None, recommended=None):
+    """
+    Generate a bash script for installing RPM `packages`, avoiding yum/dnf
+    overhead if everything is already installed.
+    """
+    if not required and not recommended:
+        return ""
+    out = util.dedent(r"""
+        if command -v dnf >/dev/null; then
+            pkg_tool="dnf -y --setopt=install_weak_deps=False"
+        else
+            pkg_tool="yum -y"
+        fi
+    """) + "\n"  # noqa: E501
+    if required:
+        pkgs_str = " ".join(shlex.quote(p) for p in required)
+        out += util.dedent(fr"""
+            not_installed=$(rpm -q --qf '' {pkgs_str} | sed -nr 's/^package ([^ ]+) is not installed$/\1/p')
+            if [[ $not_installed ]]; then $pkg_tool install $not_installed; fi
+        """) + "\n"  # noqa: E501
+    if recommended:
+        pkgs_str = " ".join(shlex.quote(p) for p in recommended)
+        out += util.dedent(fr"""
+            have_dnf5=$(command -v dnf5) || true
+            skip_bad="--skip-broken${{have_dnf5:+ --skip-unavailable}}"
+            not_installed=$(rpm -q --qf '' {pkgs_str} | sed -nr 's/^package ([^ ]+) is not installed$/\1/p')
+            if [[ $not_installed ]]; then $pkg_tool install $skip_bad $not_installed; fi
+        """) + "\n"  # noqa: E501
+    return out
+
+
 def make_test_setup(*, test_data, test_dir, wrapper_exec, test_exec, test_yaml, bin_dir):
     """
     Generate a bash script that should prepare the remote end for test
@@ -48,28 +79,10 @@ def make_test_setup(*, test_data, test_dir, wrapper_exec, test_exec, test_yaml, 
     out += f"mkdir {test_dir_path}\n"
 
     # install test dependencies
-    out += util.dedent(r"""
-        if command -v dnf >/dev/null; then
-            pkg_tool="dnf -y --setopt=install_weak_deps=False"
-        else
-            pkg_tool="yum -y"
-        fi
-    """) + "\n"
-    # - only strings (package names) in require/recommend are supported
-    if require := list(test_pkg_requires(test_data, "require")):
-        pkgs_str = " ".join(require)
-        out += util.dedent(fr"""
-            not_installed=$(rpm -q --qf '' {pkgs_str} | sed -nr 's/^package ([^ ]+) is not installed$/\1/p')
-            if [[ $not_installed ]]; then $pkg_tool install $not_installed; fi
-        """) + "\n"  # noqa: E501
-    if recommend := list(test_pkg_requires(test_data, "recommend")):
-        pkgs_str = " ".join(recommend)
-        out += util.dedent(fr"""
-            have_dnf5=$(command -v dnf5) || true
-            skip_bad="--skip-broken${{have_dnf5:+ --skip-unavailable}}"
-            not_installed=$(rpm -q --qf '' {pkgs_str} | sed -nr 's/^package ([^ ]+) is not installed$/\1/p')
-            if [[ $not_installed ]]; then $pkg_tool install $skip_bad $not_installed; fi
-        """) + "\n"  # noqa: E501
+    out += make_pkg_install(
+        required=tuple(test_pkg_requires(test_data, "require")),
+        recommended=tuple(test_pkg_requires(test_data, "recommend")),
+    )
 
     eof = f"EOF_{uuid.uuid4()}"
 
@@ -136,31 +149,13 @@ def make_plan_script(*, contents, cwd):
     - `cwd` is a directory path to 'cd' to on the remote system.
     """
     cwd = shlex.quote(str(cwd))
-    out = "#!/bin/bash\n"
-    out += f"cd {cwd} || exit 1\n"
-    out += util.dedent(r"""
-        if [[ -f $TMT_PLAN_ENVIRONMENT_FILE ]]; then
-            set -o allexport
-            . "$TMT_PLAN_ENVIRONMENT_FILE"
-            set +o allexport
-        fi
-    """) + "\n"
-    out += contents
-    return out
-
-
-def make_plan_pkg_install(packages):
-    """
-    Generate a bash script for installing RPM `packages`, avoiding yum/dnf
-    overhead if everything is already installed.
-    """
-    pkgs_str = " ".join(shlex.quote(p) for p in packages)
-    return util.dedent(fr"""
-        if command -v dnf >/dev/null; then
-            pkg_tool="dnf -y --setopt=install_weak_deps=False"
-        else
-            pkg_tool="yum -y"
-        fi
-        not_installed=$(rpm -q --qf '' {pkgs_str} | sed -nr 's/^package ([^ ]+) is not installed$/\1/p')
-        if [[ $not_installed ]]; then $pkg_tool install $not_installed; fi
-    """) + "\n"  # noqa: E501
+    return "\n".join((
+        "#!/bin/bash",
+        f"cd {cwd} || exit 1",
+        "if [[ -f $TMT_PLAN_ENVIRONMENT_FILE ]]; then",
+        "    set -o allexport",
+        '    . "$TMT_PLAN_ENVIRONMENT_FILE"',
+        "    set +o allexport",
+        "fi",
+        contents,
+    ))

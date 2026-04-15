@@ -13,7 +13,7 @@ from .. import Executor, ExecutorError
 from .duration import Duration
 from .metadata import listlike
 from .reporter import Reporter
-from .scripts import make_plan_pkg_install, make_plan_script, make_test_setup
+from .scripts import make_pkg_install, make_plan_script, make_test_setup
 from .testcontrol import TestControl
 
 get_logger = util.get_loggers("atex.executor.fmf")
@@ -109,7 +109,7 @@ class FMFExecutor(Executor):
                         ("bash",),
                         func=util.subprocess_log,
                         logger=self.logger,
-                        input=make_plan_pkg_install(packages),
+                        input=make_pkg_install(required=packages),
                         stderr=subprocess.STDOUT,
                         check=True,
                     )

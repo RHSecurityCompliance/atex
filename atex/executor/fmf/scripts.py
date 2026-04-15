@@ -19,24 +19,26 @@ def make_pkg_install(required=None, recommended=None):
         return ""
     out = util.dedent(r"""
         if command -v dnf >/dev/null; then
-            pkg_tool="dnf -y --setopt=install_weak_deps=False"
+            pkg_tool=(dnf -q -y --setopt=install_weak_deps=False)
         else
-            pkg_tool="yum -y"
+            pkg_tool=(yum -q -y)
         fi
     """) + "\n"  # noqa: E501
     if required:
         pkgs_str = " ".join(shlex.quote(p) for p in required)
         out += util.dedent(fr"""
-            not_installed=$(rpm -q --qf '' {pkgs_str} | sed -nr 's/^package ([^ ]+) is not installed$/\1/p')
-            if [[ $not_installed ]]; then $pkg_tool install $not_installed; fi
+            exprs=$(rpm -q --qf '' --whatprovides {pkgs_str} 2>&1 | \
+                sed -nr -e 's/^no package provides (.+)$/\1/p' -e 's/error: file (.+): No such file or directory$/\1/p')
+            if [[ $exprs ]]; then (IFS=$'\n'; "${{pkg_tool[@]}}" install $exprs); fi
         """) + "\n"  # noqa: E501
     if recommended:
         pkgs_str = " ".join(shlex.quote(p) for p in recommended)
         out += util.dedent(fr"""
-            have_dnf5=$(command -v dnf5) || true
-            skip_bad="--skip-broken${{have_dnf5:+ --skip-unavailable}}"
-            not_installed=$(rpm -q --qf '' {pkgs_str} | sed -nr 's/^package ([^ ]+) is not installed$/\1/p')
-            if [[ $not_installed ]]; then $pkg_tool install $skip_bad $not_installed; fi
+            skip_bad=(--skip-broken)
+            command -v dnf5 >/dev/null && skip_bad+=(--skip-unavailable) || true
+            exprs=$(rpm -q --qf '' --whatprovides {pkgs_str} 2>&1 | \
+                sed -nr -e 's/^no package provides (.+)$/\1/p' -e 's/error: file (.+): No such file or directory$/\1/p')
+            if [[ $exprs ]]; then (IFS=$'\n'; "${{pkg_tool[@]}}" install "${{skip_bad[@]}}" $exprs); fi
         """) + "\n"  # noqa: E501
     return out
 

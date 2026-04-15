@@ -40,7 +40,11 @@ def test_require_fail(provisioner, tmp_dir):
             e.run_test("/test_require_fail", tmp_dir)
             raise AssertionError("TestSetupError should have triggered")
         except TestSetupError as e:
-            if "No match for argument: nonexistent_pkg" not in str(e):
+            msgs = (
+                "No match for argument: nonexistent_pkg",
+                "Unable to find a match: nonexistent_pkg",
+            )
+            if not any(msg in str(e) for msg in msgs):
                 raise
     results = (tmp_dir / "results").read_text()
     assert results.count("\n") == 1

@@ -3,9 +3,8 @@
 
 rlJournalStart
     rlPhaseStartTest
-        rlRun "rlImport example/file"
-        rlRun "fileCreate somefile"
-        rlAssertExists somefile
+        rlRun "rlImport yum/common-functions"
+        rlRun "yumlibIsDnf5" 0,1
     rlPhaseEnd
 rlJournalPrintText
 rlJournalEnd

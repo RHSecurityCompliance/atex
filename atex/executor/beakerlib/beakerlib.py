@@ -4,7 +4,7 @@ import subprocess
 import uuid
 
 from ... import util
-from ..fmf import FMFExecutor, metadata
+from ..fmf import FMFExecutor
 
 get_logger = util.get_loggers("atex.executor.beakerlib")
 
@@ -95,38 +95,8 @@ class BeakerlibExecutor(FMFExecutor):
         sleep inf
         """)
 
-        # extract all required beakerlib libraries from all tests
-        # https://tmt.readthedocs.io/en/latest/spec/tests.html#require
-        # - use a set to deduplicate libraries across tests
-        library_sources = set()
-        for data in self.fmf_tests.data.values():
-            for require in metadata.listlike(data, "require"):
-                if isinstance(require, dict) and require.get("type") == "library":
-                    ref = require.get("ref")
-                    url = require.get("url")
-                    if url and "/" in url:
-                        name = url.rpartition("/")[2]
-                        library_sources.add((name, url, ref))
-                elif isinstance(require, str) and require.startswith("library("):
-                    pkg = require.removesuffix(")").removeprefix("library(").partition("/")[0]
-                    url = f"https://github.com/beakerlib/{pkg}"
-                    library_sources.add((pkg, url, None))
-                else:
-                    self.logger.error(f"unknown require type: {require}")
-
-        def library_clones():
-            for name, url, ref in library_sources:
-                name = shlex.quote(name)
-                url = shlex.quote(url)
-                # do it like tmt does, allow ref to be a hash
-                yield f"git clone {url} {name}"
-                if ref:
-                    ref = shlex.quote(ref)
-                    yield f"git -C {name} checkout {ref}"
-
         # create helper wrappers in PATH
         # (exported by make_test_setup() if it finds a bin directory)
-        quoted_workdir = shlex.quote(str(self.work_dir))
         quoted_bindir = shlex.quote(str(self.work_dir / "bin"))
         script = (
             "set -x",
@@ -148,12 +118,6 @@ class BeakerlibExecutor(FMFExecutor):
             f"chmod +x {quoted_bindir}/atex-reboot",
             f"ln -s atex-reboot {quoted_bindir}/tmt-reboot",
             f"ln -s atex-reboot {quoted_bindir}/rhts-reboot",
-
-            # clone beakerlib libraries
-            f"mkdir {quoted_workdir}/beakerlib_libraries",
-            f"pushd {quoted_workdir}/beakerlib_libraries >/dev/null",
-            *library_clones(),
-            "popd >/dev/null",
         )
         # TODO: install beakerlib and git-core ^^^ ?
 
@@ -193,14 +157,15 @@ class BeakerlibExecutor(FMFExecutor):
             # these are created in _make_start_script() above
             "BEAKERLIB_COMMAND_REPORT_RESULT": "atex-report-result",
             "BEAKERLIB_COMMAND_SUBMIT_LOG": "atex-file-submit",
-            "BEAKERLIB_LIBRARY_PATH": str(self.work_dir / "beakerlib_libraries"),
+            # prefer libs/ if it exists, avoid /mnt/tests preference
+            "BEAKERLIB_LIBRARY_PATH": str(self.work_dir / "tests" / "libs"),
             "BEAKERLIB_DIR": str(self.work_dir / "beakerlib"),
             "TESTID": str(uuid.uuid4()),
             "BEAKERLIB_JOURNAL": str(0),  # XML journal is useless
         }
         env = beakerlib_env if env is None else env | beakerlib_env
 
-        super().run_test(*args, env=env)
+        return super().run_test(*args, env=env)
 
     def _report_fallback_result(self, reporter, exit_code, exception, test_name):
         if reporter.nameless_result_seen or exception:

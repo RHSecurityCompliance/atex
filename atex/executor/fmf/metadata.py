@@ -1,9 +1,10 @@
 import dataclasses
 import re
+import shutil
 from pathlib import Path, PurePath
 
-# from system-wide sys.path
-import fmf
+import fmf  # from system-wide sys.path
+import urllib3
 
 
 @dataclasses.dataclass
@@ -60,7 +61,7 @@ def listlike(data, key):
 
 def discover(fmf_tree, plan=None, *,
     names=None, filters=None, conditions=None, excludes=None,
-    context=None,
+    context=None, libraries=False,
 ):
     """
     Discover fmf tests in an `fmf_tree` (repository) location, using
@@ -95,6 +96,14 @@ def discover(fmf_tree, plan=None, *,
 
     - `context` is a dict like `{'distro': 'rhel-9.6'}` used for additional
       adjustment of the discovered fmf metadata.
+
+    - `libraries` enables resolution of beakerlib library dependencies
+      ('require: type: library' and old 'library(foo/bar)' syntax).\
+      When True, libraries are cloned into 'libs' under the fmf tree root,
+      and any RPM dependencies found in their metadata are added to the
+      requiring test's require/recommend metadata.
+
+      NOTE that **this modifies the on-disk fmf tree** by adding 'libs'.
     """
     # fmf.Context instance, as used for test discovery
     context = fmf.Context(**context) if context else fmf.Context()
@@ -179,12 +188,165 @@ def discover(fmf_tree, plan=None, *,
         # child.sources ie. ['/abs/path/to/some.fmf', '/abs/path/to/some/node.fmf']
         tests_dirs[child.name] = str(PurePath(child.sources[-1]).parent.relative_to(tree.root))
 
+    if libraries:
+        resolve_libraries(tests_data.values(), tree, context)
+
     return FMFTests(
         plan=plan_data,
         data=tests_data,
         dirs=tests_dirs,
         root=Path(tree.root),
     )
+
+
+_http = urllib3.PoolManager()
+
+
+def resolve_libraries(tests_data, tests_tree, context):
+    """
+    Resolve all beakerlib libraries for all tests defined by `tests_data`
+    (as parsed fmf metadata) inside (root) `tests_tree`.
+
+    If fetching a remote fmf definition, adjust it using `context`.
+    """
+    libs_dir = Path(tests_tree.root) / "libs"
+
+    # used to avoid re-parsing of library metadata when updating multiple tests;
+    # also used to resolve circular deps by:
+    # - first storing pre-recursion values
+    # - updating them after recursion
+    # - checking if the cache has anything - if so, avoid recursing
+    cache = {}
+
+    def resolve(entry):
+        new_require = []
+        new_recommend = []
+
+        def update_from_cache(nick, name):
+            key = f"{nick}{name}"
+            if key in cache:
+                cached_require, cached_recommend = cache[key]
+                new_require.extend(cached_require)
+                new_recommend.extend(cached_recommend)
+                return True
+            return False
+
+        for recommend in listlike(entry, "recommend"):
+            if not isinstance(recommend, str):
+                t = type(recommend).__name__
+                raise ValueError(f"non-string '{t}' not allowed in 'recommend': {recommend}")
+            new_recommend.append(recommend)
+
+        for require in listlike(entry, "require"):
+            # invalid type-less dict - tmt silently treats this as type:library,
+            # we are stricter since there's also type:file
+            if isinstance(require, dict) and "type" not in require:
+                raise ValueError(f"dict-style require without 'type': {require}")
+
+            # non-library dict - ie. type:file, just pass it along
+            elif isinstance(require, dict) and require["type"] != "library":
+                new_require.append(require)
+                continue
+
+            # any string - pkg name or library(foo/bar)
+            elif isinstance(require, str):
+                # old-style library(foo/bar)
+                if m := re.match(r"library\(([^/]+)(/[^)]+)\)$", require):
+                    nick, name = m.groups()
+                    if update_from_cache(nick, name):
+                        continue
+
+                    target = libs_dir / nick / name.lstrip("/")
+                    if target.exists():
+                        raise ValueError(f"{require} already exists in {target}")
+
+                    url = f"https://github.com/beakerlib/{nick}"
+                    # query using urllib3 to avoid git-clone asking for password
+                    response = _http.request("HEAD", url, redirect=False)
+                    # if it exists, define a Tree.node using it
+                    if response.status < 400:
+                        node = fmf.Tree.node({"url": url, "name": name})
+                        node.adjust(context=context)
+                        source = Path(node.root) / node.name.lstrip("/")
+                        target.parent.mkdir(parents=True, exist_ok=True)
+                        shutil.copytree(source, target, symlinks=True)
+
+                    # else leave it for the package manager to install
+                    else:
+                        new_require.append(require)
+                        continue
+
+                # pkg name
+                else:
+                    new_require.append(require)
+                    continue
+
+            # no fetching - reuse existing in-tree library
+            elif isinstance(require, dict) and "url" not in require and "path" not in require:
+                # nick must be defined
+                if not (nick := require.get("nick")):
+                    raise ValueError(f"'nick' must be defined for url-less: {require}")
+                # do not default to '/' since it makes no sense in a tree with tests
+                node = tests_tree.find(require.get("name"))
+                if node is None:
+                    raise ValueError(f"couldn't find library node: {require}")
+                if update_from_cache(nick, node.name):
+                    continue
+
+                target = libs_dir / nick / node.name.lstrip("/")
+                # referencing a library inside the tests tree, but not in libs/
+                # - just symlink it to libs/
+                if not target.exists():
+                    source = Path(node.root) / node.name.lstrip("/")
+                    target.parent.mkdir(parents=True, exist_ok=True)
+                    target.symlink_to(source.relative_to(target.parent, walk_up=True))
+
+            # finally, a valid remote require: type: library
+            elif isinstance(require, dict):
+                name = require.get("name", "/")
+                if not (nick := require.get("nick")):
+                    if "url" in require:
+                        url = require["url"].rstrip("/")
+                        # nick is basename of the url, without optional .git
+                        nick = url.rpartition("/")[2] if "/" in url else url
+                        nick = nick.removesuffix(".git")
+                    elif "path" in require:
+                        # nick is basename of the path
+                        nick = Path(require["path"]).name
+
+                if update_from_cache(nick, name):
+                    continue
+
+                target = libs_dir / nick / name.lstrip("/")
+                if target.exists():
+                    raise ValueError(f"{require} already exists in {target}")
+
+                # use fmf-native cloning/fetching
+                node = fmf.Tree.node(require)
+                node.adjust(context=context)
+                source = Path(node.root) / node.name.lstrip("/")
+                target.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copytree(source, target, symlinks=True)
+
+            # invalid require?
+            else:
+                raise ValueError(f"invalid require (bad type?): {require}")
+
+            # recurse into the library's own deps, with a sentinel
+            # for circular dependency protection
+            key = f"{nick}{node.name}"
+            cache[key] = ((), ())
+            node_require, node_recommend = resolve(node.data)
+            cache[key] = (node_require, node_recommend)
+            new_require += node_require
+            new_recommend += node_recommend
+
+        return (new_require, new_recommend)
+
+    for test_data in tests_data:
+        new_require, new_recommend = resolve(test_data)
+        test_data["require"] = new_require
+        test_data["recommend"] = new_recommend
 
 
 def duration_to_seconds(string):
@@ -211,12 +373,8 @@ def test_pkg_requires(data, key="require"):
     """
     for entry in listlike(data, key):
         # skip type:library and type:path
-        if not isinstance(entry, str):
-            continue
-        # skip "fake RPMs" that begin with 'library('
-        if entry.startswith("library("):
-            continue
-        yield entry
+        if isinstance(entry, str):
+            yield entry
 
 
 def all_pkg_requires(fmf_tests, key="require"):

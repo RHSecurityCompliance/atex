@@ -4,10 +4,11 @@
 
 /test_library_require_paren:
   test: ./rlimport.sh
-  require: library(example/name)
+  require: library(yum/common-functions)
 
 /test_library_require_url:
   test: ./rlimport.sh
   require:
     type: library
-    url: https://github.com/beakerlib/example
+    url: https://github.com/beakerlib/yum
+    name: /common-functions

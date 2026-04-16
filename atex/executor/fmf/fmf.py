@@ -109,7 +109,7 @@ class FMFExecutor(Executor):
                         ("bash",),
                         func=util.subprocess_log,
                         logger=self.logger,
-                        input=make_pkg_install(required=packages),
+                        input="set -xe\n" + make_pkg_install(required=packages),
                         stderr=subprocess.STDOUT,
                         check=True,
                     )

@@ -74,6 +74,9 @@ def make_test_setup(*, test_data, test_dir, wrapper_exec, test_exec, test_yaml, 
     bin_dir_path = shlex.quote(str(bin_dir))
 
     out = "#!/bin/bash\n"
+    # send set -x to stdout (subprocess_log)
+    #out += "exec {xtrace_fd}>&1\n"
+    #out += "BASH_XTRACEFD=$xtrace_fd\n"
     out += "set -xe\n"
 
     # re-create test_dir
@@ -159,5 +162,6 @@ def make_plan_script(*, contents, cwd):
         '    . "$TMT_PLAN_ENVIRONMENT_FILE"',
         "    set +o allexport",
         "fi",
+        "set -e -o pipefail",
         contents,
     ))

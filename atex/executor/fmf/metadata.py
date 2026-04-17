@@ -238,13 +238,8 @@ def resolve_libraries(tests_data, tests_tree, context):
             new_recommend.append(recommend)
 
         for require in listlike(entry, "require"):
-            # invalid type-less dict - tmt silently treats this as type:library,
-            # we are stricter since there's also type:file
-            if isinstance(require, dict) and "type" not in require:
-                raise ValueError(f"dict-style require without 'type': {require}")
-
             # non-library dict - ie. type:file, just pass it along
-            elif isinstance(require, dict) and require["type"] != "library":
+            if isinstance(require, dict) and require.get("type", "library") != "library":
                 new_require.append(require)
                 continue
 

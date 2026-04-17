@@ -261,7 +261,7 @@ class SharedVirtProvisioner(Provisioner):
     def _reserve_wrapper(self):
         try:
             self._reserve()
-        except Exception as e:
+        except BaseException as e:
             self.reserving_exc = e
             self.logger.warning(f"reserve thread got {type(e).__name__}({e})")
             self.reserving_remotes.clear()
@@ -411,7 +411,7 @@ class SharedVirtProvisioner(Provisioner):
                     if retries > 3000:  # ~5 minutes of sleeps + connects
                         remote.disconnect()
                         raise
-                except Exception:
+                except BaseException:
                     remote.disconnect()
                     raise
                 else:

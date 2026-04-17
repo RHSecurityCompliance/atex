@@ -299,7 +299,7 @@ def cmd_virt_install(logger, reply, args):
                 continue  # the inner 'for' didn't break
             break
 
-    except Exception as e:
+    except BaseException as e:
         if proc is not None:
             proc.terminate()
         reply(False, f"{type(e).__name__}({e})")
@@ -639,7 +639,7 @@ def loop():
             handle_cmd(cmd, args)
         except SilentError:
             continue
-        except Exception as e:
+        except BaseException as e:
             logging.exception(f"{type(e)} while handling cmd '{cmd}'")
             reply(False, f"{type(e).__name__}({e}) while handling cmd '{cmd}'")
             continue
@@ -721,7 +721,7 @@ def main():
         with tempfile.TemporaryDirectory(dir="/var/tmp") as tmpdir:
             os.chdir(tmpdir)
             loop()
-    except Exception:
+    except BaseException:
         logging.exception("unexpected condition")
         raise SystemExit(1) from None
 

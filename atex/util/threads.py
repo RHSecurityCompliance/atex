@@ -18,7 +18,7 @@ class ThreadReturn(threading.Thread):
         try:
             if self._target is not None:
                 self.__result = self._target(*self._args, **self._kwargs)
-        except Exception as e:
+        except BaseException as e:
             self.__exception = e
         # taken from the original threading.Thread.run
         finally:
@@ -80,7 +80,7 @@ class ThreadReturnQueue:
                 exception=None,
                 **user_kwargs,
             )
-        except Exception as e:
+        except BaseException as e:
             result = self.ThreadResult(
                 thread=current_thread,
                 returned=None,

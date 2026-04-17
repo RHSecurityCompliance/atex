@@ -138,7 +138,7 @@ class TestingFarmProvisioner(Provisioner):
                 self.remotes.append(remote)
                 self.reserving.remove(tf_reserve)
 
-        except Exception:
+        except BaseException:
             with self.lock:
                 self.reserving.remove(tf_reserve)
             tf_reserve.release()
@@ -224,7 +224,7 @@ class TestingFarmProvisioner(Provisioner):
             except util.ThreadReturnQueue.Empty:
                 # always non-blocking
                 return None
-            except Exception as e:
+            except BaseException as e:
                 exc_str = f"{type(e).__name__}({e})"
                 with self.lock:
                     if self.retries > 0:

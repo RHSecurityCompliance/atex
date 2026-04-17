@@ -704,7 +704,7 @@ class Reserve:
     def __enter__(self):
         try:
             return self.reserve()
-        except Exception:
+        except BaseException:
             self.release()
             raise
 

@@ -40,7 +40,7 @@ class Orchestrator(ABC):
         try:
             self.start()
             return self
-        except Exception:
+        except BaseException:
             self.stop()
             raise
 

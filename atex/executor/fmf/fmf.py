@@ -386,7 +386,7 @@ class FMFExecutor(Executor):
 
                 return control.exit_code
 
-            except Exception as e:
+            except BaseException as e:
                 exception = e
                 raise
 

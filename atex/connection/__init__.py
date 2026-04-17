@@ -9,7 +9,7 @@ class Connection(ABC):
         try:
             self.connect()
             return self
-        except Exception:
+        except BaseException:
             self.disconnect()
             raise
 

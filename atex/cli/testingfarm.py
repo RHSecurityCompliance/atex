@@ -58,51 +58,52 @@ def search_requests(args):
         "created_after": args.after,
     }
 
-    if args.page is not None:
-        reply = api.search_requests_paged(
-            state=args.state,
-            page=args.page,
-            **func_kwargs,
-        )
-    else:
-        reply = api.search_requests(
-            state=args.state,
-            **func_kwargs,
-        )
-        if not reply:
-            return
-        reply = sorted(reply, key=lambda x: x["created"])
-
-    if args.json:
-        for req in reply:
-            print(json.dumps(req))
-        return
-
-    for req in reply:
-        req_id = req["id"]
-        created = req["created"].partition(".")[0]
-
-        if "fmf" in req["test"] and req["test"]["fmf"]:
-            test = req["test"]["fmf"]["url"]
-        elif "tmt" in req["test"] and req["test"]["tmt"]:
-            test = req["test"]["tmt"]["url"]
+    for state in args.state:
+        if args.page is not None:
+            reply = api.search_requests_paged(
+                state=state,
+                page=args.page,
+                **func_kwargs,
+            )
         else:
-            test = ""
+            reply = api.search_requests(
+                state=state,
+                **func_kwargs,
+            )
+            if not reply:
+                continue
+            reply = sorted(reply, key=lambda x: x["created"])
 
-        envs = []
-        for env in req["environments_requested"]:
-            if "os" in env and env["os"] and "compose" in env["os"]:
-                compose = env["os"]["compose"]
-                arch = env["arch"]
-                if compose and arch:
-                    envs.append(f"{compose}@{arch}")
+        if args.json:
+            for req in reply:
+                print(json.dumps(req))
+            continue
 
-        print(f"{created} {req_id}", end="")
-        if test:
-            print(f" | test:{test}", end="")
-        if envs:
-            print(f" | envs:[{', '.join(envs)}]", end="")
-        print()
+        for req in reply:
+            req_id = req["id"]
+            created = req["created"].partition(".")[0]
+
+            if "fmf" in req["test"] and req["test"]["fmf"]:
+                test = req["test"]["fmf"]["url"]
+            elif "tmt" in req["test"] and req["test"]["tmt"]:
+                test = req["test"]["tmt"]["url"]
+            else:
+                test = ""
+
+            envs = []
+            for env in req["environments_requested"]:
+                if "os" in env and env["os"] and "compose" in env["os"]:
+                    compose = env["os"]["compose"]
+                    arch = env["arch"]
+                    if compose and arch:
+                        envs.append(f"{compose}@{arch}")
+
+            print(f"{created} {req_id}", end="")
+            if test:
+                print(f" | test:{test}", end="")
+            if envs:
+                print(f" | envs:[{', '.join(envs)}]", end="")
+            print()
 
 
 def stats(args):
@@ -269,7 +270,11 @@ def parse_args(parser):
         "search-requests", aliases=("sr",),
         help="return a list of requests matching the criteria",
     )
-    cmd.add_argument("--state", help="request state (running, etc.)", required=True)
+    cmd.add_argument(
+        "--state",
+        help="request state (running, etc.)",
+        action="append", required=True,
+    )
     cmd.add_argument("--all", help="all requests, not just owned by token", action="store_true")
     cmd.add_argument("--ranch", help="Testing Farm ranch (detected from token)")
     cmd.add_argument("--user-id", help="'user_id' request field (detected from token)")

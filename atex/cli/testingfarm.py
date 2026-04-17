@@ -317,30 +317,31 @@ def parse_args(parser):
 
 
 def main(args):
-    if args._cmd == "whoami":
-        whoami(args)
-    elif args._cmd == "about":
-        about(args)
-    elif args._cmd == "composes":
-        composes(args)
-    elif args._cmd in ("get-request", "gr"):
-        get_request(args)
-    elif args._cmd == "cancel":
-        cancel(args)
-    elif args._cmd in ("search-requests", "sr"):
-        if args.page is not None and args.page < 1:
-            raise RuntimeError("--page must be a positive integer")
-        search_requests(args)
-    elif args._cmd == "stats":
-        if args.page is not None and args.page < 1:
-            raise RuntimeError("--page must be a positive integer")
-        stats(args)
-    elif args._cmd == "reserve":
-        reserve(args)
-    elif args._cmd in ("watch-pipeline", "wp"):
-        watch_pipeline(args)
-    else:
-        raise RuntimeError(f"unknown args: {args}")
+    match args._cmd:
+        case "whoami":
+            whoami(args)
+        case "about":
+            about(args)
+        case "composes":
+            composes(args)
+        case "get-request" | "gr":
+            get_request(args)
+        case "cancel":
+            cancel(args)
+        case "search-requests" | "sr":
+            if args.page is not None and args.page < 1:
+                raise RuntimeError("--page must be a positive integer")
+            search_requests(args)
+        case "stats":
+            if args.page is not None and args.page < 1:
+                raise RuntimeError("--page must be a positive integer")
+            stats(args)
+        case "reserve":
+            reserve(args)
+        case "watch-pipeline" | "wp":
+            watch_pipeline(args)
+        case _:
+            raise RuntimeError(f"unknown args: {args}")
 
 
 CLI_SPEC = {

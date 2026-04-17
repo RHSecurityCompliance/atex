@@ -346,18 +346,19 @@ def resolve_libraries(tests_data, tests_tree, context):
 
 def duration_to_seconds(string):
     string = str(string)  # just in case the YAML had an integer
-    match = re.fullmatch(r"([0-9]+)([mhds]?)", string)
-    if not match:
+    m = re.fullmatch(r"([0-9]+)([mhds]?)", string)
+    if not m:
         raise ValueError(f"invalid fmf duration format: {string}")
-    length, unit = match.groups()
-    if unit == "m":
-        return int(length)*60
-    elif unit == "h":
-        return int(length)*60*60
-    elif unit == "d":
-        return int(length)*60*60*24
-    else:
-        return int(length)
+    length, unit = m.groups()
+    match unit:
+        case "m":
+            return int(length) * 60
+        case "h":
+            return int(length) * 60 * 60
+        case "d":
+            return int(length) * 60 * 60 * 24
+        case _:
+            return int(length)
 
 
 def test_pkg_requires(data, key="require"):

@@ -102,18 +102,19 @@ class TestControl:
 
         self.logger.debug(f"decoded word: {word} / arg: {arg}")
 
-        if word == "result":
-            parser = self._parser_result(arg)
-        elif word == "duration":
-            parser = self._parser_duration(arg)
-        elif word == "exitcode":
-            parser = self._parser_exitcode(arg)
-        elif word == "disconnect":
-            parser = self._parser_disconnect(arg)
-        elif word == "noop":
-            parser = self._parser_noop(arg)
-        else:
-            raise BadControlError(f"unknown control word: {word}")
+        match word:
+            case "result":
+                parser = self._parser_result(arg)
+            case "duration":
+                parser = self._parser_duration(arg)
+            case "exitcode":
+                parser = self._parser_exitcode(arg)
+            case "disconnect":
+                parser = self._parser_disconnect(arg)
+            case "noop":
+                parser = self._parser_noop(arg)
+            case _:
+                raise BadControlError(f"unknown control word: {word}")
 
         try:
             next(parser)

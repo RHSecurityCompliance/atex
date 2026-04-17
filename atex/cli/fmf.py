@@ -96,14 +96,15 @@ def parse_args(parser):
 
 
 def main(args):
-    if args._cmd in ("requires", "req"):
-        requires(args)
-    elif args._cmd in ("discover", "di"):
-        discover(args)
-    elif args._cmd == "show":
-        show(args)
-    else:
-        raise RuntimeError(f"unknown args: {args}")
+    match args._cmd:
+        case "requires" | "req":
+            requires(args)
+        case "discover" | "di":
+            discover(args)
+        case "show":
+            show(args)
+        case _:
+            raise RuntimeError(f"unknown args: {args}")
 
 
 CLI_SPEC = {

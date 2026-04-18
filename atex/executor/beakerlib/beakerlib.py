@@ -27,6 +27,7 @@ class BeakerlibExecutor(FMFExecutor):
         report_result = util.dedent(r"""
         #!/bin/bash
         set -e
+        LC_ALL=C  # make ${#foo} count real bytes
         function report {
             local what=$1
             printf 'result %d\n%s' "${#what}" "$what" >&$ATEX_TEST_CONTROL
@@ -60,6 +61,7 @@ class BeakerlibExecutor(FMFExecutor):
         file_submit = util.dedent(r"""
         #!/bin/bash
         set -e
+        LC_ALL=C  # make ${#foo} count real bytes
         function report {
             local what=$1
             printf 'result %d\n%s' "${#what}" "$what" >&$ATEX_TEST_CONTROL

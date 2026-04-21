@@ -1,4 +1,6 @@
 /plan:
+  discover:
+    how: fmf
   execute:
     how: tmt
   environment:

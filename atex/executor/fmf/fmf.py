@@ -197,6 +197,9 @@ class FMFExecutor(Executor):
 
         - `env` is a dict of extra environment variables to pass to the test.
         """
+        if test_name not in self.fmf_tests.data:
+            raise ValueError(f"'{test_name}' doesn't exist in the given FMFTests")
+
         self.logger.info(f"'{test_name}': running, {artifacts=}")
 
         test_data = self.fmf_tests.data[test_name]

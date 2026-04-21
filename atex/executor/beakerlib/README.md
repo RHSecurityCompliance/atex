@@ -19,8 +19,7 @@ Specifically,
   - This allows `rlFileSubmit` to safely work for multiple tests.
 - "Beakerlib libraries" are supported.
   - The `require: type: library` metadata is parsed for each test,
-    and the referenced library downloaded and exported via
-    `BEAKERLIB_LIBRARY_PATH` for `rlImport`.
+    and the referenced library downloaded for `rlImport`.
   - Any type-less `library(some/name)` specified in `require` is also
     translated to `require: type: library` using an implicit
     `https://github.com/beakerlib/some` git repository URL.

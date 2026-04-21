@@ -1,7 +1,9 @@
 import dataclasses
 import re
 import shutil
-from pathlib import Path, PurePath
+import tempfile
+import weakref
+from pathlib import Path
 
 import fmf  # from system-wide sys.path
 import urllib3
@@ -35,6 +37,12 @@ class FMFTests:
     dirs: dict
     root: Path
 
+    def __str__(self):
+        class_name = self.__class__.__name__
+        tests = len(self.data)
+        root = str(self.root)
+        return f"{class_name}(<holding {tests} tests>, root={root})"
+
 
 def listlike(data, key):
     """
@@ -59,7 +67,8 @@ def listlike(data, key):
         return ()
 
 
-def discover(fmf_tree, plan=None, *,
+def discover(
+    fmf_tree, plan=None, *,
     names=None, filters=None, conditions=None, excludes=None,
     context=None, libraries=False,
 ):
@@ -68,11 +77,18 @@ def discover(fmf_tree, plan=None, *,
     tmt `plan` for filtering and additional metadata, and return a fully
     resolved and filled-in FMFTests instance.
 
-    - `fmf_tree` is filesystem path somewhere inside fmf metadata tree,
-      or a root fmf.Tree instance.
+    - `fmf_tree` can be either:
 
-    - `plan` is fmf identifier (like `/some/plan`) of a tmt plan
-      to use for discovering tests. If None, a dummy (empty) plan is used.
+      - a filesystem path (str/Path) to a fmf tree, ie. pre-cloned git repo
+      - a root fmf.Tree object, ie. created for multiple discover() calls
+      - a dict specifying url/ref or path and name, per the fmf docs:
+        https://fmf.readthedocs.io/en/stable/concept.html#identifiers
+
+    - `plan` is fmf identifier (like `/some/plan`) of a tmt plan inside
+      the `fmf_tree` to use for discovering tests.
+
+      If None, a dummy (empty) plan is used (no scripts, no variables,
+      no limiting test filters, etc.).
 
     - `names`, `filters`, `conditions` and `excludes` (all tuple/list)
       are fmf tree filters (resolved by the fmf module), overriding any
@@ -102,15 +118,18 @@ def discover(fmf_tree, plan=None, *,
       When True, libraries are cloned into 'libs' under the fmf tree root,
       and any RPM dependencies found in their metadata are added to the
       requiring test's require/recommend metadata.
-
-      NOTE that **this modifies the on-disk fmf tree** by adding 'libs'.
     """
+    if isinstance(fmf_tree, fmf.Tree):
+        tree = fmf_tree.copy()  # copy because we'll be .adjust()ing the tree
+    elif isinstance(fmf_tree, dict):
+        tree = fmf.Tree.node(fmf_tree)
+    else:
+        tree = fmf.Tree(str(fmf_tree))
+    if not tree:
+        raise ValueError(f"got empty tree from: {fmf_tree}")
+
     # fmf.Context instance, as used for test discovery
     context = fmf.Context(**context) if context else fmf.Context()
-
-    # allow the user to pass fmf.Tree directly, greatly speeding up the
-    # instantiation of multiple FMFTests instances
-    tree = fmf_tree.copy() if isinstance(fmf_tree, fmf.Tree) else fmf.Tree(fmf_tree)
     tree.adjust(context=context)
 
     # lookup the plan first
@@ -126,9 +145,16 @@ def discover(fmf_tree, plan=None, *,
         plan_data = plan_node.data
     # fall back to dummy plan data
     else:
-        plan_data = {}
+        plan_data = {
+            "discover": {
+                "how": "fmf",
+            },
+            "execute": {
+                "how": "tmt",
+            },
+        }
 
-    # gather all tests selected by the plan
+    # discover tests from potentially multiple 'discover: how: fmf' sections
     #
     # discover:
     #   - how: fmf
@@ -138,30 +164,139 @@ def discover(fmf_tree, plan=None, *,
     #       - some-test-regex
     #     exclude:
     #       - some-test-regex
-    plan_filters = {}
-    for entry in listlike(plan_data, "discover"):
-        if entry.get("how") != "fmf":
-            continue
-        for meta_name in ("filter", "test", "exclude"):
-            if value := listlike(entry, meta_name):
-                if meta_name in plan_filters:
-                    plan_filters[meta_name] += value
-                else:
-                    plan_filters[meta_name] = list(value)
+    sections = tuple(
+        s for s in listlike(plan_data, "discover") if s.get("how", "fmf") == "fmf"
+    )
+    if not sections:
+        raise ValueError("no fmf discover sections found in the plan")
+    if len(sections) > 1:
+        if any("name" not in s for s in sections):
+            raise ValueError(">1 discover sections found: 'name' must be defined for each")
+        if len({s["name"] for s in sections}) < len(sections):
+            raise ValueError("'name' must be unique for each discover section")
 
+    all_tests_data = {}
+    all_tests_dirs = {}
+
+    # don't use a context manager here; it would be an overkill to require
+    # callers to always use discover() via a CM, especially given the most
+    # typical use case of just one discover() - instead, rely on __del__
+    # already provided by TemporaryDirectory
+    tmp_dir = tempfile.TemporaryDirectory(prefix="atex-fmf-discover-")
+    tmp_dir_path = Path(tmp_dir.name)
+
+    for section in sections:
+        prefix = section.get("name", "")
+        if "/" in prefix or prefix in (".", ".."):
+            raise ValueError(f"invalid discover section 'name': {prefix}")
+
+        section_tree, section_tests, section_dirs = discover_section(
+            tree,
+            section,
+            tmp_dir_path / prefix,
+            context,
+            names=names,
+            filters=filters,
+            conditions=conditions,
+            excludes=excludes,
+        )
+
+        # store beakerlib libraries under libs/ in the tests tree
+        # - if the test repo already has 'libs', Beakerlib would have discovered
+        #   it sooner than any 'libs' in levels above, so skip library fetching
+        #   and trust the repo knows what it's doing
+        if libraries and not (Path(section_tree.root) / "libs").exists():
+            resolve_libraries(
+                section_tests.values(),
+                section_tree,
+                tmp_dir_path / prefix / "libs",
+                context,
+            )
+
+        # prefix the prefix to test names and sources
+        if prefix:
+            section_tests = {
+                f"/{prefix}{name}": data
+                for name, data in section_tests.items()
+            }
+            section_dirs = {
+                f"/{prefix}{name}": str(Path(prefix) / path)
+                for name, path in section_dirs.items()
+            }
+
+        all_tests_data |= section_tests
+        all_tests_dirs |= section_dirs
+
+    fmf_tests = FMFTests(
+        plan=plan_data,
+        data=all_tests_data,
+        dirs=all_tests_dirs,
+        root=tmp_dir_path,
+    )
+    weakref.finalize(fmf_tests, tmp_dir.cleanup)
+    return fmf_tests
+
+
+def discover_section(
+    origin_tree, section, tmp_dir, context, *,
+    names=None, filters=None, conditions=None, excludes=None,
+):
+    """
+    Process one 'discover' plan section, searching for (filtering) tests,
+    and copying the (local or remotely fetched) repository data to `tmp_dir`.
+
+    - `origin_tree` is a fmf.Tree instance which holds the plan defining
+      the 'discover' section that was passed.
+
+    - `section` is a dict with the 'discover' section metadata.
+
+    - `tmp_dir` is a non-existent destination to which to copytree() the
+      section tree sources to.
+
+    - `context` is used to adjust remotely-fetched trees.
+
+    - `names` / `filters` / `conditions` / `excludes` are the same
+      as for discover().
+    """
+    if "url" in section:
+        # remote fmf tree - fetch it using the fmf module
+        # (avoid passing 'name' which is a section name, NOT a tree node name)
+        tree = fmf.Tree.node(
+            {k: section[k] for k in ("url", "ref", "path") if k in section},
+        )
+        tree.adjust(context=context)
+    else:
+        # local fmf tree - reuse the node
+        tree = origin_tree
+
+    # do a one-shot copy of the fetched data to the tmp_dir
+    # TODO: this could be part of tree.prune() below if we ever implement
+    #       require: type: file -- only the test and any paths it itself
+    #       requires could be copied (with dirs_exist_ok=True to merge
+    #       existing), not the whole repo
+    shutil.copytree(
+        tree.root,
+        tmp_dir,
+        ignore=shutil.ignore_patterns(".git"),
+        symlinks=True,
+        # without prefix, we're copying to the (existing) tmp_dir root
+        dirs_exist_ok=True,
+    )
+
+    # search for tests using any filters specified
     prune_kwargs = {}
     if names:
         prune_kwargs["names"] = names
-    elif "test" in plan_filters:
-        prune_kwargs["names"] = plan_filters["test"]
+    elif value := listlike(section, "test"):
+        prune_kwargs["names"] = value
     if filters:
         prune_kwargs["filters"] = filters
-    elif "filter" in plan_filters:
-        prune_kwargs["filters"] = plan_filters["filter"]
+    elif value := listlike(section, "filter"):
+        prune_kwargs["filters"] = value
     if conditions:
         prune_kwargs["conditions"] = conditions
     if not excludes:
-        excludes = plan_filters.get("exclude")
+        excludes = listlike(section, "exclude")
 
     tests_data = {}
     tests_dirs = {}
@@ -180,37 +315,27 @@ def discover(fmf_tree, plan=None, *,
         # no manual tests and no stories
         if child.data.get("manual") or child.data.get("story"):
             continue
-        # adjusting was already done once, prevent accidental repeated adjust
-        if "adjust" in child.data:
-            del child.data["adjust"]
 
-        tests_data[child.name] = child.data
+        # copy() to avoid two copies of one test from two discover sections
+        # sharing the same dict, modified twice by resolve_libraries()
+        tests_data[child.name] = child.data.copy()
         # child.sources ie. ['/abs/path/to/some.fmf', '/abs/path/to/some/node.fmf']
-        tests_dirs[child.name] = str(PurePath(child.sources[-1]).parent.relative_to(tree.root))
+        tests_dirs[child.name] = str(Path(child.sources[-1]).parent.relative_to(tree.root))
 
-    if libraries:
-        resolve_libraries(tests_data.values(), tree, context)
-
-    return FMFTests(
-        plan=plan_data,
-        data=tests_data,
-        dirs=tests_dirs,
-        root=Path(tree.root),
-    )
+    return (tree, tests_data, tests_dirs)
 
 
 _http = urllib3.PoolManager()
 
 
-def resolve_libraries(tests_data, tests_tree, context):
+def resolve_libraries(tests_data, tests_tree, libs_dir, context):
     """
     Resolve all beakerlib libraries for all tests defined by `tests_data`
-    (as parsed fmf metadata) inside (root) `tests_tree`.
+    (as parsed fmf metadata) inside (root) `tests_tree`, downloading them
+    to `libs_dir`.
 
     If fetching a remote fmf definition, adjust it using `context`.
     """
-    libs_dir = Path(tests_tree.root) / "libs"
-
     # used to avoid re-parsing of library metadata when updating multiple tests;
     # also used to resolve circular deps by:
     # - first storing pre-recursion values
@@ -255,9 +380,9 @@ def resolve_libraries(tests_data, tests_tree, context):
                     if target.exists():
                         raise ValueError(f"{require} already exists in {target}")
 
-                    url = f"https://github.com/beakerlib/{nick}/tree/HEAD/{name}"
+                    url = f"https://github.com/beakerlib/{nick}"
                     # query using urllib3 to avoid git-clone asking for password
-                    response = _http.request("HEAD", url, redirect=False)
+                    response = _http.request("HEAD", f"{url}/tree/HEAD{name}", redirect=False)
                     # if it exists, define a Tree.node using it
                     if response.status < 400:
                         node = fmf.Tree.node({"url": url, "name": name})
@@ -285,6 +410,7 @@ def resolve_libraries(tests_data, tests_tree, context):
                 node = tests_tree.find(require.get("name"))
                 if node is None:
                     raise ValueError(f"couldn't find library node: {require}")
+                name = node.name
                 if update_from_cache(nick, node.name):
                     continue
 
@@ -292,7 +418,7 @@ def resolve_libraries(tests_data, tests_tree, context):
                 # referencing a library inside the tests tree, but not in libs/
                 # - just symlink it to libs/
                 if not target.exists():
-                    source = Path(node.root) / node.name.lstrip("/")
+                    source = libs_dir.parent / node.name.lstrip("/")
                     target.parent.mkdir(parents=True, exist_ok=True)
                     target.symlink_to(source.relative_to(target.parent, walk_up=True))
 
@@ -329,7 +455,7 @@ def resolve_libraries(tests_data, tests_tree, context):
 
             # recurse into the library's own deps, with a sentinel
             # for circular dependency protection
-            key = f"{nick}{node.name}"
+            key = f"{nick}{name}"
             cache[key] = ((), ())
             node_require, node_recommend = resolve(node.data)
             cache[key] = (node_require, node_recommend)

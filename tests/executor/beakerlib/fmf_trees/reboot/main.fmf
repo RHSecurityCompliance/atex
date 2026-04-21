@@ -1,7 +1,8 @@
 /plan:
+  discover:
+    how: fmf
   execute:
     how: tmt
-
 
 /test_reboot_rhts:
   test: ./reboot.sh rhts-reboot

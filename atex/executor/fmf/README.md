@@ -37,6 +37,18 @@ for data in fmf_tests.data.values():
     data["duration"] = str(secs * 2)
 ```
 
+## Test discovery
+
+1. Tests are discovered using the `discover()` function, which uses the fmf
+   python module to either read on-disk metadata definitions, or fetch them
+   remotely via git cloning (it has its own cache in `~/.cache/fmf`).\
+   The function populates a single FMFTests dataclass instance, returning it.
+1. This instance is used by FMFExecutor to rsync the tests via the provided
+   Connection and run them remotely.
+
+These two steps are intentionally separate - you are free to supply custom
+logic for making a FMFTests instance, or customize the pre-made one.
+
 ## Test Control channel
 
 Tests run under this Executor have access to a "test control" stream, for
@@ -68,10 +80,10 @@ of tmt features on top of what fmf already provides.
   - `filter` support (via fmf module)
   - `test` support (via fmf module)
   - `exclude` support (custom `re`-based filter, not in fmf)
-  - No remote git repo (aside from what fmf supports natively), no `check`,
-    no `modified-only`, no `adjust-tests`, etc.
-  - Tests from multiple `discover` sections are added together, ie. any order
-    of the `discover` sections in the fmf is (currently) not honored
+  - Multiple (list) sections are supported, incl. remote URL-referenced
+    trees, using fmf module feching. See a separate section below.
+  - `when` is not supported (use the more standard `adjust` to conditionally
+    add extra list items to `discover`)
 - `provision`
   - Ignored (not relevant to an ATEX Executor)
 - `prepare`
@@ -140,6 +152,75 @@ of tmt features on top of what fmf already provides.
 ### Stories
 
 Not supported, but the `story` key exists, the fmf node is skipped/ignored.
+
+### Multiple discover sections
+
+Multiple `discover` list sections are supported, but they all **must**
+define `name`s.
+
+```yaml
+discover:
+  - how: fmf
+    name: external
+    url: https://some/external/repo
+  - how: fmf
+    name: internal
+```
+
+Note that tmt doesn't enforce this and instead names each unnamed section
+`default-0`, `default-1`, etc., likely as a result of tmt's implementation
+specifics (separate worktree for each discover).
+
+Finally, just like tmt, one source can be used multiple times, possibly
+duplicating the tests, ie. this would run local tests twice:
+
+```yaml
+discover:
+  - name: first
+    how: fmf
+  - name: second
+    how: fmf
+```
+
+### Prepare/finish section CWD
+
+In tmt, the plan `prepare` / `finish` sections (as well as the `TMT_TREE` env
+var) are set to the plan's own metadata tree. This means that remotely
+discovered (ie. with `url` or `path`) tests using `TMT_TREE` or relying on files
+created by plan-level scripts won't work.
+
+In fact, if no tests are discovered locally, the plan's own tree (git repo)
+is also copied over, just for the plan scripts to have access to their tree.
+
+FMFExecutor takes a different stance - if only one discover section is defined
+(without `name`), the plan scripts see that tree's contents. This matches how
+tmt does it.\
+If multiple sections are defined (or if the one has `name`), their CWD contains
+directories named after `name`s of the sections, containing the remotely
+discovered contents.
+
+Since this all lives in one plan, it is easy to access any discovered tests
+via known prefixes:
+
+```yaml
+discover:
+  - name: internal
+    how: fmf
+  - name: external
+    how: fmf
+    url: https://some/external/repo
+
+prepare:
+  - how: shell
+    script: |
+      echo URL=https://some/internal/service > internal/service.env
+      echo URL=https://some/external/service > external/service.env
+  - how: shell
+    script: pkgs=$(cat internal/deps) && dnf install -y $pkgs
+```
+
+The `TMT_TREE` variable then points to the same place as the CWD of the
+scripts - here, it would contain `internal` and `external` dirs.
 
 ## Environment variables
 

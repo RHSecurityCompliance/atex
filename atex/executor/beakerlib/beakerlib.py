@@ -159,8 +159,6 @@ class BeakerlibExecutor(FMFExecutor):
             # these are created in _make_start_script() above
             "BEAKERLIB_COMMAND_REPORT_RESULT": "atex-report-result",
             "BEAKERLIB_COMMAND_SUBMIT_LOG": "atex-file-submit",
-            # prefer libs/ if it exists, avoid /mnt/tests preference
-            "BEAKERLIB_LIBRARY_PATH": str(self.work_dir / "tests" / "libs"),
             "BEAKERLIB_DIR": str(self.work_dir / "beakerlib"),
             "TESTID": str(uuid.uuid4()),
             "BEAKERLIB_JOURNAL": str(0),  # XML journal is useless

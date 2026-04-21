@@ -81,6 +81,7 @@ def search_requests(args):
 
         for req in reply:
             req_id = req["id"]
+            state = req["state"]
             created = req["created"].partition(".")[0]
 
             if "fmf" in req["test"] and req["test"]["fmf"]:
@@ -98,7 +99,7 @@ def search_requests(args):
                     if compose and arch:
                         envs.append(f"{compose}@{arch}")
 
-            print(f"{created} {req_id}", end="")
+            print(f"{created} {state:<8} {req_id}", end="")
             if test:
                 print(f" | test:{test}", end="")
             if envs:

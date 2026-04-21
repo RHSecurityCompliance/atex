@@ -255,7 +255,7 @@ def resolve_libraries(tests_data, tests_tree, context):
                     if target.exists():
                         raise ValueError(f"{require} already exists in {target}")
 
-                    url = f"https://github.com/beakerlib/{nick}"
+                    url = f"https://github.com/beakerlib/{nick}/tree/HEAD/{name}"
                     # query using urllib3 to avoid git-clone asking for password
                     response = _http.request("HEAD", url, redirect=False)
                     # if it exists, define a Tree.node using it

@@ -237,6 +237,14 @@ def discover(
     return fmf_tests
 
 
+def merge_lists(into, name, source):
+    if source:  # avoid None or empty sequences
+        if name in into:
+            into[name] += source
+        else:
+            into[name] = list(source)
+
+
 def discover_section(
     origin_tree, section, tmp_dir, context, *,
     names=None, filters=None, conditions=None, excludes=None,
@@ -283,20 +291,15 @@ def discover_section(
         dirs_exist_ok=True,
     )
 
-    # search for tests using any filters specified
+    # merge plan-defined filters with argument-passed ones
     prune_kwargs = {}
-    if names:
-        prune_kwargs["names"] = names
-    elif value := listlike(section, "test"):
-        prune_kwargs["names"] = value
-    if filters:
-        prune_kwargs["filters"] = filters
-    elif value := listlike(section, "filter"):
-        prune_kwargs["filters"] = value
-    if conditions:
-        prune_kwargs["conditions"] = conditions
-    if not excludes:
-        excludes = listlike(section, "exclude")
+    merge_lists(prune_kwargs, "names", listlike(section, "test"))
+    merge_lists(prune_kwargs, "names", names)
+    merge_lists(prune_kwargs, "filters", listlike(section, "filter"))
+    merge_lists(prune_kwargs, "filters", filters)
+    merge_lists(prune_kwargs, "conditions", conditions)
+    prune_excludes = [*excludes] if excludes else []
+    prune_excludes += listlike(section, "exclude")
 
     tests_data = {}
     tests_dirs = {}
@@ -304,7 +307,7 @@ def discover_section(
     # actually discover the tests
     for child in tree.prune(**prune_kwargs):
         # excludes not supported by .prune(), we have to do it here
-        if excludes and any(re.search(x, child.name) for x in excludes):
+        if any(re.search(x, child.name) for x in prune_excludes):
             continue
         # only tests
         if "test" not in child.data:

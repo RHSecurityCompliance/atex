@@ -81,19 +81,19 @@ def test_filter_args():
     assert "/simple" not in fmf_tests.data
 
 
-def test_filter_priority():
-    # args override plan
+def test_filter_merging():
+    # args merge with plan filters
     fmf_tests = discover(
         "fmf_trees/metadata",
         "/plans/filtered",
-        names=("/filter1", "/filter2"),
+        names=("/filter2",),
     )
     # /filter1,3 are still excluded via filters/exclude
     assert "/filters/filter1" not in fmf_tests.data
     assert "/filters/filter2" in fmf_tests.data
     assert "/filters/filter3" not in fmf_tests.data
-    assert "/filters/filter4" not in fmf_tests.data
-    assert "/filters/filter5" not in fmf_tests.data
+    assert "/filters/filter4" in fmf_tests.data
+    assert "/filters/filter5" in fmf_tests.data
     assert "/simple" not in fmf_tests.data
 
 

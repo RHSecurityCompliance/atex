@@ -29,7 +29,7 @@ def make_pkg_install(required=None, recommended=None):
         out += util.dedent(fr"""
             exprs=$(rpm -q --qf '' --whatprovides {pkgs_str} 2>&1 | \
                 sed -nr -e 's/^no package provides (.+)$/\1/p' -e 's/error: file (.+): No such file or directory$/\1/p')
-            if [[ $exprs ]]; then (IFS=$'\n'; "${{pkg_tool[@]}}" install $exprs); fi
+            if [[ $exprs ]]; then (set -f; IFS=$'\n'; "${{pkg_tool[@]}}" install $exprs); fi
         """) + "\n"  # noqa: E501
     if recommended:
         pkgs_str = " ".join(shlex.quote(p) for p in recommended)
@@ -38,7 +38,7 @@ def make_pkg_install(required=None, recommended=None):
             command -v dnf5 >/dev/null && skip_bad+=(--skip-unavailable) || true
             exprs=$(rpm -q --qf '' --whatprovides {pkgs_str} 2>&1 | \
                 sed -nr -e 's/^no package provides (.+)$/\1/p' -e 's/error: file (.+): No such file or directory$/\1/p')
-            if [[ $exprs ]]; then (IFS=$'\n'; "${{pkg_tool[@]}}" install "${{skip_bad[@]}}" $exprs); fi
+            if [[ $exprs ]]; then (set -f; IFS=$'\n'; "${{pkg_tool[@]}}" install "${{skip_bad[@]}}" $exprs); fi
         """) + "\n"  # noqa: E501
     return out
 

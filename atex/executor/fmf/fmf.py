@@ -94,11 +94,11 @@ class FMFExecutor(Executor):
 
     def _run_plan_prepare_finish(self, plugin_type):
         # make environment for 'prepare' / 'finish' scripts
-        env = {
-            **self.fmf_tests.plan.get("environment", {}),
-            **self.env,
-            "TMT_PLAN_ENVIRONMENT_FILE": str(self.work_dir / "plan_env"),
-        }
+        env = {}
+        for item in listlike(self.fmf_tests.plan, "environment"):
+            env |= item
+        env |= self.env
+        env["TMT_PLAN_ENVIRONMENT_FILE"] = str(self.work_dir / "plan_env")
         env_args = tuple(f"{k}={v}" for k, v in env.items())
 
         for item in listlike(self.fmf_tests.plan, plugin_type):
@@ -206,8 +206,10 @@ class FMFExecutor(Executor):
         test_fmf_dir = self.work_dir / "tests" / self.fmf_tests.dirs[test_name]
 
         # start with fmf-plan-defined environment
-        env_vars = {
-            **self.fmf_tests.plan.get("environment", {}),
+        env_vars = {}
+        for item in listlike(self.fmf_tests.plan, "environment"):
+            env_vars |= item
+        env_vars |= {
             "TMT_PLAN_ENVIRONMENT_FILE": str(self.work_dir / "plan_env"),
             "TMT_TEST_NAME": test_name,
             "TMT_TEST_METADATA": str(self.work_dir / "test" / "metadata.yaml"),

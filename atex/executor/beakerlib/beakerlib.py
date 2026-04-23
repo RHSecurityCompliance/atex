@@ -5,6 +5,7 @@ import uuid
 
 from ... import util
 from ..fmf import FMFExecutor
+from ..fmf.scripts import make_pkg_install
 
 get_logger = util.get_loggers("atex.executor.beakerlib")
 
@@ -101,7 +102,7 @@ class BeakerlibExecutor(FMFExecutor):
         # (exported by make_test_setup() if it finds a bin directory)
         quoted_bindir = shlex.quote(str(self.work_dir / "bin"))
         script = (
-            "set -x",
+            "set -xe",
             f"mkdir {quoted_bindir}",
             # for rlReport (also called by rlPhaseEnd)
             f"cat > {quoted_bindir}/atex-report-result <<'EOF'",
@@ -121,9 +122,15 @@ class BeakerlibExecutor(FMFExecutor):
             f"ln -s atex-reboot {quoted_bindir}/tmt-reboot",
             f"ln -s atex-reboot {quoted_bindir}/rhts-reboot",
         )
-        # TODO: install beakerlib and git-core ^^^ ?
-
-        return "\n".join(script)
+        return (
+            "\n".join(script) +
+            "\n" +
+            # also make sure beakerlib is installed
+            make_pkg_install(
+                required=("beakerlib", "git-core"),
+                recommended=("beakerlib-redhat",),
+            )
+        )
 
     def start(self):
         super().start()

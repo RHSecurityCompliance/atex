@@ -86,8 +86,8 @@ class YAMLDocumentAggregator(Aggregator):
             "platform": platform,
             "name": test_name,
             "status": None,
-            "note": None,
             "files": [],
+            "note": None,
             "subtests": [],
         }
 
@@ -113,17 +113,17 @@ class YAMLDocumentAggregator(Aggregator):
                 else:
                     if status := result_line.get("status"):
                         document["status"] = status
-                    if note := result_line.get("note"):
-                        document["note"] = note
                     if files := result_line.get("files"):
                         document["files"] += files
+                    if note := result_line.get("note"):
+                        document["note"] = note
 
         if document["status"] is None:
             del document["status"]
-        if document["note"] is None:
-            del document["note"]
         if not document["files"]:
             del document["files"]
+        if document["note"] is None:
+            del document["note"]
         if not document["subtests"]:
             del document["subtests"]
 

@@ -11,9 +11,6 @@ from .metadata import (  # noqa: F401, I001
     all_pkg_requires,
 )
 
-# used by tests
-from . import testcontrol  # noqa: F401
-
 __all__ = (
     "FMFExecutor",
     "FMFTests",

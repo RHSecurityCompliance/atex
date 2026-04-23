@@ -224,9 +224,6 @@ scripts - here, it would contain `internal` and `external` dirs.
 
 ## Environment variables
 
-- `ATEX_DEBUG_TEST`
-  - Set to `1` to print out detailed runner-related trace within the test output
-    stream (as if it was printed out by the test).
 - `ATEX_DEBUG_NO_EXITCODE`
   - Set to `1` to avoid the test wrapper sending an automatic `exitcode` keyword
     over [Test Control](TEST_CONTROL.md).

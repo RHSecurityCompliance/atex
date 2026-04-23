@@ -70,7 +70,7 @@ def listlike(data, key):
 def discover(
     fmf_tree, plan=None, *,
     names=None, filters=None, conditions=None, excludes=None,
-    context=None, libraries=False,
+    context=None, libraries=True,
 ):
     """
     Discover fmf tests in an `fmf_tree` (repository) location, using

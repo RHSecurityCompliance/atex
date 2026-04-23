@@ -90,18 +90,18 @@ as they would appear in the binary stream** (any newlines are part of the data,
 not for readability here):
 
 ```
-result 109
-{"status": "pass", "name": "some/test", "files": [{"name": "A", "length": 13}, {"name": "B", "length": 13}]}contents of Acontents of Bresult 43
+result 108
+{"status": "pass", "name": "some/test", "files": [{"name": "A", "length": 13}, {"name": "B", "length": 13}]}contents of Acontents of Bresult 42
 {"status": "pass", "name": "another/test"}
 ```
 
 Explaining the example:
 
-1. `result 109\n` *control line* is read, `result` is identified as a
+1. `result 108\n` *control line* is read, `result` is identified as a
    *control word*
-1. The `result`-specific parser is called, with `109` passed via arguments,
+1. The `result`-specific parser is called, with `108` passed via arguments,
    and given control over the input.
-1. The parser reads the next 109 bytes (JSON with first result) and parses them
+1. The parser reads the next 108 bytes (JSON with first result) and parses them
    via a JSON decoder.
 1. The result data indicate a 13-byte file `A` and a 13-byte file `B`.
 1. The parser reads the next 13 bytes (`contents of A`) as file content of `A`.
@@ -109,10 +109,10 @@ Explaining the example:
 1. The parser then handles the result how it sees fit (write to CSV?).
 1. No more files were specified, nothing more for the `result` parser to read,
    it exits, giving control back.
-1. `result 43\n` *control line* is read, `result` identified as a *control word*
-1. The `result`-specific parser is called, with `43` passed via arguments,
+1. `result 42\n` *control line* is read, `result` identified as a *control word*
+1. The `result`-specific parser is called, with `42` passed via arguments,
    and given control over the input.
-1. The parser reads the next 43 bytes (JSON with second result) and parses them
+1. The parser reads the next 42 bytes (JSON with second result) and parses them
    via a JSON decoder.
 1. The parser handles the result how it sees fit (write to CSV?), no files
    specified, nothing more to read.
@@ -132,7 +132,8 @@ the old and the just-received new result:
 - `name` remains unchanged (implicitly)
 - any new keys (not in the old result) with non-`null` value are added
 - any existing keys with `null` as the new value are deleted
-- any existing keys with string and number values are replaced with new values
+- any existing keys with string, number or boolean values are replaced with
+  new values
 - any existing keys with array (list) values have new values appended
 - any existing keys with object (dict) values are recursively union'd using
   this algorithm
@@ -221,11 +222,11 @@ to be added to `files` by us, with test stdout+stderr as the contents.
 The result doesn't need to (but may) specify other unrelated `files` in the
 same result.\
 It must not specify a `files` entry with `name` identical to the name passed
-in `testout`, doing so triggers a sanity check error, discarding the result.
+in `testout`, doing so triggers a sanity check error, raising an exception.
 
 `testout` may be specified in a `"partial": true` result, overridden in any
 later `"partial": true` result for the same test `name`, just like any other
-string. It is parsed by us only on a final `"partial": false` submission.
+string. It is created by us only on a final `"partial": false` submission.
 
 A test may send multiple results with `testout` specified, possibly using
 different strings as file names, and we will link the stdout+stderr log to all

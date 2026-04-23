@@ -214,7 +214,10 @@ class Reporter:
             os.close(fd)
 
     def link_testout(self, file_name, result_name=None):
-        # TODO: docstring
+        """
+        Hardlink the test output to a given `file_name` in a directory
+        relevant to `result_name`.
+        """
         rel_path = self._test_files_path(file_name, result_name)
         full_path = self.files_dir / rel_path
         full_path.parent.mkdir(parents=True, exist_ok=True)

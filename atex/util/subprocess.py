@@ -4,8 +4,9 @@ import subprocess
 
 def subprocess_stream(cmd, *, stream="stdout", check=False, input=None, **kwargs):
     """
-    Run `cmd` via `subprocess.Popen()` and return an iterator over any lines
-    the command outputs on the specified stream, in text mode.
+    Run `cmd` via `subprocess.Popen()` and return a tuple of Popen instance and
+    an iterator over any lines the command outputs on the specified stream,
+    in text mode.
 
     - The `stream` is a subprocess.Popen attribute (either `stdout` or `stderr`)
       to read from.

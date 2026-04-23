@@ -27,8 +27,7 @@ class FMFTests:
 
       Useful when deciding CWD for test execution.
 
-    - `root` - Path to the fmf metadata tree root where the tests were
-      discovered.
+    - `root` - Path to the fmf metadata tree root with discovered tests.
 
       Useful when uploading or copying the test files.
     """
@@ -84,14 +83,14 @@ def discover(
       - a dict specifying url/ref or path and name, per the fmf docs:
         https://fmf.readthedocs.io/en/stable/concept.html#identifiers
 
-    - `plan` is fmf identifier (like `/some/plan`) of a tmt plan inside
+    - `plan` is an fmf identifier (like `/some/plan`) of a tmt plan inside
       the `fmf_tree` to use for discovering tests.
 
       If None, a dummy (empty) plan is used (no scripts, no variables,
       no limiting test filters, etc.).
 
     - `names`, `filters`, `conditions` and `excludes` (all tuple/list)
-      are fmf tree filters (resolved by the fmf module), overriding any
+      are fmf tree filters (resolved by the fmf module), merged with any
       existing tree filters the plan's discover phase specifies, where:
 
         - `names` are test regexes like `["/some/test", "/another/test"]`.
@@ -100,8 +99,8 @@ def discover(
           https://fmf.readthedocs.io/en/stable/modules.html#fmf.filter
 
         - `conditions` are python expressions whose namespace `locals()`
-          are set up to be a dictionary of the fmf tree. When any of the
-          expressions returns `True`, the tree is returned, ie.
+          are set up to be a dictionary of the fmf tree. When all of the
+          expressions return `True`, the tree is returned, ie.
 
               ["environment['FOO'] == 'BAR'"]
               ["'enabled' not in locals() or enabled"]
@@ -258,8 +257,8 @@ def discover_section(
 
     - `section` is a dict with the 'discover' section metadata.
 
-    - `tmp_dir` is a non-existent destination to which to copytree() the
-      section tree sources to.
+    - `tmp_dir` is a non-existent destination into which to copytree()
+      the section tree sources to.
 
     - `context` is used to adjust remotely-fetched trees.
 
@@ -497,7 +496,7 @@ def test_pkg_requires(data, key="require"):
     requires/recommends.
     """
     for entry in listlike(data, key):
-        # skip type:library and type:path
+        # skip type:library and type:file
         if isinstance(entry, str):
             yield entry
 

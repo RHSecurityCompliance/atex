@@ -41,7 +41,7 @@ For example,
   ---
   platform: 10.2@s390x
   name: /unit/syscalls
-  status: pass
+  status: fail
   files:
     - full_output.txt
   subtests:
@@ -88,8 +88,8 @@ For example,
   /11.0@x86_64/ltp/syscalls/socketpair02/client/test.out
   ```
 
-If subtest name or note missing in test artifacts, it is omitted in the YAML
-(eg. `note: null` never appears).
+If a field (ie. `files` or `note`) is missing in test artifacts,
+it is omitted in the YAML (eg. `note: null` never appears).
 
 ## Examples
 

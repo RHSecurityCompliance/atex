@@ -38,7 +38,7 @@ do it (ie. pre-processing test metadata, post-processing results).
 
 There are no boundaries for you to stay within - **you don't need to implement
 a Provisioner using the Provisioner API**. Just obtain the system *somehow*,
-wrap its SSH details in an [SSHConnection](atex/connection/ssh), and give that
+wrap its SSH details in an [SSHConnection\*](atex/connection/ssh), and give that
 to an [FMFExecutor](atex/executor/fmf).
 
 You don't need to write a "plugin for ATEX", you just write Python code.

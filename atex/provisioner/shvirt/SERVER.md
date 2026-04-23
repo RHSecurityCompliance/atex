@@ -46,7 +46,7 @@ This helper is executed by the Provisioner, so it needs to be installed on the
 server and executable by the user in `PATH`.
 
 If the server is accessed via `ssh`, you can use `ForceCommand` for a specific
-user in `/etc/ssh/sshd_config` (or `ssh_config.d/123-your-name.conf`), ie.
+user in `/etc/ssh/sshd_config` (or `sshd_config.d/123-your-name.conf`), ie.
 
 ```
 Match User libvirtuser

@@ -24,7 +24,7 @@ Specifically,
     translated to `require: type: library` using an implicit
     `https://github.com/beakerlib/some` git repository URL.
 - Subtests / phases are reported natively.
-  - A custom wrapper is provided around the `report` command of the
+  - A custom wrapper is provided around the `result` command of the
     [Test Control](../fmf/TEST_CONTROL.md), and exported via
     `BEAKERLIB_COMMAND_REPORT_RESULT` for `rlReport` to use.
 - Files are uploaded on-the-fly.

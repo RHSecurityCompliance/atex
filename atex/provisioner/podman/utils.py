@@ -7,6 +7,9 @@ from ... import util
 
 
 def pull_image(origin):
+    """
+    Pull podman images from repositories.
+    """
     proc = subprocess.run(
         ("podman", "image", "pull", "-q", origin),
         check=True,
@@ -17,6 +20,9 @@ def pull_image(origin):
 
 
 def build_container_with_deps(origin, tag=None, *, extra_pkgs=None, extra_content=""):
+    """
+    Create a new podman image with dependencies needed for PodmanProvisioner.
+    """
     # podman *requires* tags for images
     # - this is an undocumented quirk; any image without a tag is considered
     # a build artifact or otherwise a dangling image, and filtered internally

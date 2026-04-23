@@ -68,8 +68,6 @@ class APIError(TestingFarmError):
     pass
 
 
-# TODO docstrings for these:
-
 class BadHTTPError(TestingFarmError):
     pass
 
@@ -250,8 +248,8 @@ class TestingFarmAPI:
 
     def submit_request(self, spec):
         """
-        - `spec` is a big dictionary with 'test', 'environment', 'settings', etc.
-        keys that specify what should be run and where.
+        - `spec` is a big dictionary with 'test', 'environments', 'settings',
+          etc. keys that specify what should be run and where.
         """
         if not self.api_token:
             raise ValueError("submit_request() requires an auth token")
@@ -290,7 +288,7 @@ class Request:
 
     def submit(self, spec):
         """
-        - `spec` is a big dictionary with 'test', 'environment', 'settings',
+        - `spec` is a big dictionary with 'test', 'environments', 'settings',
           etc. keys that specify what should be run and where.
         """
         if self.id:
@@ -474,7 +472,7 @@ class Reserve:
 
       Ignored on the `redhat` ranch.
 
-    - `skip_guest_setup' decides whether to run TF-native Ansible playbooks
+    - `skip_guest_setup` decides whether to run TF-native Ansible playbooks
       meant to set up the reserved system. Set to True for a more "vanilla"
       OS environment.
 
@@ -488,7 +486,7 @@ class Reserve:
       custom metadata to be queried later.
 
     - `os_cleaning`, when True, runs a custom setup-like script on the
-      reserved OS prior to returning it as a Remote.
+      reserved OS prior to returning it as ReservedMachine.
 
       This script attempts to undo RHTS/Beaker style customizations done by
       Testing Farm and restore as much of the original vanilla OS as

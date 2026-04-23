@@ -32,5 +32,5 @@ the Provisioner submits a "request" to Testing Farm (typically with the first
 `.provision()` call) and that, while Remotes are typically returned in the order
 they were requested from Testing Farm, it isn't a guarantee.
 
-So set the `timeout=` keyword argument to the maximum possible time you plan
-to run for - ie. a 6h-limited CI job would set it to ~5h.
+So set the `timeout=` keyword argument to the maximum possible time in minutes
+you plan to run for - ie. a 6h-limited CI job would set it to ~5h.

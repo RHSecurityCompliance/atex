@@ -12,7 +12,7 @@ test_wrapper = importlib.resources.files(__package__).joinpath("test-wrapper")
 
 def make_pkg_install(required=None, recommended=None):
     """
-    Generate a bash script for installing RPM `packages`, avoiding yum/dnf
+    Generate a bash script for installing RPM packages, avoiding yum/dnf
     overhead if everything is already installed.
     """
     if not required and not recommended:
@@ -55,12 +55,14 @@ def make_test_setup(*, test_data, test_dir, wrapper_exec, test_exec, test_yaml, 
     - `test_data` is a dict with the parsed fmf metadata for the test.
 
     - `test_dir` is a Path of a remote directory for wrapper and test
-      executables, and any with addional test-related files.
-      It's deleted and re-created for each test.
+      executables, and any additional test-related files.
+
+      It is deleted and re-created for each test.
 
     - `wrapper_exec` is a file, inside `test_dir`, of the test wrapper.
 
-    - `test_exec` is a file, inside `test_dir, holding the test script contents.
+    - `test_exec` is a file, inside `test_dir`, holding the test script
+      contents.
 
     - `test_yaml` is a file, inside `test_dir`, into which the test YAML data
       is to be written.

@@ -30,17 +30,17 @@ channel.
 
   ```json
   C: {"cmd": "ping"}
-  S: {"cmd": "ping", "success": true, "reply": "atex-virt-helper v1 pong"}
+  S: {"success": true, "cmd": "ping", "reply": "atex-virt-helper v1 pong"}
   ```
 
 - `setname`
   - Set a process name that others can see (when querying for `reservations`
-    or otherwise in `top` or `/proc/$pid/comm`.
+    or otherwise in `top` or `/proc/$pid/comm`).
   - The name is limited to 15 characters (by `prctl(PR_SET_NAME)`).
 
   ```json
   C: {"cmd": "setname", "name": "fanthomas"}
-  S: {"cmd": "setname", "success": true, "name": "fanthomas"}
+  S: {"success": true, "cmd": "setname", "name": "fanthomas"}
   ```
 
 - `virsh`
@@ -51,10 +51,10 @@ channel.
 
   ```json
   C: {"cmd": "virsh", "args": ["list"]}
-  S: {"cmd": "virsh", "args": ["list"], "success": true, "reply": " 747   vmname   running\n"}
+  S: {"success": true, "cmd": "virsh", "args": ["list"], "reply": " 747   vmname   running\n"}
 
   C: {"cmd": "virsh", "args": ["sdsd"]}
-  S: {"cmd": "virsh", "args": ["sdsd"], "success": false, "reply": "error: unknown command: 'sdsd'\n"}
+  S: {"success": false, "cmd": "virsh", "args": ["sdsd"], "reply": "error: unknown command: 'sdsd'\n"}
   ```
 
 - `reserve`
@@ -67,14 +67,14 @@ channel.
 
   ```json
   C: {"cmd": "reserve"}
-  S: {"cmd": "reserve", "success": true, "domain": "vmname1"}
+  S: {"success": true, "cmd": "reserve", "domain": "vmname1"}
   C: {"cmd": "reserve"}
-  S: {"cmd": "reserve", "success": true, "domain": "vmname2"}
+  S: {"success": true, "cmd": "reserve", "domain": "vmname2"}
   C: {"cmd": "reserve"}
-  S: {"cmd": "reserve", "success": false, "reply": "no domain could be reserved"}
+  S: {"success": false, "cmd": "reserve", "reply": "no domain could be reserved"}
 
   C: {"cmd": "reserve", "filter": "blabla.*"}
-  S: {"cmd": "reserve", "success": false, "filter": "blabla.*", "reply": "no domain matches the filter"}
+  S: {"success": false, "cmd": "reserve", "filter": "blabla.*", "reply": "no domain matches the filter"}
   ```
 
 - `release`
@@ -82,7 +82,7 @@ channel.
 
   ```json
   C: {"cmd": "release", "domain": "vmname2"}
-  S: {"cmd": "release", "success": true, "domain": "vmname2"}
+  S: {"success": true, "cmd": "release", "domain": "vmname2"}
   ```
 
 - `reservations`
@@ -116,7 +116,7 @@ channel.
   ```json
   C: {"cmd": "upload", "name": "ks.cfg", "length": 4}
   C: abc\n
-  S: {"cmd": "upload", "success": true, "name": "ks.cfg", "length": 4}
+  S: {"success": true, "cmd": "upload", "name": "ks.cfg", "length": 4}
   ```
 
 - `virt-install`
@@ -142,12 +142,12 @@ channel.
   ```json
   C: {"cmd": "virt-install", "args": ["--name", "vmname", "--memory", "4096", ...], "destroy_on_error": true}
   S (stderr): ... virt-install output ...
-  S (stdout): {"cmd": "virt-install", "success": true, "args": ["--name", "vmname", "--memory", "4096", ...]}
+  S (stdout): {"success": true, "cmd": "virt-install", "args": ["--name", "vmname", "--memory", "4096", ...]}
 
   C: {"cmd": "virt-install", "args": ["asds"]}
   S (stderr): usage: virt-install OPTIONS
   S (stderr): virt-install: error: unrecognized arguments: asds
-  S (stdout): {"cmd": "virt-install", "success": false, "args": ["asds"], "reply": "virt-install exited with 2"}
+  S (stdout): {"success": false, "cmd": "virt-install", "args": ["asds"], "reply": "virt-install exited with 2"}
   ```
 
 - `create-volume`
@@ -167,10 +167,10 @@ channel.
 
   ```json
   C: {"cmd": "create-volume", "pool": "default", "name": "volname.img", "format": "raw", "size": 42949672960}
-  S: {"cmd": "create-volume", "success": true, "pool": "default", "name": "volname.img", "format": "raw", "size": 42949672960}
+  S: {"success": true, "cmd": "create-volume", "pool": "default", "name": "volname.img", "format": "raw", "size": 42949672960}
 
   C: {"cmd": "create-volume", "pool": "default", "name": "volname.qcow2", "format": "qcow2", "size": 42949672960, "remove_existing": true}
-  S: {"cmd": "create-volume", "success": true, "pool": "default", "name": "volname.qcow2", "format": "qcow2", "size": 42949672960, "remove_existing": true}
+  S: {"success": true, "cmd": "create-volume", "pool": "default", "name": "volname.qcow2", "format": "qcow2", "size": 42949672960, "remove_existing": true}
   ```
 
 - `copy-volume`
@@ -184,6 +184,8 @@ channel.
     replacing the destination.
   - If `move: true` is given, it just does the atomic replace, renaming
     `from` to `to`.
+  - A `to_domain` can be given instead of `to`, in which case the provided
+    domain name is looked up and the domain's primary disk used as `to`.
   - Can copy either one volume to another (within the same pool) or a volume
     to a domain (the helper looks up the domain's volume in the specified pool).
     - If replacing a domain's volume, the helper clears NVRAM if it exists,
@@ -199,10 +201,10 @@ channel.
 
   ```json
   C: {"cmd": "copy-volume", "pool": "default", "from": "abc", "to": "xyz"}
-  S: {"cmd": "copy-volume", "success": true, "pool": "default", "from": "abc", "to": "xyz"}
+  S: {"success": true, "cmd": "copy-volume", "pool": "default", "from": "abc", "to": "xyz"}
 
   C: {"cmd": "copy-volume", "pool": "default", "from": "9.6", "to_domain": "vmname"}
-  S: {"cmd": "copy-volume", "success": true, "pool": "default", "from": "9.6", "to_domain": "vmname"}
+  S: {"success": true, "cmd": "copy-volume", "pool": "default", "from": "9.6", "to_domain": "vmname"}
   ```
 
 ## Final notes

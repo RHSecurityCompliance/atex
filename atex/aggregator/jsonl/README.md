@@ -8,7 +8,7 @@ These Aggregators collect reported results in a line-JSON output file
 (see https://jsonltools.com/) and uploaded files (logs) from multiple
 test runs under a shared directory.
 
-For example
+For example:
 
 - `aggregated/results.jsonl`
 
@@ -57,7 +57,7 @@ of strings.
 - `status`, `subtest name`, `files` and `note` come from the ingested
   [Test Artifacts](../../executor)
 
-If subtest name or note missing in test artifacts, a `null` item is used.
+If subtest name or note is missing in test artifacts, a `null` item is used.
 
 Also note that the aggregated JSONL file **is not related** to any JSON usage
 inside test artifacts - both might use JSON as a data format, but for

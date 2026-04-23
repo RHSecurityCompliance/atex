@@ -92,8 +92,8 @@ The parent then read `word2 arg1 arg2\n` as another *control line*, calling
     the maximum duration upper limit without changing current test run time.
     - Useful for dynamically inserting a lengthy test section into the test,
       giving it extra time, without overriding FMF-defined duration.
-  - A special value of `save` saves the current value of test run time, allowing
-    a subsequent value of `restore` to re-set test run time to the saved value.
+  - A special value of `save` saves the remaining test duration, allowing
+    a subsequent value of `restore` to re-set it to the saved value.
     - Useful when performing infrastructure tasks (log upload) that may take
       unknown amount of time that should not be deducted from the test duration.
     - Can be used as `duration save` + `duration 600` + perform infra action
@@ -135,8 +135,7 @@ The parent then read `word2 arg1 arg2\n` as another *control line*, calling
 
 A *control line* is at most 4096 bytes long, incl. the terminating newline.
 An implementation may therefore limit the memory used for an internal buffer
-(for repeated `read()` calls) to 4096 bytes before it starts discarding data,
-potentially reading (discarding) a corrupted *control line*.
+(for repeated `read()` calls) to 4096 bytes.
 
 Obviously, this does not apply to other binary data sent over the test control
 channel. Just *control lines* with words and arguments.

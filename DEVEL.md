@@ -1,8 +1,45 @@
 # Misc development notes
 
-## Contributing
+## Coding style
 
-TODO - coding style
+This project mostly (fully?) follows PEP8 - it makes some creative choices
+compared to others, but still within the bounds of what PEP8 mentions as valid.
+
+- Line length up to 99 characters, but try to keep docstrings and comments
+  within 80 if possible.
+  - Keep Markdown docs within 80 characters too, except for links.
+- No type hints (see a dedicated section below on that).
+- Always double-quote (`"`) strings, unless a literal double quote needs to
+  appear inside, in which case use single quotes (`'`) for the string itself.
+- Generally avoid backslashes as line breaks, use parentheses to define
+  multi-line content (even for string concatenation).
+- Generally prefer newer Python features over older ones.
+  - ie. `pathlib.Path` over `os.path`
+- Use `:=` only where it makes the code more readable.
+
+Multi-line `if` statements or function calls should put the closing `)` on
+its own line, indented to the same level as the starting statement, ie.
+
+```python
+if (
+    some_thing and
+    not some_other_thing
+):
+    conditioned_code_here
+
+func_call(
+    arg1, arg2, arg3,
+    arg4="foo",
+    arg5="bar",
+)
+```
+
+Similarly, don't strictly follow one-arg-per-line, try to instead maximize
+readability - if multiple args look messy in your case (ie. passing kwargs),
+put each on its own line.
+
+Generally speaking, when in doubt, see how the rest of the project looks like,
+and what `ruff` and other Pull Requests checks allow.
 
 ## Release workflow
 
@@ -26,13 +63,13 @@ There are effectively 3 methods of running things in parallel in Python:
 
 and there is no clear winner (in terms of cleanup on `SIGTERM` or Ctrl-C):
 
-- `Thread` has signal handlers only in the main thread and is unable to
+- Thread has signal handlers only in the main thread and is unable to
   interrupt any running threads without super ugly workarounds like `sleep(1)`
   in every thread, checking some "pls exit" variable
-- `Process` is too heavyweight and makes sharing native Python objects hard,
+- Process is too heavyweight and makes sharing native Python objects hard,
   but it does handle signals in each process individually
 - `asyncio` handles interrupting perfectly (every `try`/`except`/`finally`
-  completes just fine, `KeyboardInterrupt` is raised in every async context),
+  completes just fine, KeyboardInterrupt is raised in every async context),
   but async python is still (3.14) too weird and unsupported
   - `asyncio` effectively re-implements `subprocess` with a slightly different
     API, same with `asyncio.Transport` and derivatives reimplementing `socket`
@@ -65,7 +102,7 @@ class MachineReserver:
                 time.sleep(60)
             ...
             with self.lock:
-                self.proc = subprocess.Popen(["ssh", f"{user}@{host}", ...)
+                self.proc = subprocess.Popen(["ssh", f"{user}@{host}", ...])
             ...
             return machine
         except Exception:
@@ -92,7 +129,7 @@ which point **we don't care what happens to .reserve()**, it will probably fail
 with some exception, but doesn't do any harm.
 
 Here is where `daemon=True` threads come in handy - we can simply call `.abort()`
-from a `KeyboardInterrupt` (or `SIGTERM`) handle in the main thread, and just
+from a KeyboardInterrupt (or `SIGTERM`) handle in the main thread, and just
 exit, automatically killing any leftover threads that are uselessly sleeping.\
 (Realistically, we might want to spawn new threads to run many `.abort()`s in
 parallel, but the main thread can wait for those just fine.)
@@ -108,16 +145,16 @@ Also note that `.reserve()` and `.abort()` could be also called by a context
 manager as `__enter__` and `__exit__`, ie. by a non-threaded caller (running
 everything in the main thread).
 
-## SSH with -T (`RequestTTY`) problems
+## SSH with -T (RequestTTY) problems
 
-We don't allow pseudo-tty allocation via SSH, Podman or any other `Connection`
+We don't allow pseudo-tty allocation via SSH, Podman or any other Connection
 because **it can bypass stdout/stderr redirect** done by the test wrapper,
 messing up the control channel (`TEST_CONTROL.md`).
 
-Normally, we redirect `stdout` of the `Connection` to be the control channel,
-leaving `stdin` / `stderr` to be used by the test. However a clever test can
+Normally, we redirect `stdout` of the Connection to be the control channel,
+leaving `stdin` / `stderr` to be used by the test. However, a clever test can
 (even accidentally by launching a tty emulator) regain access to the original
-`stdout`, often closing it when the tty emulation ends, causing `Executor` to
+`stdout`, often closing it when the tty emulation ends, causing Executor to
 either report EOF, or straight out lose the session with ie.
 
 ```
@@ -131,3 +168,37 @@ to guarantee that a `dup()` of `stdout` (to a higher `fd` number), followed by
 (A malicious test could write bogus data to `ATEX_TEST_CONTROL` anyway, that's
 beside the point.)
 
+## Type hinting
+
+It's a design choice of this project to *not* use python type hints.
+
+The main reason is to keep the API simple to read and use - even for beginner
+Python programmers.
+
+There has been a decent effort to try using them, see commit
+0e92fbbb5083f3aa7884a814583bb2ec46ce5078 - the idea was to use them only for
+user-facing APIs where they would make the most sense as self-documenting
+function arguments and return values, without the overhead of using them in the
+entire codebase.
+
+And it **mostly worked** - modern Python provides nice ways of defining more
+or less specific types, depending on project preferences, ie. a `Sequence`
+instead of prescribing a `list` specifically.
+
+But the key issue is that automated tools like `mypy` cannot reasonably work
+with only partially-typed codebases. Especially the dynamically-imported `util`
+would need hardcoded "stub files" with pre-resolved modules.\
+So the main benefit of static typing - type checking - wouldn't work without
+the entire codebase switching to static typing.
+
+Even the smaller benefits like IDE GUIs checking for types on-the-fly aren't
+as widespread amongst Python programmers as it seems - only a fraction of users
+actually use them, especially amongst QA people.
+
+OTOH type hints made reading the API (in the source) a lot harder by introducing
+extra visual clutter, needing each argument to be on its own line, etc., and -
+overall - this, along with very limited usefulness, led to them being reverted,
+and the project adopting a "no type hints pls" stance.
+
+If the project's source was not The Primary Interface for its users, they would
+have likely remained.

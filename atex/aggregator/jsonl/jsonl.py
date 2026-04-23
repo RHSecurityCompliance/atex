@@ -79,7 +79,7 @@ class JSONLinesAggregator(Aggregator):
 
     def _gen_test_results(self, input_fobj, platform, test_name):
         """
-        Yield complete output JSON objects, one for each input result.
+        Yield complete output JSON arrays, one for each input result.
         """
         # these are standard fields defined in the Test Artifacts,
         # see README.md for an Executor
@@ -210,7 +210,7 @@ class GzipJSONLinesAggregator(CompressedJSONLinesAggregator):
 
     - `args` and `kwargs` are passed to JSONLinesAggregator().
 
-    - `compress_level` specifies how much effort should be spent compressing,
+    - `compress_level` specifies how much effort should be spent compressing
       (1 = fast, 9 = slow).
 
     - If `compress_files` is `True`, compress also any files uploaded by

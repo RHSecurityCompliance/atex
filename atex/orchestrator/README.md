@@ -61,7 +61,7 @@ the [Provisioners](../provisioner) given to the Orchestrators.
 +-------------+         +--------------+
 ```
 
-For each new Remote they get from a Provisioner, they instantiate Executor
+For each new Remote they get from a Provisioner, they instantiate an Executor
 to run tests on that Remote.
 
 Any other logic like

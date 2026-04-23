@@ -38,7 +38,7 @@ class NonblockLineReader:
     def readline(self):
         r"""
         Read a line and return it, without the `\n` terminating character,
-        clearing the internal buffer upon return.
+        shifting any remaining data left, for the next line to be read.
 
         Returns None if nothing could be read (BlockingIOError) or if EOF
         was reached.

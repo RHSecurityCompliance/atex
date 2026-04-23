@@ -79,3 +79,7 @@ with ManagedSSHConnection(opts) as c:
 
 Note that ManagedSSHConnection further implements `.forward()` as an extension
 to the Connection API.
+
+Also note that `.connect()` has a `block=` argument that, when set to `False`,
+causes it to raise BlockingIOError if the connection is not ready yet,
+instead of actually blocking. Useful when managing multiple connections.

@@ -81,7 +81,7 @@ of tmt features on top of what fmf already provides.
   - `test` support (via fmf module)
   - `exclude` support (custom `re`-based filter, not in fmf)
   - Multiple (list) sections are supported, incl. remote URL-referenced
-    trees, using fmf module feching. See a separate section below.
+    trees, using fmf module fetching. See a separate section below.
   - `when` is not supported (use the more standard `adjust` to conditionally
     add extra list items to `discover`)
 - `provision`
@@ -114,14 +114,16 @@ of tmt features on top of what fmf already provides.
   - Any fmf nodes without `test` key defined are ignored (not tests)
 - `require`
   - Supported as a string/list of RPM packages to install via `dnf`
-  - No support for beakerlib libraries, path requires, etc
-    - Non-string elements (ie. dict) are silently ignored to allow the test
-      to be tmt-compatible
+  - Beakerlib libraries are also supported
+    - Via a `type: library` dict (or any dict without `type`)
+    - Via a legacy `library(foo/bar)` syntax with RPM fallback
 - `recommend`
   - Same as `require`, but the `dnf` transaction is run with `--skip-broken`
+  - Unlike tmt, **beakerlib libraries are not supported in `recommend`**,
+    since doing so felt like replicating a bug, not a compatibility helper
 - `duration`
-  - Supported, the command used to execute the test (wrapper) is SIGKILLed
-    upon reaching it and a TestAbortedError is raised
+  - Supported, the command used to execute the test (Connection process) is
+    SIGKILLed upon reaching it and a TestAbortedError is raised
   - See [TEST_CONTROL.md](TEST_CONTROL.md) on how to adjust it during runtime
 - `environment`
   - Supported as dict or list, exported for `test`
@@ -148,10 +150,14 @@ of tmt features on top of what fmf already provides.
   - Ignored
 - `tier`
   - Ignored
+- `tty`
+  - Supported, with `false` as default.
+  - With `true`, it actually goes above and beyond to provide a reasonable
+    terminal, resized to 80x24 and with `TERM` set.
 
 ### Stories
 
-Not supported, but the `story` key exists, the fmf node is skipped/ignored.
+Not supported, but if the `story` key exists, the fmf node is skipped/ignored.
 
 ### Multiple discover sections
 
@@ -228,3 +234,10 @@ scripts - here, it would contain `internal` and `external` dirs.
   - Set to `1` to avoid the test wrapper sending an automatic `exitcode` keyword
     over [Test Control](TEST_CONTROL.md).
   - Useful mainly for testing FMFExecutor itself.
+- Compatibility with tmt
+  - `TMT_TREE` - slightly different to tmt, see above
+  - `TMT_PLAN_ENVIRONMENT_FILE`
+  - `TMT_TEST_NAME`
+  - `TMT_TEST_METADATA`
+  - `TMT_REBOOT_COUNT`
+  - `TMT_TEST_RESTART_COUNT`

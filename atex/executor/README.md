@@ -81,7 +81,8 @@ Valid JSON object keys include:
 - **`files`** (as array/list)
   - Test-provided file paths.
   - Paths relative to (inside) the `files` dir.
-  - If the result contains `name`, it is prepended to each of the file paths.
+  - If the result contains `name`, it is prepended to each of the file paths
+    when storing the files on disk.
   - The first `name`-less entry typically contains test stdout+stderr output.
 
 ```json

@@ -138,7 +138,7 @@ class FMFExecutor(Executor):
         without setting a name/status and thus using this fallback logic.
 
         Also, this always reports any fallback result as partial:true, letting
-        the Reporter's stop() to finish them - this is to simplify our code and
+        the Reporter's stop() finish them - this is to simplify our code and
         make it work for both non-partial and partial cases.
         """
         # if the test reported a full (non-partial) result for itself

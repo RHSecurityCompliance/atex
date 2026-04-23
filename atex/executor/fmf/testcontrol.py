@@ -228,8 +228,6 @@ class TestControl:
 
     def _parser_disconnect(self, _):
         self.disconnect_received = True
-        # also reset exitcode, let a reconnected test set it
-        self.exit_code = None
         # pretend to be a generator
         if False:
             yield

@@ -349,6 +349,8 @@ class FMFExecutor(Executor):
                                     state = self.State.RECONNECTING
                                     self.logger.debug(f"'{test_name}': {state.name}")
                                     control.disconnect_received = False
+                                    # also reset exitcode, let a reconnected test set it
+                                    control.exit_code = None
                                 else:
                                     abort(
                                         f"test wrapper unexpectedly exited with {code} and "

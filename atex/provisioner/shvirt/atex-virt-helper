@@ -311,6 +311,7 @@ def cmd_virt_install(logger, reply, args):
 
     code = proc.wait()
     if code != 0:
+        destroy_if_requested()
         reply(False, f"virt-install exited with {code}")
     else:
         reply(True)

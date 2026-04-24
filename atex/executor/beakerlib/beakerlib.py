@@ -127,7 +127,7 @@ class BeakerlibExecutor(FMFExecutor):
             "\n" +
             # also make sure beakerlib is installed
             make_pkg_install(
-                required=("beakerlib", "git-core"),
+                required=("beakerlib",),
                 recommended=("beakerlib-redhat",),
             )
         )

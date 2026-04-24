@@ -80,8 +80,23 @@ def reserve(args):
             logging.debug(f"got domain {domain}")
             break
 
-    logging.info(f"destroying reserved {domain}")
-    helper_query({"cmd": "virsh", "args": ["destroy", domain]})
+    # destroy the domain if running
+    response = helper_query({"cmd": "virsh", "args": ["domstate", domain]})
+    if not response["success"]:
+        raise RuntimeError(f"failed domstate {domain}: {response['reply']}")
+    if response["reply"] != "shut off\n":
+        logging.info(f"destroying reserved {domain}")
+        response = helper_query({"cmd": "virsh", "args": ["destroy", domain]})
+        if not response["success"]:
+            raise RuntimeError(f"failed destroy {domain}: {response['reply']}")
+        while True:
+            time.sleep(0.1)
+            response = helper_query({"cmd": "virsh", "args": ["domstate", domain]})
+            if not response["success"]:
+                raise RuntimeError(f"failed domstate {domain}: {response['reply']}")
+            if response["reply"] == "shut off\n":
+                logging.debug(f"destroyed domain {domain}")
+                break
 
     # -------------------------------------------------------------------------
 

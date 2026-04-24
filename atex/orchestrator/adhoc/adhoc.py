@@ -282,9 +282,11 @@ class AdHocOrchestrator(Orchestrator):
                     sinfo.remote.release,
                     remote=sinfo.remote,
                 )
-                if (retries_left := self.failed_setups_left) > 0:
-                    self.logger.warning(f"{msg}, re-trying ({retries_left} setup retries left)")
+                if self.failed_setups_left > 0:
                     self.failed_setups_left -= 1
+                    self.logger.warning(
+                        f"{msg}, re-trying ({self.failed_setups_left} setup retries left)",
+                    )
                     sinfo.provisioner.provision(1)
                 else:
                     self.logger.error(f"{msg}, setup retries exceeded, giving up")

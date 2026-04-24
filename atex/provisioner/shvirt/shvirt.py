@@ -310,6 +310,8 @@ class SharedVirtProvisioner(Provisioner):
                 if not response["success"]:
                     raise ProvisionerError(f"failed destroy {domain}: {response['reply']}")
                 while True:
+                    if self.reserving_exit.wait(timeout=0.1):
+                        return
                     response = self._helper_query({"cmd": "virsh", "args": ["domstate", domain]})
                     if not response["success"]:
                         raise ProvisionerError(f"failed domstate {domain}: {response['reply']}")

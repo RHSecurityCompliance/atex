@@ -84,6 +84,15 @@ signal.signal(signal.SIGHUP, on_terminate)
 signal.signal(signal.SIGTERM, on_terminate)
 signal.signal(signal.SIGINT, on_terminate)
 
+def on_test_exit(signum, _frame):
+    if test_pid is not None:
+        try:
+            os.killpg(test_pid, signal.SIGKILL)
+        except EnvironmentError:
+            pass
+
+signal.signal(signal.SIGCHLD, on_test_exit)
+
 if "pty" in cli_flags:
     m_fd, s_fd = os.openpty()
 

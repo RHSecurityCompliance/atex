@@ -40,7 +40,10 @@ def reserve(args):
         helper_proc.stdin.write(binary_json)
         helper_proc.stdin.write(b"\n")
         helper_proc.stdin.flush()
-        return json.loads(helper_proc.stdout.readline().decode())
+        response = helper_proc.stdout.readline()
+        if not response:
+            raise RuntimeError("empty response from helper (not running?)")
+        return json.loads(response.decode())
 
     # ping the helper to make sure we're talking with a compatible one
     response = helper_query({"cmd": "ping"})

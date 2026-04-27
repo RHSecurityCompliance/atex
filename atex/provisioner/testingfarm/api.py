@@ -394,7 +394,12 @@ class PipelineLogStreamer:
         buffer = ""
         bytes_read = 0
         while True:
-            self.request.assert_alive()
+            try:
+                self.request.assert_alive()
+            except GoneAwayError:
+                if buffer:
+                    yield buffer
+                raise
 
             headers = {"Range": f"bytes={bytes_read}-"}
             # load all returned data via .decode() rather than streaming it

@@ -18,10 +18,16 @@ def make_pkg_install(required=None, recommended=None):
     if not required and not recommended:
         return ""
     out = util.dedent(r"""
-        if command -v dnf >/dev/null; then
+        if command -v dnf5 >/dev/null; then
             pkg_tool=(dnf -q -y --setopt=install_weak_deps=False)
+            skip_bad=(--skip-broken --skip-unavailable)
+        elif command -v dnf >/dev/null; then
+            pkg_tool=(dnf -q -y --setopt=install_weak_deps=False)
+            skip_bad=(--skip-broken)
         else
             pkg_tool=(yum -q -y)
+            # yum needs at least one valid package to not exit with 1
+            skip_bad=(--skip-broken filesystem)
         fi
     """) + "\n"  # noqa: E501
     if required:
@@ -34,8 +40,6 @@ def make_pkg_install(required=None, recommended=None):
     if recommended:
         pkgs_str = " ".join(shlex.quote(p) for p in recommended)
         out += util.dedent(fr"""
-            skip_bad=(--skip-broken)
-            command -v dnf5 >/dev/null && skip_bad+=(--skip-unavailable) || true
             exprs=$(rpm -q --qf '' --whatprovides {pkgs_str} 2>&1 | \
                 sed -nr -e 's/^no package provides (.+)$/\1/p' -e 's/error: file (.+): No such file or directory$/\1/p')
             if [[ $exprs ]]; then (set -f; IFS=$'\n'; "${{pkg_tool[@]}}" install "${{skip_bad[@]}}" $exprs); fi

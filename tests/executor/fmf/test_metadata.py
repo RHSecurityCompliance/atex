@@ -8,7 +8,7 @@ fmf_tests = None
 @pytest.fixture(scope="module", autouse=True)
 def setup_parse_global_tests():
     global fmf_tests
-    fmf_tests = discover("fmf_trees/metadata")
+    fmf_tests = discover("fmf_trees/metadata", libraries=False)
 
 
 def test_simple():

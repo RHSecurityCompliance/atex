@@ -446,7 +446,8 @@ def resolve_libraries(tests_data, tests_tree, libs_dir, context):
                 if update_from_cache(nick, name):
                     continue
 
-                target = libs_dir / nick / name.lstrip("/")
+                fmf_path = require.get("path", "").lstrip("/")
+                target = libs_dir / nick / fmf_path / name.lstrip("/")
                 if target.exists():
                     raise ValueError(f"{require} already exists in {target}")
 

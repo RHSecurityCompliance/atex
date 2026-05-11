@@ -350,10 +350,9 @@ def resolve_libraries(tests_data, tests_tree, libs_dir, context):
         new_require = []
         new_recommend = []
 
-        def update_from_cache(nick, name):
-            key = f"{nick}{name}"
-            if key in cache:
-                cached_require, cached_recommend = cache[key]
+        def update_from_cache(cache_key):
+            if cache_key in cache:
+                cached_require, cached_recommend = cache[cache_key]
                 new_require.extend(cached_require)
                 new_recommend.extend(cached_recommend)
                 return True
@@ -376,11 +375,11 @@ def resolve_libraries(tests_data, tests_tree, libs_dir, context):
                 # old-style library(foo/bar)
                 if m := re.match(r"library\(([^/]+)(/[^)]+)\)$", require):
                     nick, name = m.groups()
-                    key = f"{nick}{name}"
-                    if key in not_found_cache:
+                    cache_key = f"{nick}{name}"
+                    if cache_key in not_found_cache:
                         new_require.append(require)
                         continue
-                    if update_from_cache(nick, name):
+                    if update_from_cache(cache_key):
                         continue
 
                     target = libs_dir / nick / name.lstrip("/")
@@ -400,7 +399,7 @@ def resolve_libraries(tests_data, tests_tree, libs_dir, context):
 
                     # else leave it for the package manager to install
                     else:
-                        not_found_cache.add(key)
+                        not_found_cache.add(cache_key)
                         new_require.append(require)
                         continue
 
@@ -419,7 +418,8 @@ def resolve_libraries(tests_data, tests_tree, libs_dir, context):
                 if node is None:
                     raise ValueError(f"couldn't find library node: {require}")
                 name = node.name
-                if update_from_cache(nick, node.name):
+                cache_key = f"{nick}{name}"
+                if update_from_cache(cache_key):
                     continue
 
                 target = libs_dir / nick / node.name.lstrip("/")
@@ -443,11 +443,12 @@ def resolve_libraries(tests_data, tests_tree, libs_dir, context):
                         # nick is basename of the path
                         nick = Path(require["path"]).name
 
-                if update_from_cache(nick, name):
+                fmf_path = require.get("path", "")
+                cache_key = f"{nick}{fmf_path}{name}"
+                if update_from_cache(cache_key):
                     continue
 
-                fmf_path = require.get("path", "").lstrip("/")
-                target = libs_dir / nick / fmf_path / name.lstrip("/")
+                target = libs_dir / nick / fmf_path.lstrip("/") / name.lstrip("/")
                 if target.exists():
                     raise ValueError(f"{require} already exists in {target}")
 
@@ -464,10 +465,9 @@ def resolve_libraries(tests_data, tests_tree, libs_dir, context):
 
             # recurse into the library's own deps, with a sentinel
             # for circular dependency protection
-            key = f"{nick}{name}"
-            cache[key] = ((), ())
+            cache[cache_key] = ((), ())
             node_require, node_recommend = resolve(node.data)
-            cache[key] = (node_require, node_recommend)
+            cache[cache_key] = (node_require, node_recommend)
             new_require += node_require
             new_recommend += node_recommend
 

@@ -391,8 +391,13 @@ def resolve_libraries(tests_data, tests_tree, libs_dir, context):
                     response = _http.request("HEAD", f"{url}/tree/HEAD{name}", redirect=False)
                     # if it exists, define a Tree.node using it
                     if response.status < 400:
-                        node = fmf.Tree.node({"url": url, "name": name})
-                        node.adjust(context=context)
+                        try:
+                            node = fmf.Tree.node({"url": url, "name": name})
+                            node.adjust(context=context)
+                        except fmf.utils.RootError:
+                            not_found_cache.add(cache_key)
+                            new_require.append(require)
+                            continue
                         source = Path(node.root) / node.name.lstrip("/")
                         target.parent.mkdir(parents=True, exist_ok=True)
                         shutil.copytree(source, target, symlinks=True)
@@ -453,8 +458,11 @@ def resolve_libraries(tests_data, tests_tree, libs_dir, context):
                     raise ValueError(f"{require} already exists in {target}")
 
                 # use fmf-native cloning/fetching
-                node = fmf.Tree.node(require)
-                node.adjust(context=context)
+                try:
+                    node = fmf.Tree.node(require)
+                    node.adjust(context=context)
+                except fmf.utils.RootError:
+                    raise ValueError(f"repository has no fmf metadata: {require}") from None
                 source = Path(node.root) / node.name.lstrip("/")
                 target.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copytree(source, target, symlinks=True)

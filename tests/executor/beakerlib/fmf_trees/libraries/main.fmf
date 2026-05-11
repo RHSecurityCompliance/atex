@@ -8,8 +8,19 @@
   test: ./rlimport.sh
   require: library(yum/common-functions)
 
+/test_library_require_paren_all:
+  test: ./rlimport_all.sh
+  require: library(yum/common-functions)
+
 /test_library_require_url:
   test: ./rlimport.sh
+  require:
+    type: library
+    url: https://github.com/beakerlib/yum
+    name: /common-functions
+
+/test_library_require_url_all:
+  test: ./rlimport_all.sh
   require:
     type: library
     url: https://github.com/beakerlib/yum

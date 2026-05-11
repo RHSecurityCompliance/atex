@@ -375,18 +375,21 @@ def resolve_libraries(tests_data, tests_tree, libs_dir, context):
                 # old-style library(foo/bar)
                 if m := re.match(r"library\(([^/]+)(/[^)]+)\)$", require):
                     nick, name = m.groups()
+                    url = f"https://github.com/beakerlib/{nick}"
+                    equiv_dict = {"type": "library", "url": url, "name": name}
+
                     cache_key = f"{nick}{name}"
                     if cache_key in not_found_cache:
                         new_require.append(require)
                         continue
                     if update_from_cache(cache_key):
+                        new_require.append(equiv_dict)
                         continue
 
                     target = libs_dir / nick / name.lstrip("/")
                     if target.exists():
                         raise ValueError(f"{require} already exists in {target}")
 
-                    url = f"https://github.com/beakerlib/{nick}"
                     # query using urllib3 to avoid git-clone asking for password
                     response = _http.request("HEAD", f"{url}/tree/HEAD{name}", redirect=False)
                     # if it exists, define a Tree.node using it
@@ -401,6 +404,7 @@ def resolve_libraries(tests_data, tests_tree, libs_dir, context):
                         source = Path(node.root) / node.name.lstrip("/")
                         target.parent.mkdir(parents=True, exist_ok=True)
                         shutil.copytree(source, target, symlinks=True)
+                        new_require.append(equiv_dict)
 
                     # else leave it for the package manager to install
                     else:
@@ -423,6 +427,9 @@ def resolve_libraries(tests_data, tests_tree, libs_dir, context):
                 if node is None:
                     raise ValueError(f"couldn't find library node: {require}")
                 name = node.name
+
+                new_require.append(require)
+
                 cache_key = f"{nick}{name}"
                 if update_from_cache(cache_key):
                     continue
@@ -447,6 +454,8 @@ def resolve_libraries(tests_data, tests_tree, libs_dir, context):
                     elif "path" in require:
                         # nick is basename of the path
                         nick = Path(require["path"]).name
+
+                new_require.append(require)
 
                 fmf_path = require.get("path", "")
                 cache_key = f"{nick}{fmf_path}{name}"

@@ -344,6 +344,7 @@ def resolve_libraries(tests_data, tests_tree, libs_dir, context):
     # - updating them after recursion
     # - checking if the cache has anything - if so, avoid recursing
     cache = {}
+    not_found_cache = set()
 
     def resolve(entry):
         new_require = []
@@ -375,6 +376,10 @@ def resolve_libraries(tests_data, tests_tree, libs_dir, context):
                 # old-style library(foo/bar)
                 if m := re.match(r"library\(([^/]+)(/[^)]+)\)$", require):
                     nick, name = m.groups()
+                    key = f"{nick}{name}"
+                    if key in not_found_cache:
+                        new_require.append(require)
+                        continue
                     if update_from_cache(nick, name):
                         continue
 
@@ -395,6 +400,7 @@ def resolve_libraries(tests_data, tests_tree, libs_dir, context):
 
                     # else leave it for the package manager to install
                     else:
+                        not_found_cache.add(key)
                         new_require.append(require)
                         continue
 

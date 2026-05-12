@@ -87,6 +87,8 @@ class BeakerlibExecutor(FMFExecutor):
         if systemctl is-active --quiet sshd.service; then
             systemctl stop sshd.service
         fi
+        # avoid bad writes below (EPIPE) or tty hangup killing us
+        trap '' PIPE HUP
         # disconnect the control, send noop while waiting for EPIPE
         echo disconnect >&$ATEX_TEST_CONTROL
         while :; do

@@ -58,7 +58,9 @@ def search_requests(args):
         "created_after": args.after,
     }
 
-    for state in args.state:
+    states = args.state or tf.ALIVE_STATES
+
+    for state in states:
         if args.page is not None:
             reply = api.search_requests_paged(
                 state=state,
@@ -274,7 +276,7 @@ def parse_args(parser):
     cmd.add_argument(
         "--state",
         help="request state (running, etc.)",
-        action="append", required=True,
+        action="append",
     )
     cmd.add_argument("--all", help="all requests, not just owned by token", action="store_true")
     cmd.add_argument("--ranch", help="Testing Farm ranch (detected from token)")

@@ -28,9 +28,8 @@ RESERVE_TEST = {
     "name": "/testing-farm/reserve",
 }
 
-# final states of a request,
 # https://gitlab.com/testing-farm/nucleus/-/blob/main/api/src/tft/nucleus/api/core/schemes/test_request.py
-END_STATES = ("error", "complete", "canceled")
+ALIVE_STATES = ("new", "queued", "running")
 
 # always have at most 10 outstanding HTTP requests to every given API host,
 # shared by all instances of all classes here, to avoid flooding the host
@@ -314,7 +313,7 @@ class Request:
         if not self.id:
             return False
         self._refresh()
-        return self.data["state"] not in END_STATES
+        return self.data["state"] in ALIVE_STATES
 
     def assert_alive(self):
         if not self.alive():
@@ -330,9 +329,9 @@ class Request:
             self._refresh()
             if self.data["state"] in watched:
                 break
-            # if the request ended in one of END_STATES and the above condition
+            # if the request ended in one of end states and the above condition
             # did not catch it, the wait will never end
-            if self.data["state"] in END_STATES:
+            if self.data["state"] not in ALIVE_STATES:
                 raise GoneAwayError(f"request {self.id} ended with {self.data['state']}")
             time.sleep(0.1)
 

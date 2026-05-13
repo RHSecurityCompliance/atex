@@ -241,3 +241,23 @@ scripts - here, it would contain `internal` and `external` dirs.
   - `TMT_TEST_METADATA`
   - `TMT_REBOOT_COUNT`
   - `TMT_TEST_RESTART_COUNT`
+
+## Troubleshooting
+
+### Test seems finished, but times out
+
+If you're getting test timeouts, but seemingly complete test output, check if
+your test isn't leaving background daemons unterminated.
+
+The test wrapper (which runs the test) has code to `SIGKILL` any background
+processes upon test exit, just in case buggy tests forget to kill them, but this
+works only as long as they stay within the same process group as the test.
+
+If your test starts a background daemon, which does `setsid()` to get away from
+the test's process group, the automatic `SIGKILL` won't reach it. That's an
+issue when that daemon forgets to close all open file descriptors, which holds
+the whole testing session open forever.
+
+The fix is typically a `trap` (in a Bash test) to always kill the spawned
+daemon, or just a `kill` in some cleanup section of the test (if the cleanup
+runs always).

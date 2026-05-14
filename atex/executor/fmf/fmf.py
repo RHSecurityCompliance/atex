@@ -68,7 +68,7 @@ class FMFExecutor(Executor):
 
         # upload tests to the remote
         self.conn.rsync(
-            "-r", "--delete", "--exclude=.git/",
+            "-rlptD", "--delete", "--exclude=.git/",
             f"{self.fmf_tests.root}/",
             f"remote:{self.work_dir}/tests",
             func=util.subprocess_log,

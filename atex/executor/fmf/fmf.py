@@ -232,6 +232,8 @@ class FMFExecutor(Executor):
             wrapper_args.append("pty")
         if os.environ.get("ATEX_DEBUG_NO_EXITCODE") == "1":
             wrapper_args.append("noexitcode")
+        if os.environ.get("ATEX_DEBUG_NO_BG_KILL") == "1":
+            wrapper_args.append("nokill")
 
         self.logger.debug(f"'{test_name}': {env_vars=}")
 

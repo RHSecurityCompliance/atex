@@ -234,6 +234,14 @@ scripts - here, it would contain `internal` and `external` dirs.
   - Set to `1` to avoid the test wrapper sending an automatic `exitcode` keyword
     over [Test Control](TEST_CONTROL.md).
   - Useful mainly for testing FMFExecutor itself.
+- `ATEX_DEBUG_NO_BG_KILL`
+  - Set to `1` to avoid the test wrapper killing background processes left
+    unterminated by the test.
+  - If not killed, the processes may leave the test execution Connection open,
+    causing test timeouts - useful for finding buggy tests that should have
+    killed any background processes on exit.
+  - This has no impact on test-spawned processes that left the test process
+    group (eg. daemons).
 - Compatibility with tmt
   - `TMT_TREE` - slightly different to tmt, see above
   - `TMT_PLAN_ENVIRONMENT_FILE`

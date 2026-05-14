@@ -25,6 +25,7 @@ cli_args = sys.argv[1:]
 # valid flags:
 #   'pty' to allocate a pseudotty for test_exec
 #   'noexitcode' to not issue 'exitcode rc\n' via test control
+#   'nokill' to avoid killing leftover background processes
 cli_flags = set(cli_args[2:])
 
 # do chdir here, so we can exit on error before fork+exec
@@ -91,7 +92,8 @@ def on_test_exit(signum, _frame):
         except EnvironmentError:
             pass
 
-signal.signal(signal.SIGCHLD, on_test_exit)
+if "nokill" not in cli_flags:
+    signal.signal(signal.SIGCHLD, on_test_exit)
 
 if "pty" in cli_flags:
     m_fd, s_fd = os.openpty()

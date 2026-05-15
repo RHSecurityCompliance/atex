@@ -43,7 +43,20 @@ def get_request(args):
 
 def cancel(args):
     api = _get_api(args)
-    api.cancel_request(args.request_id)
+    if args.mine:
+        request_ids = []
+        for state in tf.ALIVE_STATES:
+            if reply := api.search_requests(state=state, mine=True):
+                request_ids += (req["id"] for req in reply)
+    else:
+        request_ids = args.request_id
+
+    for req_id in request_ids:
+        print(f"cancelling {req_id}")
+        try:
+            api.cancel_request(req_id)
+        except tf.APIError as e:
+            print(f"  failed: {e}")
 
 
 def search_requests(args):
@@ -267,7 +280,8 @@ def parse_args(parser):
         "cancel",
         help="cancel a Testing Farm request",
     )
-    cmd.add_argument("request_id", help="Testing Farm request UUID")
+    cmd.add_argument("request_id", nargs="*", help="Testing Farm request UUID(s)")
+    cmd.add_argument("--mine", action="store_true", help="cancel all self-owned requests")
 
     cmd = cmds.add_parser(
         "search-requests", aliases=("sr",),
@@ -335,6 +349,10 @@ def main(args):
         case "get-request" | "gr":
             get_request(args)
         case "cancel":
+            if args.mine and args.request_id:
+                raise RuntimeError("--mine and request_id are mutually exclusive")
+            if not args.mine and not args.request_id:
+                raise RuntimeError("one or more request_id, or --mine, is needed")
             cancel(args)
         case "search-requests" | "sr":
             if args.page is not None and args.page < 1:

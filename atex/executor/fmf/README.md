@@ -242,6 +242,12 @@ scripts - here, it would contain `internal` and `external` dirs.
     killed any background processes on exit.
   - This has no impact on test-spawned processes that left the test process
     group (eg. daemons).
+- `ATEX_DEBUG_TEST_OUTPUT_FD`
+  - Set to a pre-existing integer file descriptor number to redirect raw test
+    output there.
+  - Any files pointed to by `testout` (per [RESULTS.md](RESULTS.md)) still exist
+    (for compatibility), but are empty.
+  - Set to ie. `1` to make tests output to stdout, or `2` for stderr.
 - Compatibility with tmt
   - `TMT_TREE` - slightly different to tmt, see above
   - `TMT_PLAN_ENVIRONMENT_FILE`

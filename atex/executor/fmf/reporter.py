@@ -208,10 +208,21 @@ class Reporter:
         Yields an opened file descriptor (as integer) as a Context Manager.
         """
         fd = os.open(self.testout_file, os.O_WRONLY | os.O_CREAT | os.O_APPEND)
-        try:
-            yield fd
-        finally:
+        if "ATEX_DEBUG_TEST_OUTPUT_FD" in os.environ:
+            # leave behind an empty file
             os.close(fd)
+            # try accessing user_fd to check if it's a valid open fd
+            user_fd = int(os.environ["ATEX_DEBUG_TEST_OUTPUT_FD"])
+            try:
+                os.fstat(user_fd)
+            except OSError as e:
+                raise OSError(e.errno, f"could not use ATEX_DEBUG_TEST_OUTPUT_FD={user_fd}") from e
+            yield user_fd
+        else:
+            try:
+                yield fd
+            finally:
+                os.close(fd)
 
     def link_testout(self, file_name, result_name=None):
         """

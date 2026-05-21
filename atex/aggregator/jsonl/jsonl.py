@@ -186,7 +186,7 @@ class CompressedJSONLinesAggregator(JSONLinesAggregator, abc.ABC):
                 dst_path.parent.mkdir(parents=True, exist_ok=True)
 
                 # skip dirs, symlinks, device files, etc.
-                if not src_path.is_file(follow_symlinks=False) or file_name in self.exclude:
+                if not src_path.is_file() or src_path.is_symlink() or file_name in self.exclude:
                     verbatim_move(src_path, dst_path)
                     continue
 

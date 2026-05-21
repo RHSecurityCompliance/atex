@@ -30,6 +30,16 @@ jobs:
         run: |
           python3 -m pytest -s tests/provisioner/test_podman.py
 
+  provisioner-local:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - run: sudo apt-get install -y python3-pytest rsync
+      - run: python3 -m pip install .
+      - name: Run tests
+        run: |
+          python3 -m pytest -s tests/provisioner/test_local.py
+
   executors:
     runs-on: ubuntu-latest
     strategy:

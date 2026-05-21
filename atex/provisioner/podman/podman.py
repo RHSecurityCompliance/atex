@@ -59,6 +59,8 @@ class PodmanProvisioner(Provisioner):
     - `image` is a string of image tag/ID to create containers from.
       It can be a local identifier or an URL.
 
+    - `max_remotes` is how many containers can exist at any one time.
+
     - `run_options` is an iterable with additional CLI options passed
       to `podman container run`.
 
@@ -66,21 +68,28 @@ class PodmanProvisioner(Provisioner):
       to execute as the "init system" in the container.
     """
 
-    def __init__(self, image, *, run_options=None, run_command=("sleep", "inf")):
+    def __init__(
+        self, image, *,
+        max_remotes=None, run_options=None, run_command=("sleep", "inf"),
+    ):
         self.lock = threading.RLock()
         self.logger = get_logger()
 
         self.image = image
+        self.max_remotes = max_remotes
         self.run_options = run_options or ()
         self.run_command = run_command
 
         self.remotes = []
-        self._requested = 0
+        self.to_reserve = 0
+        self.reserving = 0
         self._cond = threading.Condition()
         self.started = False
 
     def start(self):
         self.logger.debug(f"starting: {self}")
+        self.to_reserve = 0
+        self.reserving = 0
         self.started = True
 
         if not self.image:
@@ -91,6 +100,8 @@ class PodmanProvisioner(Provisioner):
 
         with self._cond:
             self.started = False
+            self.to_reserve = 0
+            self.reserving = 0
             self._cond.notify_all()
 
         with self.lock:
@@ -101,27 +112,43 @@ class PodmanProvisioner(Provisioner):
         assert count >= 0
         self.logger.debug(f"provisioning {count}")
         with self._cond:
-            self._requested += count
+            self.to_reserve += count
             self._cond.notify(count)
+
+    def _has_capacity(self):
+        return (
+            self.max_remotes is None
+            or len(self.remotes) + self.reserving < self.max_remotes
+        )
 
     def get_remote(self, block=True):
         with self._cond:
             if block:
-                self._cond.wait_for(lambda: self._requested > 0 or not self.started)
+                self._cond.wait_for(
+                    lambda: (self.to_reserve > 0 and self._has_capacity())
+                    or not self.started,
+                )
                 if not self.started:
                     return None
-            elif self._requested <= 0:
+            elif self.to_reserve <= 0 or not self._has_capacity():
                 return None
-            self._requested -= 1
+            self.to_reserve -= 1
+            self.reserving += 1
 
-        cmd = (
-            "podman", "container", "run", "--quiet", "--detach", "--pull", "never",
-            *self.run_options, self.image, *self.run_command,
-        )
+        try:
+            cmd = (
+                "podman", "container", "run", "--quiet", "--detach", "--pull", "never",
+                *self.run_options, self.image, *self.run_command,
+            )
 
-        proc = subprocess.run(cmd, check=True, text=True, stdout=subprocess.PIPE)
-        container_id = proc.stdout.rstrip("\n")
-        self.logger.debug(f"new container: {cmd} --> {container_id}")
+            proc = subprocess.run(cmd, check=True, text=True, stdout=subprocess.PIPE)
+            container_id = proc.stdout.rstrip("\n")
+            self.logger.debug(f"new container: {cmd} --> {container_id}")
+        except BaseException:
+            with self._cond:
+                self.reserving -= 1
+                self._cond.notify()
+            raise
 
         def release_hook(remote):
             self.logger.debug(f"releasing {remote}")
@@ -131,6 +158,8 @@ class PodmanProvisioner(Provisioner):
                     self.remotes.remove(remote)
                 except ValueError:
                     pass
+            with self._cond:
+                self._cond.notify()
 
         remote = PodmanRemote(
             self.image,
@@ -138,12 +167,14 @@ class PodmanProvisioner(Provisioner):
             release_hook=release_hook,
         )
 
-        self.remotes.append(remote)
+        with self._cond:
+            self.reserving -= 1
+            self.remotes.append(remote)
         return remote
 
     def clear(self):
         with self._cond:
-            self._requested = 0
+            self.to_reserve = 0
 
     def __str__(self):
         class_name = self.__class__.__name__

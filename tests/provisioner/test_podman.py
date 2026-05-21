@@ -52,14 +52,14 @@ def test_two_remotes(image_id):
 #        shared.two_remotes_nonblock(p)
 
 
-#def test_sharing_remote_slot(image_id):
-#    with PodmanProvisioner(image_id, max_systems=1) as p:
-#        shared.sharing_remote_slot(p)
-#
-#
-#def test_sharing_remote_slot_nonblock(image_id):
-#    with PodmanProvisioner(image_id, max_systems=1) as p:
-#        shared.sharing_remote_slot_nonblock(p)
+def test_sharing_remote_slot(image_id):
+    with PodmanProvisioner(image_id, max_remotes=1) as p:
+        shared.sharing_remote_slot(p)
+
+
+def test_sharing_remote_slot_nonblock(image_id):
+    with PodmanProvisioner(image_id, max_remotes=1) as p:
+        shared.sharing_remote_slot_nonblock(p)
 
 
 def test_cmd(image_id):

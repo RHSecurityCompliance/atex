@@ -40,27 +40,25 @@ def two_remotes_nonblock(p):
         time.sleep(1)
 
 
-#def sharing_remote_slot(p):
-#    rem = p.get_remote()
-#    assert rem
-#    rem.release()
-#    # even with max_systems=1, this should get a new remote
-#    # due to us doing .release() on the previous one
-#    assert p.get_remote()
-#
-#
-#def sharing_remote_slot_nonblock(p):
-#    assert p.get_remote(block=False) is None
-#    while (rem := p.get_remote(block=False)) is None:
-#        pass
-#    rem.release()
-#    while p.get_remote(block=False) is None:
-#        pass
-#    for _ in range(10):
-#        assert p.get_remote(block=False) is None
-#        time.sleep(1)
+def sharing_remote_slot(p):
+    p.provision(2)
+    rem = p.get_remote()
+    assert rem
+    rem.release()
+    assert p.get_remote()
 
-# TODO: replace with .provision() specific tests ^^^
+
+def sharing_remote_slot_nonblock(p):
+    p.provision(2)
+    rem = p.get_remote()
+    assert rem
+    assert p.get_remote(block=False) is None
+    rem.release()
+    while p.get_remote(block=False) is None:
+        time.sleep(0.1)
+    for _ in range(10):
+        assert p.get_remote(block=False) is None
+        time.sleep(1)
 
 
 def cmd(p):

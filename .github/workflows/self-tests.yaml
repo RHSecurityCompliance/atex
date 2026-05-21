@@ -114,3 +114,13 @@ jobs:
       - name: Run tests
         run: |
           python3 -m pytest -s tests/aggregator
+
+  orchestrators:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - run: sudo apt-get install -y python3-pytest
+      - run: python3 -m pip install .
+      - name: Run tests
+        run: |
+          python3 -m pytest -s tests/orchestrator

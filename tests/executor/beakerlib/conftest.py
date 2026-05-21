@@ -8,7 +8,7 @@ import subprocess
 import pytest
 
 from atex.provisioner.podman import PodmanProvisioner, build_container_with_deps, pull_image
-from tests.executor.fmf.conftest import setup_timeout, tmp_dir  # noqa: F401
+from tests.executor.fmf.conftest import setup_timeout  # noqa: F401
 from tests.provisioner.test_podman import IMAGE
 
 

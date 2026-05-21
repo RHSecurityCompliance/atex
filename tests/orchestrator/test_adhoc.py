@@ -8,12 +8,12 @@ from atex.orchestrator.adhoc import AdHocOrchestrator
 from atex.provisioner.local import LocalProvisioner
 
 
-def run_orchestrator(tmp_dir, tests, *, cls=AdHocOrchestrator, use_old_aggregator=False):
-    target = tmp_dir / "results.jsonl"
-    files = tmp_dir / "aggregator_files"
+def run_orchestrator(tmp_path, tests, *, cls=AdHocOrchestrator, use_old_aggregator=False):
+    target = tmp_path / "results.jsonl"
+    files = tmp_path / "aggregator_files"
 
-    old_target = tmp_dir / "old_results.jsonl"
-    old_files = tmp_dir / "old_aggregator_files"
+    old_target = tmp_path / "old_results.jsonl"
+    old_files = tmp_path / "old_aggregator_files"
 
     with LocalProvisioner() as provisioner:
         with JSONLinesAggregator(target, files) as aggregator:
@@ -49,22 +49,22 @@ def run_orchestrator(tmp_dir, tests, *, cls=AdHocOrchestrator, use_old_aggregato
     return (results, old_results)
 
 
-def test_single_test(tmp_dir):
+def test_single_test(tmp_path):
     """Single passing test is aggregated correctly."""
-    script = tmp_dir / "test.sh"
+    script = tmp_path / "test.sh"
     script.write_text("#!/bin/bash\necho hello\n")
     script.chmod(0o755)
     tests = {"/test1": (script,)}
-    results, _ = run_orchestrator(tmp_dir, tests)
+    results, _ = run_orchestrator(tmp_path, tests)
     assert len(results) == 1
     assert results[0][0] == "test-platform"
     assert results[0][1] == "pass"
     assert results[0][2] == "/test1"
 
 
-def test_multiple_tests(tmp_dir):
+def test_multiple_tests(tmp_path):
     """Multiple passing tests are all aggregated."""
-    script = tmp_dir / "test.sh"
+    script = tmp_path / "test.sh"
     script.write_text("#!/bin/bash\necho hello\n")
     script.chmod(0o755)
     tests = {
@@ -72,33 +72,33 @@ def test_multiple_tests(tmp_dir):
         "/test2": (script,),
         "/test3": (script,),
     }
-    results, _ = run_orchestrator(tmp_dir, tests)
+    results, _ = run_orchestrator(tmp_path, tests)
     assert len(results) == 3
     names = {r[2] for r in results}
     assert names == {"/test1", "/test2", "/test3"}
     assert all(r[1] == "pass" for r in results)
 
 
-def test_pass_and_fail(tmp_dir):
+def test_pass_and_fail(tmp_path):
     """Mix of passing and failing tests produces correct statuses."""
-    pass_script = tmp_dir / "pass.sh"
+    pass_script = tmp_path / "pass.sh"
     pass_script.write_text("#!/bin/bash\nexit 0\n")
     pass_script.chmod(0o755)
-    fail_script = tmp_dir / "fail.sh"
+    fail_script = tmp_path / "fail.sh"
     fail_script.write_text("#!/bin/bash\nexit 1\n")
     fail_script.chmod(0o755)
     tests = {
         "/passing": (pass_script,),
         "/failing": (fail_script,),
     }
-    results, _ = run_orchestrator(tmp_dir, tests)
+    results, _ = run_orchestrator(tmp_path, tests)
     assert len(results) == 2
     by_name = {r[2]: r[1] for r in results}
     assert by_name["/passing"] == "pass"
     assert by_name["/failing"] == "fail"
 
 
-def test_rerun(tmp_dir):
+def test_rerun(tmp_path):
     """Failed test is rerun, old result goes to old_aggregator, final to aggregator."""
     class RerunOnceOrchestrator(AdHocOrchestrator):
         def __init__(self, *args, **kwargs):
@@ -112,8 +112,8 @@ def test_rerun(tmp_dir):
             self._rerun_counts[info.test_name] = past + 1
             return True
 
-    sentinel = tmp_dir / "sentinel"
-    script = tmp_dir / "test.sh"
+    sentinel = tmp_path / "sentinel"
+    script = tmp_path / "test.sh"
     script.write_text(
         f"#!/bin/bash\n"
         f"if [ -f {sentinel} ]; then\n"
@@ -127,7 +127,7 @@ def test_rerun(tmp_dir):
     script.chmod(0o755)
     tests = {"/flaky": (script,)}
     results, old_results = run_orchestrator(
-        tmp_dir, tests, cls=RerunOnceOrchestrator, use_old_aggregator=True,
+        tmp_path, tests, cls=RerunOnceOrchestrator, use_old_aggregator=True,
     )
     # final result should be pass
     assert len(results) == 1
@@ -139,7 +139,7 @@ def test_rerun(tmp_dir):
     assert old_results[0][2] == "/flaky"
 
 
-def test_next_test_override(tmp_dir):
+def test_next_test_override(tmp_path):
     """Subclass can override next_test() to control test selection."""
     picked = []
 
@@ -149,7 +149,7 @@ def test_next_test_override(tmp_dir):
             picked.append(choice)
             return choice
 
-    script = tmp_dir / "test.sh"
+    script = tmp_path / "test.sh"
     script.write_text("#!/bin/bash\necho hello\n")
     script.chmod(0o755)
     tests = {
@@ -157,17 +157,17 @@ def test_next_test_override(tmp_dir):
         "/bbb": (script,),
         "/ccc": (script,),
     }
-    results, _ = run_orchestrator(tmp_dir, tests, cls=TrackingOrchestrator)
+    results, _ = run_orchestrator(tmp_path, tests, cls=TrackingOrchestrator)
     assert len(results) == 3
     # next_test was called for each test and always picked the last element
     assert len(picked) == 3
     assert picked[0] == "/ccc"
 
 
-def test_empty_tests(tmp_dir):
+def test_empty_tests(tmp_path):
     """Empty test list raises ValueError."""
-    target = tmp_dir / "results.jsonl"
-    files = tmp_dir / "aggregator_files"
+    target = tmp_path / "results.jsonl"
+    files = tmp_path / "aggregator_files"
     with LocalProvisioner() as provisioner:
         with JSONLinesAggregator(target, files) as aggregator:
             with pytest.raises(ValueError):

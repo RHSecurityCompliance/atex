@@ -1,7 +1,5 @@
 import os
 import subprocess
-import tempfile
-from pathlib import Path
 
 import pytest
 import testutil
@@ -48,12 +46,6 @@ def provisioner_systemd():
             check=True,
             stdout=subprocess.DEVNULL,
         )
-
-
-@pytest.fixture(scope="function", autouse=True)
-def tmp_dir():
-    with tempfile.TemporaryDirectory() as tmp:
-        yield Path(tmp)
 
 
 # safeguard against blocking API function freezing pytest

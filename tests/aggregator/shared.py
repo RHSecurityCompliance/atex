@@ -21,9 +21,9 @@ def make_artifacts(base, results_lines, files=None, *, name="artifacts"):
     return artifacts
 
 
-def ingest_with_files(tmp_dir, aggregator, files):
+def ingest_with_files(tmp_path, aggregator, files):
     artifacts = make_artifacts(
-        tmp_dir,
+        tmp_path,
         [{"status": "pass", "files": ["data.bin"]}],
         files={"data.bin": b"\x00\x01\x02\x03"},
     )
@@ -33,9 +33,9 @@ def ingest_with_files(tmp_dir, aggregator, files):
     assert moved.read_bytes() == b"\x00\x01\x02\x03"
 
 
-def ingest_with_subpath_files(tmp_dir, aggregator, files):
+def ingest_with_subpath_files(tmp_path, aggregator, files):
     artifacts = make_artifacts(
-        tmp_dir,
+        tmp_path,
         [{"status": "pass", "files": ["sub/dir/data.bin"]}],
         files={"sub/dir/data.bin": b"\xaa\xbb\xcc"},
     )
@@ -45,30 +45,30 @@ def ingest_with_subpath_files(tmp_dir, aggregator, files):
     assert moved.read_bytes() == b"\xaa\xbb\xcc"
 
 
-def ingest_no_files(tmp_dir, aggregator, files):
-    artifacts = make_artifacts(tmp_dir, [{"status": "pass"}])
+def ingest_no_files(tmp_path, aggregator, files):
+    artifacts = make_artifacts(tmp_path, [{"status": "pass"}])
     aggregator.ingest("platform1", "/test1", artifacts)
     assert not (artifacts / "results").exists()
     assert not (files / "platform1").exists()
 
 
-def ingest_duplicate_reject(tmp_dir, aggregator):
-    artifacts1 = make_artifacts(tmp_dir, [{"status": "pass"}], name="artifacts1")
-    artifacts2 = make_artifacts(tmp_dir, [{"status": "pass"}], name="artifacts2")
+def ingest_duplicate_reject(tmp_path, aggregator):
+    artifacts1 = make_artifacts(tmp_path, [{"status": "pass"}], name="artifacts1")
+    artifacts2 = make_artifacts(tmp_path, [{"status": "pass"}], name="artifacts2")
     aggregator.ingest("platform1", "/test1", artifacts1)
     with pytest.raises(AggregatorError):
         aggregator.ingest("platform1", "/test1", artifacts2)
 
 
-def ingest_duplicate_allow(tmp_dir, aggregator, files):
+def ingest_duplicate_allow(tmp_path, aggregator, files):
     artifacts1 = make_artifacts(
-        tmp_dir,
+        tmp_path,
         [{"status": "pass", "files": ["data.bin"]}],
         files={"data.bin": b"\x00\x01"},
         name="artifacts1",
     )
     artifacts2 = make_artifacts(
-        tmp_dir,
+        tmp_path,
         [{"status": "pass", "files": ["data.bin"]}],
         files={"data.bin": b"\x02\x03"},
         name="artifacts2",
@@ -79,8 +79,8 @@ def ingest_duplicate_allow(tmp_dir, aggregator, files):
     assert (files / "platform1" / "test1 (1)").exists()
 
 
-def ingest_missing_results(tmp_dir, aggregator):
-    artifacts = tmp_dir / "artifacts"
+def ingest_missing_results(tmp_path, aggregator):
+    artifacts = tmp_path / "artifacts"
     artifacts.mkdir()
     (artifacts / "files").mkdir()
     with pytest.raises(FileNotFoundError):
@@ -92,10 +92,10 @@ def ingest_missing_results(tmp_dir, aggregator):
 # These handle lifecycle internally because compressed target files must be
 # closed before they can be read back (gzip/lzma write a trailer on close).
 
-def output_is_compressed(tmp_dir, cls, decompress_open, ext):
-    target = tmp_dir / f"target{ext}"
-    files = tmp_dir / "files"
-    artifacts = make_artifacts(tmp_dir, [{"status": "pass"}])
+def output_is_compressed(tmp_path, cls, decompress_open, ext):
+    target = tmp_path / f"target{ext}"
+    files = tmp_path / "files"
+    artifacts = make_artifacts(tmp_path, [{"status": "pass"}])
     with cls(target, files) as aggregator:
         aggregator.ingest("platform1", "/test1", artifacts)
     with decompress_open(target, "rt") as f:
@@ -104,11 +104,11 @@ def output_is_compressed(tmp_dir, cls, decompress_open, ext):
     assert json.loads(content) == ["platform1", "pass", "/test1", None, [], None]
 
 
-def files_compressed(tmp_dir, cls, decompress_open, suffix):
-    target = tmp_dir / f"target.jsonl{suffix}"
-    files = tmp_dir / "files"
+def files_compressed(tmp_path, cls, decompress_open, suffix):
+    target = tmp_path / f"target.jsonl{suffix}"
+    files = tmp_path / "files"
     artifacts = make_artifacts(
-        tmp_dir,
+        tmp_path,
         [{"status": "pass", "files": ["data.bin"]}],
         files={"data.bin": b"\x00\x01\x02\x03"},
     )
@@ -123,11 +123,11 @@ def files_compressed(tmp_dir, cls, decompress_open, suffix):
     assert result[4] == [f"data.bin{suffix}"]
 
 
-def files_not_compressed(tmp_dir, cls, ext):
-    target = tmp_dir / f"target{ext}"
-    files = tmp_dir / "files"
+def files_not_compressed(tmp_path, cls, ext):
+    target = tmp_path / f"target{ext}"
+    files = tmp_path / "files"
     artifacts = make_artifacts(
-        tmp_dir,
+        tmp_path,
         [{"status": "pass", "files": ["data.bin"]}],
         files={"data.bin": b"\x00\x01\x02\x03"},
     )
@@ -138,11 +138,11 @@ def files_not_compressed(tmp_dir, cls, ext):
     assert moved.read_bytes() == b"\x00\x01\x02\x03"
 
 
-def files_exclude(tmp_dir, cls, decompress_open, suffix):
-    target = tmp_dir / f"target.jsonl{suffix}"
-    files = tmp_dir / "files"
+def files_exclude(tmp_path, cls, decompress_open, suffix):
+    target = tmp_path / f"target.jsonl{suffix}"
+    files = tmp_path / "files"
     artifacts = make_artifacts(
-        tmp_dir,
+        tmp_path,
         [{"status": "pass", "files": ["data.bin", "keep.txt"]}],
         files={
             "data.bin": b"\x00\x01\x02\x03",
@@ -164,11 +164,11 @@ def files_exclude(tmp_dir, cls, decompress_open, suffix):
     assert "keep.txt" in result[4]
 
 
-def files_compressed_subpath(tmp_dir, cls, decompress_open, suffix):
-    target = tmp_dir / f"target.jsonl{suffix}"
-    files = tmp_dir / "files"
+def files_compressed_subpath(tmp_path, cls, decompress_open, suffix):
+    target = tmp_path / f"target.jsonl{suffix}"
+    files = tmp_path / "files"
     artifacts = make_artifacts(
-        tmp_dir,
+        tmp_path,
         [{"status": "pass", "files": ["sub/dir/data.bin"]}],
         files={"sub/dir/data.bin": b"\xaa\xbb\xcc"},
     )
@@ -180,11 +180,11 @@ def files_compressed_subpath(tmp_dir, cls, decompress_open, suffix):
         assert f.read() == b"\xaa\xbb\xcc"
 
 
-def files_compressed_no_suffix(tmp_dir, cls, decompress_open, ext):
-    target = tmp_dir / f"target{ext}"
-    files = tmp_dir / "files"
+def files_compressed_no_suffix(tmp_path, cls, decompress_open, ext):
+    target = tmp_path / f"target{ext}"
+    files = tmp_path / "files"
     artifacts = make_artifacts(
-        tmp_dir,
+        tmp_path,
         [{"status": "pass", "files": ["data.bin"]}],
         files={"data.bin": b"\x00\x01\x02\x03"},
     )

@@ -3,11 +3,11 @@ import shutil
 from atex.executor.fmf import FMFExecutor, discover
 
 
-def test_output(provisioner, tmp_dir, monkeypatch):
+def test_output(provisioner, tmp_path, monkeypatch):
     fmf_tests = discover("fmf_trees/misc", plan="/plan")
     provisioner.provision(1)
     remote = provisioner.get_remote()
-    artifacts = tmp_dir / "artifacts"
+    artifacts = tmp_path / "artifacts"
     with FMFExecutor(remote, fmf_tests=fmf_tests) as e:
         artifacts.mkdir()
         e.run_test("/test_output", artifacts)

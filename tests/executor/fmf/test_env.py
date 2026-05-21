@@ -20,42 +20,42 @@ def test_prepare_env(provisioner):
     assert "VAR_FROM_PLAN=foo bar\n" in proc.stdout
 
 
-def test_test_env(provisioner, tmp_dir):
+def test_test_env(provisioner, tmp_path):
     fmf_tests = discover("fmf_trees/env", plan="/plan")
     provisioner.provision(1)
     remote = provisioner.get_remote()
     with FMFExecutor(remote, fmf_tests=fmf_tests) as e:
-        e.run_test("/test_env", tmp_dir, env={"VAR_FROM_PARAM": "foo bar"})
-    output = (tmp_dir / "files" / "output.txt").read_text()
+        e.run_test("/test_env", tmp_path, env={"VAR_FROM_PARAM": "foo bar"})
+    output = (tmp_path / "files" / "output.txt").read_text()
     assert "VAR_FROM_PLAN=foo bar\n" in output
     assert "VAR_FROM_PARAM=foo bar\n" in output
 
 
-def test_envfile(provisioner, tmp_dir):
+def test_envfile(provisioner, tmp_path):
     fmf_tests = discover("fmf_trees/env", plan="/plan")
     provisioner.provision(1)
     remote = provisioner.get_remote()
     with FMFExecutor(remote, fmf_tests=fmf_tests) as e:
-        with tempfile.TemporaryDirectory() as tmp_dir2:
-            e.run_test("/test_write_env", tmp_dir2)
-        e.run_test("/test_env", tmp_dir)
-    output = (tmp_dir / "files" / "output.txt").read_text()
+        with tempfile.TemporaryDirectory() as tmp_path2:
+            e.run_test("/test_write_env", tmp_path2)
+        e.run_test("/test_env", tmp_path)
+    output = (tmp_path / "files" / "output.txt").read_text()
     assert "VAR_FROM_TEST=foo bar\n" in output
 
 
-def test_envfile_shared(provisioner, tmp_dir):
+def test_envfile_shared(provisioner, tmp_path):
     fmf_tests = discover("fmf_trees/env", plan="/plan")
     provisioner.provision(1)
     remote = provisioner.get_remote()
     with FMFExecutor(remote, fmf_tests=fmf_tests) as e:
-        e.run_test("/test_env", tmp_dir)
+        e.run_test("/test_env", tmp_path)
     plan_proc = remote.cmd(
         ("cat", "/tmp/plan_env"),
         stdout=subprocess.PIPE,
         check=True,
         text=True,
     )
-    test_output = (tmp_dir / "files" / "output.txt").read_text()
+    test_output = (tmp_path / "files" / "output.txt").read_text()
     assert "TMT_PLAN_ENVIRONMENT_FILE=" in plan_proc.stdout
     assert "TMT_PLAN_ENVIRONMENT_FILE=" in test_output
     plan_regex = re.search(r"TMT_PLAN_ENVIRONMENT_FILE=([^\n]+)", plan_proc.stdout)

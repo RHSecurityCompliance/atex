@@ -18,11 +18,11 @@ def test_prepare_cwd(provisioner):
     assert proc.stdout == "123\n"
 
 
-def test_test_cwd(provisioner, tmp_dir):
+def test_test_cwd(provisioner, tmp_path):
     fmf_tests = discover("fmf_trees/cwd", plan="/plan")
     provisioner.provision(1)
     remote = provisioner.get_remote()
     with FMFExecutor(remote, fmf_tests=fmf_tests) as e:
-        e.run_test("/test_cwd", tmp_dir)
-    output = (tmp_dir / "files" / "output.txt").read_text()
+        e.run_test("/test_cwd", tmp_path)
+    output = (tmp_path / "files" / "output.txt").read_text()
     assert output == "123\n"

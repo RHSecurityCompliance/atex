@@ -8,18 +8,18 @@ from atex.provisioner.podman import wait_for_systemd
 # (as a host) due to cgroup v1 / v2 conflict, and possibly more
 
 
-def test_reboot_rhts(provisioner_systemd, tmp_dir):
+def test_reboot_rhts(provisioner_systemd, tmp_path):
     fmf_tests = discover("fmf_trees/reboot", plan="/plan")
     provisioner_systemd.provision(1)
     remote = provisioner_systemd.get_remote()
     wait_for_systemd(remote)
     with BeakerlibExecutor(remote, fmf_tests=fmf_tests) as e:
-        e.run_test("/test_reboot_rhts", tmp_dir)
-    output = (tmp_dir / "files" / "output.txt").read_text()
+        e.run_test("/test_reboot_rhts", tmp_path)
+    output = (tmp_path / "files" / "output.txt").read_text()
     assert ":::::" in output
     assert "Running true before reboot" in output
     assert "Running true after reboot" in output
-    results = (tmp_dir / "results").read_text()
+    results = (tmp_path / "results").read_text()
     assert results.count("\n") == 3
     results = results.rstrip("\n").split("\n")
     # Test before reboot
@@ -39,18 +39,18 @@ def test_reboot_rhts(provisioner_systemd, tmp_dir):
     }
 
 
-def test_reboot_tmt(provisioner_systemd, tmp_dir):
+def test_reboot_tmt(provisioner_systemd, tmp_path):
     fmf_tests = discover("fmf_trees/reboot", plan="/plan")
     provisioner_systemd.provision(1)
     remote = provisioner_systemd.get_remote()
     wait_for_systemd(remote)
     with BeakerlibExecutor(remote, fmf_tests=fmf_tests) as e:
-        e.run_test("/test_reboot_tmt", tmp_dir)
-    output = (tmp_dir / "files" / "output.txt").read_text()
+        e.run_test("/test_reboot_tmt", tmp_path)
+    output = (tmp_path / "files" / "output.txt").read_text()
     assert ":::::" in output
     assert "Running true before reboot" in output
     assert "Running true after reboot" in output
-    results = (tmp_dir / "results").read_text()
+    results = (tmp_path / "results").read_text()
     assert results.count("\n") == 3
     results = results.rstrip("\n").split("\n")
     # Test before reboot
@@ -70,18 +70,18 @@ def test_reboot_tmt(provisioner_systemd, tmp_dir):
     }
 
 
-def test_reboot_fail_before(provisioner_systemd, tmp_dir):
+def test_reboot_fail_before(provisioner_systemd, tmp_path):
     fmf_tests = discover("fmf_trees/reboot", plan="/plan")
     provisioner_systemd.provision(1)
     remote = provisioner_systemd.get_remote()
     wait_for_systemd(remote)
     with BeakerlibExecutor(remote, fmf_tests=fmf_tests) as e:
-        e.run_test("/test_reboot_fail_before", tmp_dir)
-    output = (tmp_dir / "files" / "output.txt").read_text()
+        e.run_test("/test_reboot_fail_before", tmp_path)
+    output = (tmp_path / "files" / "output.txt").read_text()
     assert ":::::" in output
     assert "Running false before reboot" in output
     assert "Running true after reboot" in output
-    results = (tmp_dir / "results").read_text()
+    results = (tmp_path / "results").read_text()
     assert results.count("\n") == 3
     results = results.rstrip("\n").split("\n")
     # Test before reboot
@@ -101,18 +101,18 @@ def test_reboot_fail_before(provisioner_systemd, tmp_dir):
     }
 
 
-def test_reboot_fail_after(provisioner_systemd, tmp_dir):
+def test_reboot_fail_after(provisioner_systemd, tmp_path):
     fmf_tests = discover("fmf_trees/reboot", plan="/plan")
     provisioner_systemd.provision(1)
     remote = provisioner_systemd.get_remote()
     wait_for_systemd(remote)
     with BeakerlibExecutor(remote, fmf_tests=fmf_tests) as e:
-        e.run_test("/test_reboot_fail_after", tmp_dir)
-    output = (tmp_dir / "files" / "output.txt").read_text()
+        e.run_test("/test_reboot_fail_after", tmp_path)
+    output = (tmp_path / "files" / "output.txt").read_text()
     assert ":::::" in output
     assert "Running true before reboot" in output
     assert "Running false after reboot" in output
-    results = (tmp_dir / "results").read_text()
+    results = (tmp_path / "results").read_text()
     assert results.count("\n") == 3
     results = results.rstrip("\n").split("\n")
     # Test before reboot
@@ -132,18 +132,18 @@ def test_reboot_fail_after(provisioner_systemd, tmp_dir):
     }
 
 
-def test_reboot_no_phase_end(provisioner_systemd, tmp_dir):
+def test_reboot_no_phase_end(provisioner_systemd, tmp_path):
     fmf_tests = discover("fmf_trees/reboot", plan="/plan")
     provisioner_systemd.provision(1)
     remote = provisioner_systemd.get_remote()
     wait_for_systemd(remote)
     with BeakerlibExecutor(remote, fmf_tests=fmf_tests) as e:
-        e.run_test("/test_reboot_no_phase_end", tmp_dir)
-    output = (tmp_dir / "files" / "output.txt").read_text()
+        e.run_test("/test_reboot_no_phase_end", tmp_path)
+    output = (tmp_path / "files" / "output.txt").read_text()
     assert ":::::" in output
     assert "Running false before reboot" in output
     assert "Running true after reboot" in output
-    results = (tmp_dir / "results").read_text()
+    results = (tmp_path / "results").read_text()
     assert results.count("\n") == 2  # phase before reboot is discarded
     results = results.rstrip("\n").split("\n")
     # Test after reboot
@@ -158,18 +158,18 @@ def test_reboot_no_phase_end(provisioner_systemd, tmp_dir):
     }
 
 
-def test_reboot_rlrun(provisioner_systemd, tmp_dir):
+def test_reboot_rlrun(provisioner_systemd, tmp_path):
     fmf_tests = discover("fmf_trees/reboot", plan="/plan")
     provisioner_systemd.provision(1)
     remote = provisioner_systemd.get_remote()
     wait_for_systemd(remote)
     with BeakerlibExecutor(remote, fmf_tests=fmf_tests) as e:
-        e.run_test("/test_reboot_rlrun", tmp_dir)
-    output = (tmp_dir / "files" / "output.txt").read_text()
+        e.run_test("/test_reboot_rlrun", tmp_path)
+    output = (tmp_path / "files" / "output.txt").read_text()
     assert ":::::" in output
     assert "Running false before reboot" in output
     assert "Running true after reboot" in output
-    results = (tmp_dir / "results").read_text()
+    results = (tmp_path / "results").read_text()
     assert results.count("\n") == 2  # phase before reboot is discarded
     results = results.rstrip("\n").split("\n")
     # Test after reboot

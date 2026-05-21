@@ -4,11 +4,11 @@ from atex.aggregator.jsonl import JSONLinesAggregator
 from tests.aggregator import shared
 
 
-def test_ingest_one(tmp_dir):
+def test_ingest_one(tmp_path):
     """Single test with one result line."""
-    target = tmp_dir / "target.jsonl"
-    files = tmp_dir / "files"
-    artifacts = shared.make_artifacts(tmp_dir, [{"status": "pass"}])
+    target = tmp_path / "target.jsonl"
+    files = tmp_path / "files"
+    artifacts = shared.make_artifacts(tmp_path, [{"status": "pass"}])
     with JSONLinesAggregator(target, files) as aggregator:
         aggregator.ingest("platform1", "/test1", artifacts)
     content = target.read_text()
@@ -16,12 +16,12 @@ def test_ingest_one(tmp_dir):
     assert json.loads(content) == ["platform1", "pass", "/test1", None, [], None]
 
 
-def test_ingest_multiple_tests(tmp_dir):
+def test_ingest_multiple_tests(tmp_path):
     """Two different tests both appear in output."""
-    target = tmp_dir / "target.jsonl"
-    files = tmp_dir / "files"
-    artifacts1 = shared.make_artifacts(tmp_dir, [{"status": "pass"}], name="art1")
-    artifacts2 = shared.make_artifacts(tmp_dir, [{"status": "fail"}], name="art2")
+    target = tmp_path / "target.jsonl"
+    files = tmp_path / "files"
+    artifacts1 = shared.make_artifacts(tmp_path, [{"status": "pass"}], name="art1")
+    artifacts2 = shared.make_artifacts(tmp_path, [{"status": "fail"}], name="art2")
     with JSONLinesAggregator(target, files) as aggregator:
         aggregator.ingest("platform1", "/test1", artifacts1)
         aggregator.ingest("platform1", "/test2", artifacts2)
@@ -32,12 +32,12 @@ def test_ingest_multiple_tests(tmp_dir):
     assert json.loads(second) == ["platform1", "fail", "/test2", None, [], None]
 
 
-def test_ingest_with_subtest(tmp_dir):
+def test_ingest_with_subtest(tmp_path):
     """Result line with a subtest name."""
-    target = tmp_dir / "target.jsonl"
-    files = tmp_dir / "files"
+    target = tmp_path / "target.jsonl"
+    files = tmp_path / "files"
     artifacts = shared.make_artifacts(
-        tmp_dir,
+        tmp_path,
         [
             {"status": "fail", "name": "sub1"},
             {"status": "pass"},
@@ -52,12 +52,12 @@ def test_ingest_with_subtest(tmp_dir):
     assert json.loads(second) == ["platform1", "pass", "/test1", None, [], None]
 
 
-def test_ingest_multiple_results(tmp_dir):
+def test_ingest_multiple_results(tmp_path):
     """Single test reporting multiple result lines."""
-    target = tmp_dir / "target.jsonl"
-    files = tmp_dir / "files"
+    target = tmp_path / "target.jsonl"
+    files = tmp_path / "files"
     artifacts = shared.make_artifacts(
-        tmp_dir,
+        tmp_path,
         [
             {"status": "pass"},
             {"status": "fail"},
@@ -72,11 +72,11 @@ def test_ingest_multiple_results(tmp_dir):
     assert json.loads(second) == ["platform1", "fail", "/test1", None, [], None]
 
 
-def test_ingest_no_status(tmp_dir):
+def test_ingest_no_status(tmp_path):
     """Result line without a status field."""
-    target = tmp_dir / "target.jsonl"
-    files = tmp_dir / "files"
-    artifacts = shared.make_artifacts(tmp_dir, [{"name": "sub1"}])
+    target = tmp_path / "target.jsonl"
+    files = tmp_path / "files"
+    artifacts = shared.make_artifacts(tmp_path, [{"name": "sub1"}])
     with JSONLinesAggregator(target, files) as aggregator:
         aggregator.ingest("platform1", "/test1", artifacts)
     content = target.read_text()
@@ -84,12 +84,12 @@ def test_ingest_no_status(tmp_dir):
     assert json.loads(content) == ["platform1", None, "/test1", "sub1", [], None]
 
 
-def test_ingest_with_note(tmp_dir):
+def test_ingest_with_note(tmp_path):
     """Result line with a note field."""
-    target = tmp_dir / "target.jsonl"
-    files = tmp_dir / "files"
+    target = tmp_path / "target.jsonl"
+    files = tmp_path / "files"
     artifacts = shared.make_artifacts(
-        tmp_dir,
+        tmp_path,
         [{"status": "infra", "note": "TestAbortedError(timeout)"}],
     )
     with JSONLinesAggregator(target, files) as aggregator:
@@ -102,49 +102,49 @@ def test_ingest_with_note(tmp_dir):
 
 
 # -----------------------------------------------------------------------------
-def test_ingest_with_files(tmp_dir):
+def test_ingest_with_files(tmp_path):
     """Basic binary file transfer."""
-    target = tmp_dir / "target.jsonl"
-    files = tmp_dir / "files"
+    target = tmp_path / "target.jsonl"
+    files = tmp_path / "files"
     with JSONLinesAggregator(target, files) as aggregator:
-        shared.ingest_with_files(tmp_dir, aggregator, files)
+        shared.ingest_with_files(tmp_path, aggregator, files)
 
 
-def test_ingest_with_subpath_files(tmp_dir):
+def test_ingest_with_subpath_files(tmp_path):
     """File transfer to a subdirectory path."""
-    target = tmp_dir / "target.jsonl"
-    files = tmp_dir / "files"
+    target = tmp_path / "target.jsonl"
+    files = tmp_path / "files"
     with JSONLinesAggregator(target, files) as aggregator:
-        shared.ingest_with_subpath_files(tmp_dir, aggregator, files)
+        shared.ingest_with_subpath_files(tmp_path, aggregator, files)
 
 
-def test_ingest_no_files(tmp_dir):
+def test_ingest_no_files(tmp_path):
     """No files directory created when artifacts have no files."""
-    target = tmp_dir / "target.jsonl"
-    files = tmp_dir / "files"
+    target = tmp_path / "target.jsonl"
+    files = tmp_path / "files"
     with JSONLinesAggregator(target, files) as aggregator:
-        shared.ingest_no_files(tmp_dir, aggregator, files)
+        shared.ingest_no_files(tmp_path, aggregator, files)
 
 
-def test_ingest_duplicate_reject(tmp_dir):
+def test_ingest_duplicate_reject(tmp_path):
     """Duplicate test name raises AggregatorError."""
-    target = tmp_dir / "target.jsonl"
-    files = tmp_dir / "files"
+    target = tmp_path / "target.jsonl"
+    files = tmp_path / "files"
     with JSONLinesAggregator(target, files) as aggregator:
-        shared.ingest_duplicate_reject(tmp_dir, aggregator)
+        shared.ingest_duplicate_reject(tmp_path, aggregator)
 
 
-def test_ingest_duplicate_allow(tmp_dir):
+def test_ingest_duplicate_allow(tmp_path):
     """Duplicate test name with allow_duplicate appends a counter suffix."""
-    target = tmp_dir / "target.jsonl"
-    files = tmp_dir / "files"
+    target = tmp_path / "target.jsonl"
+    files = tmp_path / "files"
     with JSONLinesAggregator(target, files, allow_duplicate=True) as aggregator:
-        shared.ingest_duplicate_allow(tmp_dir, aggregator, files)
+        shared.ingest_duplicate_allow(tmp_path, aggregator, files)
 
 
-def test_ingest_missing_results(tmp_dir):
+def test_ingest_missing_results(tmp_path):
     """Missing results file raises FileNotFoundError."""
-    target = tmp_dir / "target.jsonl"
-    files = tmp_dir / "files"
+    target = tmp_path / "target.jsonl"
+    files = tmp_path / "files"
     with JSONLinesAggregator(target, files) as aggregator:
-        shared.ingest_missing_results(tmp_dir, aggregator)
+        shared.ingest_missing_results(tmp_path, aggregator)

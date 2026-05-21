@@ -4,12 +4,12 @@ from atex.connection.local import LocalConnection
 from atex.executor.command import CommandExecutor
 
 
-def test_pass(tmp_dir):
+def test_pass(tmp_path):
     """Command exiting 0 produces a pass result."""
-    script = tmp_dir / "test.sh"
+    script = tmp_path / "test.sh"
     script.write_text("#!/bin/bash\necho hello\n")
     script.chmod(0o755)
-    artifacts = tmp_dir / "artifacts"
+    artifacts = tmp_path / "artifacts"
     artifacts.mkdir()
     tests = {"/test1": (script,)}
     with LocalConnection() as conn:
@@ -22,12 +22,12 @@ def test_pass(tmp_dir):
     assert output == "hello\n"
 
 
-def test_fail(tmp_dir):
+def test_fail(tmp_path):
     """Command exiting non-zero produces a fail result."""
-    script = tmp_dir / "test.sh"
+    script = tmp_path / "test.sh"
     script.write_text("#!/bin/bash\necho failing\nexit 1\n")
     script.chmod(0o755)
-    artifacts = tmp_dir / "artifacts"
+    artifacts = tmp_path / "artifacts"
     artifacts.mkdir()
     tests = {"/test1": (script,)}
     with LocalConnection() as conn:
@@ -40,12 +40,12 @@ def test_fail(tmp_dir):
     assert output == "failing\n"
 
 
-def test_exit_code(tmp_dir):
+def test_exit_code(tmp_path):
     """run_test returns the actual exit code of the command."""
-    script = tmp_dir / "test.sh"
+    script = tmp_path / "test.sh"
     script.write_text("#!/bin/bash\nexit 123\n")
     script.chmod(0o755)
-    artifacts = tmp_dir / "artifacts"
+    artifacts = tmp_path / "artifacts"
     artifacts.mkdir()
     tests = {"/test1": (script,)}
     with LocalConnection() as conn:
@@ -54,12 +54,12 @@ def test_exit_code(tmp_dir):
     assert rc == 123
 
 
-def test_output_capture(tmp_dir):
+def test_output_capture(tmp_path):
     """Both stdout and stderr are captured into the output file."""
-    script = tmp_dir / "test.sh"
+    script = tmp_path / "test.sh"
     script.write_text("#!/bin/bash\necho stdout_line\necho stderr_line >&2\n")
     script.chmod(0o755)
-    artifacts = tmp_dir / "artifacts"
+    artifacts = tmp_path / "artifacts"
     artifacts.mkdir()
     tests = {"/test1": (script,)}
     with LocalConnection() as conn:
@@ -70,12 +70,12 @@ def test_output_capture(tmp_dir):
     assert "stderr_line" in output
 
 
-def test_binary_output(tmp_dir):
+def test_binary_output(tmp_path):
     """Binary data in command output is captured faithfully."""
-    script = tmp_dir / "test.sh"
+    script = tmp_path / "test.sh"
     script.write_text("#!/bin/bash\nprintf '\\x00\\x80\\xfe\\xff'\n")
     script.chmod(0o755)
-    artifacts = tmp_dir / "artifacts"
+    artifacts = tmp_path / "artifacts"
     artifacts.mkdir()
     tests = {"/test1": (script,)}
     with LocalConnection() as conn:
@@ -85,12 +85,12 @@ def test_binary_output(tmp_dir):
     assert output == b"\x00\x80\xfe\xff"
 
 
-def test_custom_output_name(tmp_dir):
+def test_custom_output_name(tmp_path):
     """The output kwarg changes the captured output filename."""
-    script = tmp_dir / "test.sh"
+    script = tmp_path / "test.sh"
     script.write_text("#!/bin/bash\necho hello\n")
     script.chmod(0o755)
-    artifacts = tmp_dir / "artifacts"
+    artifacts = tmp_path / "artifacts"
     artifacts.mkdir()
     tests = {"/test1": (script,)}
     with LocalConnection() as conn:
@@ -103,7 +103,7 @@ def test_custom_output_name(tmp_dir):
     assert json.loads(results)["files"] == ["custom.log"]
 
 
-def test_custom_evaluate(tmp_dir):
+def test_custom_evaluate(tmp_path):
     """Subclass can override evaluate() to implement custom pass/fail logic."""
 
     class GrepExecutor(CommandExecutor):
@@ -112,10 +112,10 @@ def test_custom_evaluate(tmp_dir):
                 return "fail"
             return "pass" if exit_code == 0 else "fail"
 
-    script = tmp_dir / "test.sh"
+    script = tmp_path / "test.sh"
     script.write_text("#!/bin/bash\necho 'result: FAIL'\nexit 0\n")
     script.chmod(0o755)
-    artifacts = tmp_dir / "artifacts"
+    artifacts = tmp_path / "artifacts"
     artifacts.mkdir()
     tests = {"/test1": (script,)}
     with LocalConnection() as conn:

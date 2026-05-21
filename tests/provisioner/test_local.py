@@ -1,6 +1,3 @@
-import tempfile
-from pathlib import Path
-
 import pytest
 import testutil
 
@@ -13,12 +10,6 @@ from tests.provisioner import shared
 def setup_timeout():
     with testutil.Timeout(30):
         yield
-
-
-@pytest.fixture(scope="function")
-def tmp_dir():
-    with tempfile.TemporaryDirectory() as tmp:
-        yield Path(tmp)
 
 
 # ------------------------------------------------------------------------------
@@ -47,14 +38,14 @@ def test_cmd_binary():
         shared.cmd_binary(p)
 
 
-def test_cmd_cwd(tmp_dir):
-    with LocalProvisioner(cwd=tmp_dir) as p:
+def test_cmd_cwd(tmp_path):
+    with LocalProvisioner(cwd=tmp_path) as p:
         p.provision(1)
         rem = p.get_remote()
         rem.cmd(("touch", "testfile"), check=True)
-        assert (tmp_dir / "testfile").exists()
+        assert (tmp_path / "testfile").exists()
 
 
-def test_rsync(tmp_dir):
-    with LocalProvisioner(cwd=tmp_dir) as p:
+def test_rsync(tmp_path):
+    with LocalProvisioner(cwd=tmp_path) as p:
         shared.rsync(p)

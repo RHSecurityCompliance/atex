@@ -1,5 +1,7 @@
 import json
 
+import pytest
+
 from atex.aggregator import AggregatorError
 
 
@@ -54,11 +56,8 @@ def ingest_duplicate_reject(tmp_dir, aggregator):
     artifacts1 = make_artifacts(tmp_dir, [{"status": "pass"}], name="artifacts1")
     artifacts2 = make_artifacts(tmp_dir, [{"status": "pass"}], name="artifacts2")
     aggregator.ingest("platform1", "/test1", artifacts1)
-    try:
+    with pytest.raises(AggregatorError):
         aggregator.ingest("platform1", "/test1", artifacts2)
-        raise AssertionError("AggregatorError should have triggered")
-    except AggregatorError:
-        pass
 
 
 def ingest_duplicate_allow(tmp_dir, aggregator, files):
@@ -84,11 +83,8 @@ def ingest_missing_results(tmp_dir, aggregator):
     artifacts = tmp_dir / "artifacts"
     artifacts.mkdir()
     (artifacts / "files").mkdir()
-    try:
+    with pytest.raises(FileNotFoundError):
         aggregator.ingest("platform1", "/test1", artifacts)
-        raise AssertionError("FileNotFoundError should have triggered")
-    except FileNotFoundError:
-        pass
 
 
 # -----------------------------------------------------------------------------

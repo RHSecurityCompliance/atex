@@ -1,5 +1,7 @@
 import json
 
+import pytest
+
 from atex.executor.fmf import FMFExecutor, TestAbortedError, discover
 from atex.provisioner.podman import wait_for_systemd
 
@@ -39,9 +41,5 @@ def test_reboot_unexpected(provisioner_systemd, tmp_dir):
     remote = provisioner_systemd.get_remote()
     wait_for_systemd(remote)
     with FMFExecutor(remote, fmf_tests=fmf_tests) as e:
-        try:
+        with pytest.raises(TestAbortedError, match="disconnect was not sent via test control"):
             e.run_test("/test_reboot_unexpected", tmp_dir)
-            raise AssertionError("TestAbortedError should have triggered")
-        except TestAbortedError as e:
-            if "disconnect was not sent via test control" not in str(e):
-                raise

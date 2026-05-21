@@ -1,5 +1,7 @@
 import json
 
+import pytest
+
 from atex.executor.fmf import FMFExecutor, TestSetupError, discover
 
 
@@ -36,16 +38,11 @@ def test_require_fail(provisioner, tmp_dir):
     provisioner.provision(1)
     remote = provisioner.get_remote()
     with FMFExecutor(remote, fmf_tests=fmf_tests) as e:
-        try:
+        with pytest.raises(
+            TestSetupError,
+            match=r"No match for argument|Unable to find a match",
+        ):
             e.run_test("/test_require_fail", tmp_dir)
-            raise AssertionError("TestSetupError should have triggered")
-        except TestSetupError as e:
-            msgs = (
-                "No match for argument: nonexistent_pkg",
-                "Unable to find a match: nonexistent_pkg",
-            )
-            if not any(msg in str(e) for msg in msgs):
-                raise
     results = (tmp_dir / "results").read_text()
     assert results.count("\n") == 1
     json_results = json.loads(results)

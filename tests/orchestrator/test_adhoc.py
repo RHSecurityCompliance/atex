@@ -1,5 +1,7 @@
 import json
 
+import pytest
+
 from atex.aggregator.jsonl import JSONLinesAggregator
 from atex.executor.command import CommandExecutor
 from atex.orchestrator.adhoc import AdHocOrchestrator
@@ -168,7 +170,7 @@ def test_empty_tests(tmp_dir):
     files = tmp_dir / "aggregator_files"
     with LocalProvisioner() as provisioner:
         with JSONLinesAggregator(target, files) as aggregator:
-            try:
+            with pytest.raises(ValueError):
                 AdHocOrchestrator(
                     "test-platform",
                     [],
@@ -176,6 +178,3 @@ def test_empty_tests(tmp_dir):
                     lambda conn: CommandExecutor(conn, {}),
                     aggregator,
                 )
-                raise AssertionError("ValueError should have triggered")
-            except ValueError:
-                pass

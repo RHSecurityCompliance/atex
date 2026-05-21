@@ -10,9 +10,12 @@ class LocalRemote(Remote, connection.local.LocalConnection):
     """
     - `release_hook` is a callable called on `.release()` in addition
       to disconnecting the connection.
+
+    - `kwargs` are passed to the underlying LocalConnection.
     """
 
-    def __init__(self, *, release_hook):
+    def __init__(self, *, release_hook, **kwargs):
+        super().__init__(**kwargs)
         self.lock = threading.RLock()
         self.release_called = False
         self.release_hook = release_hook
@@ -32,13 +35,19 @@ class LocalRemote(Remote, connection.local.LocalConnection):
 
 
 class LocalProvisioner(Provisioner):
-    def __init__(self):
+    """
+    - `kwargs` are passed to LocalRemote and its underlying
+      LocalConnection.
+    """
+
+    def __init__(self, **kwargs):
         self.lock = threading.RLock()
         self.logger = get_logger()
         self.remotes = []
         self._requested = 0
         self._cond = threading.Condition()
         self.started = False
+        self.kwargs = kwargs
 
     def start(self):
         self.logger.debug(f"starting: {self}")
@@ -78,7 +87,7 @@ class LocalProvisioner(Provisioner):
                 except ValueError:
                     pass
 
-        remote = LocalRemote(release_hook=release_hook)
+        remote = LocalRemote(release_hook=release_hook, **self.kwargs)
         self.remotes.append(remote)
         return remote
 

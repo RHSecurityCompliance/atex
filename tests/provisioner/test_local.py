@@ -1,3 +1,4 @@
+import tempfile
 from pathlib import Path
 
 import pytest
@@ -12,6 +13,12 @@ from tests.provisioner import shared
 def setup_timeout():
     with testutil.Timeout(30):
         yield
+
+
+@pytest.fixture(scope="function")
+def tmp_dir():
+    with tempfile.TemporaryDirectory() as tmp:
+        yield Path(tmp)
 
 
 # ------------------------------------------------------------------------------
@@ -40,9 +47,14 @@ def test_cmd_binary():
         shared.cmd_binary(p)
 
 
-def test_rsync():
-    # shared.rsync() rsyncs to "remote:foobar" which for LocalConnection
-    # creates a file in the CWD
-    with LocalProvisioner() as p:
+def test_cmd_cwd(tmp_dir):
+    with LocalProvisioner(cwd=tmp_dir) as p:
+        p.provision(1)
+        rem = p.get_remote()
+        rem.cmd(("touch", "testfile"), check=True)
+        assert (tmp_dir / "testfile").exists()
+
+
+def test_rsync(tmp_dir):
+    with LocalProvisioner(cwd=tmp_dir) as p:
         shared.rsync(p)
-    Path("foobar").unlink()

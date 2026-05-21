@@ -54,36 +54,6 @@ class PodmanRemote(Remote, connection.podman.PodmanConnection):
         return f"{class_name}({image}, {name})"
 
 
-class _SettableCounter:
-    def __init__(self, value=0):
-        self.value = value
-        self.cond = threading.Condition()
-
-    def remove_one(self, block=True):
-        with self.cond:
-            if block:
-                self.cond.wait_for(lambda: self.value > 0)
-                self.value -= 1
-                return True
-            else:
-                if self.value <= 0:
-                    return False
-                else:
-                    self.value -= 1
-                    return True
-
-    def add(self, value):
-        assert value >= 0
-        with self.cond:
-            self.value += value
-            self.cond.notify(value)
-
-    def zero(self):
-        with self.cond:
-            # no need to wake any threads because it's 0
-            self.value = 0
-
-
 class PodmanProvisioner(Provisioner):
     """
     - `image` is a string of image tag/ID to create containers from.
@@ -104,13 +74,14 @@ class PodmanProvisioner(Provisioner):
         self.run_options = run_options or ()
         self.run_command = run_command
 
-        # created PodmanRemote instances, ready to be handed over to the user,
-        # or already in use by the user
         self.remotes = []
-        self.to_create = _SettableCounter(0)
+        self._requested = 0
+        self._cond = threading.Condition()
+        self.started = False
 
     def start(self):
         self.logger.debug(f"starting: {self}")
+        self.started = True
 
         if not self.image:
             raise ValueError("image cannot be empty")
@@ -118,17 +89,30 @@ class PodmanProvisioner(Provisioner):
     def stop(self):
         self.logger.debug(f"stopping: {self}")
 
+        with self._cond:
+            self.started = False
+            self._cond.notify_all()
+
         with self.lock:
             while self.remotes:
                 self.remotes.pop().release()
 
     def provision(self, count=1):
+        assert count >= 0
         self.logger.debug(f"provisioning {count}")
-        self.to_create.add(count)
+        with self._cond:
+            self._requested += count
+            self._cond.notify(count)
 
     def get_remote(self, block=True):
-        if not self.to_create.remove_one(block=block):
-            return None
+        with self._cond:
+            if block:
+                self._cond.wait_for(lambda: self._requested > 0 or not self.started)
+                if not self.started:
+                    return None
+            elif self._requested <= 0:
+                return None
+            self._requested -= 1
 
         cmd = (
             "podman", "container", "run", "--quiet", "--detach", "--pull", "never",
@@ -158,7 +142,8 @@ class PodmanProvisioner(Provisioner):
         return remote
 
     def clear(self):
-        self.to_create.zero()
+        with self._cond:
+            self._requested = 0
 
     def __str__(self):
         class_name = self.__class__.__name__

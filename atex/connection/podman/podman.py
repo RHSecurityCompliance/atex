@@ -31,7 +31,5 @@ class PodmanConnection(Connection):
                 "-e", f"/bin/bash -c 'exec podman container exec -i {container} \"$@\"'",
                 *args,
             ),
-            check=True,
-            stdin=subprocess.DEVNULL,
-            **func_args,
+            **{"check": True, "stdin": subprocess.DEVNULL} | func_args,
         )

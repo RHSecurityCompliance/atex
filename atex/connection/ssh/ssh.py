@@ -149,9 +149,7 @@ class StatelessSSHConnection(Connection):
 
     # have options as kwarg to be compatible with other functions here
     def cmd(self, command, *, options=None, func=subprocess.run, **func_args):
-        unified_options = self.options.copy()
-        if options:
-            unified_options.update(options)
+        unified_options = self.options | (options or {})
         if command:
             unified_options["RemoteCommand"] = _shell_cmd(command, sudo=self.sudo)
         return func(
@@ -160,9 +158,7 @@ class StatelessSSHConnection(Connection):
         )
 
     def rsync(self, *args, options=None, func=subprocess.run, **func_args):
-        unified_options = self.options.copy()
-        if options:
-            unified_options.update(options)
+        unified_options = self.options | (options or {})
         return func(
             _rsync_host_cmd(
                 *args,
@@ -170,9 +166,7 @@ class StatelessSSHConnection(Connection):
                 password=self.password,
                 sudo=self.sudo,
             ),
-            check=True,
-            stdin=subprocess.DEVNULL,
-            **func_args,
+            **{"check": True, "stdin": subprocess.DEVNULL} | func_args,
         )
 
 
@@ -327,9 +321,7 @@ class ManagedSSHConnection(Connection):
 
     def cmd(self, command, *, options=None, func=subprocess.run, **func_args):
         self.assert_master()
-        unified_options = self.options.copy()
-        if options:
-            unified_options.update(options)
+        unified_options = self.options | (options or {})
         if command:
             unified_options["RemoteCommand"] = _shell_cmd(command, sudo=self.sudo)
         unified_options["ControlPath"] = self._tmpdir / "control.sock"
@@ -340,9 +332,7 @@ class ManagedSSHConnection(Connection):
 
     def rsync(self, *args, options=None, func=subprocess.run, **func_args):
         self.assert_master()
-        unified_options = self.options.copy()
-        if options:
-            unified_options.update(options)
+        unified_options = self.options | (options or {})
         unified_options["ControlPath"] = self._tmpdir / "control.sock"
         return func(
             _rsync_host_cmd(
@@ -350,7 +340,5 @@ class ManagedSSHConnection(Connection):
                 options=unified_options,
                 sudo=self.sudo,
             ),
-            check=True,
-            stdin=subprocess.DEVNULL,
-            **func_args,
+            **{"check": True, "stdin": subprocess.DEVNULL} | func_args,
         )

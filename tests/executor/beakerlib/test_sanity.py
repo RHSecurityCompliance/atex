@@ -54,3 +54,18 @@ def test_fallback_status_fail(provisioner, tmp_path):
         "status": "fail",
         "files": ["output.txt"],
     }
+
+
+def test_fallback_status_exit(provisioner, tmp_path):
+    """Check that fallback reports fail on non-zero exit without results."""
+    fmf_tests = discover("fmf_trees/sanity", plan="/plan")
+    provisioner.provision(1)
+    remote = provisioner.get_remote()
+    with BeakerlibExecutor(remote, fmf_tests=fmf_tests) as e:
+        e.run_test("/test_fallback_status_exit", tmp_path)
+    results = (tmp_path / "results").read_text()
+    assert results.count("\n") == 1
+    assert json.loads(results) == {
+        "status": "fail",
+        "files": ["output.txt"],
+    }

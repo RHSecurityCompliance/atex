@@ -199,6 +199,7 @@ class BeakerlibExecutor(FMFExecutor):
                         seen_fail = True
                         break
 
-        # simulated exit code for the parent _report_fallback_result()
-        exit_code = 1 if seen_fail else 0
+        # override exit code for the parent, beakerlib always exits 0
+        if seen_fail:
+            exit_code = 1
         return super()._report_fallback_result(reporter, exit_code, exception, test_name)

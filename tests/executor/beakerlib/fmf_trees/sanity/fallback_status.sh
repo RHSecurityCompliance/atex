@@ -12,6 +12,10 @@ rlJournalStart
                 rlRun "/bin/true" 0 "Running true"
                 rlRun "/bin/false" 0 "Running false"
                 ;;
+            exit)
+                # exit before any rlPhaseEnd reports a result
+                exit 123
+                ;;
         esac
     rlPhaseEnd
 rlJournalPrintText

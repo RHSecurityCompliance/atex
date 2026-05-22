@@ -8,3 +8,5 @@
   test: ./fallback_status.sh pass
 /test_fallback_status_fail:
   test: ./fallback_status.sh fail
+/test_fallback_status_exit:
+  test: ./fallback_status.sh exit

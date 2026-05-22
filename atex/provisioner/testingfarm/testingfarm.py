@@ -22,8 +22,8 @@ class TestingFarmRemote(Remote, connection.ssh.ManagedSSHConnection):
     """
 
     def __init__(self, request_id, ssh_options, *, release_hook):
-        # NOTE: self.lock inherited from ManagedSSHConnection
         super().__init__(options=ssh_options)
+        self.lock = threading.RLock()
         self.request_id = request_id
         self.release_hook = release_hook
         self.release_called = False

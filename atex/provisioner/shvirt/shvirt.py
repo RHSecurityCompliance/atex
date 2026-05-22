@@ -103,8 +103,8 @@ class SharedVirtRemote(Remote, connection.ssh.ManagedSSHConnection):
     """
 
     def __init__(self, ssh_options, host, domain, source_image, *, release_hook):
-        # NOTE: self.lock inherited from ManagedSSHConnection
         super().__init__(options=ssh_options)
+        self.lock = threading.RLock()
         self.host = host
         self.domain = domain
         self.source_image = source_image

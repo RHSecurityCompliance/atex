@@ -2,7 +2,6 @@ import os
 import shlex
 import subprocess
 import tempfile
-import threading
 import time
 from pathlib import Path
 
@@ -193,10 +192,7 @@ class ManagedSSHConnection(Connection):
       to run under a different user on the remote host.
     """
 
-    # TODO: thread safety and locking via self.lock ?
-
     def __init__(self, options, *, password=None, sudo=None):
-        self.lock = threading.RLock()
         self.logger = get_logger()
 
         self.options = DEFAULT_OPTIONS.copy()

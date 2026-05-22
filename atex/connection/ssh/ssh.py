@@ -3,6 +3,7 @@ import shlex
 import subprocess
 import tempfile
 import time
+import weakref
 from pathlib import Path
 
 from ... import util
@@ -237,12 +238,9 @@ class ManagedSSHConnection(Connection):
         otherwise raise BlockingIOError if the connection is still down.
         """
         if not self._tmpdir:
-            # _tmpdir_handle just prevents the TemporaryDirectory instance
-            # from being garbage collected (and removed on disk)
-            # TODO: create/remove it explicitly in connect/disconnect
-            #       so the removal happens immediately, even if GC delays cleaning
-            self._tmpdir_handle = tempfile.TemporaryDirectory(prefix="atex-ssh-")
-            self._tmpdir = Path(self._tmpdir_handle.name)
+            tmp_dir = tempfile.TemporaryDirectory(prefix="atex-ssh-")
+            self._tmpdir = Path(tmp_dir.name)
+            weakref.finalize(self, tmp_dir.cleanup)
 
         sock = self._tmpdir / "control.sock"
 

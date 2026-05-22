@@ -112,8 +112,6 @@ pytest tests/executor
 
 ## Unsorted notes
 
-TODO: codestyle from contest
-
 ```
 - this is not tmt, the goal is to make a python toolbox *for* making runcontest
   style tools easily, not to replace those tools with tmt-style CLI syntax

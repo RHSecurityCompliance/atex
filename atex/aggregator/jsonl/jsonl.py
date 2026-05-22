@@ -143,8 +143,9 @@ class JSONLinesAggregator(Aggregator):
 
         # if the artifacts files directory is not empty
         if any(artifacts_files.iterdir()):
-            platform_files.mkdir(exist_ok=True)
-            # TODO: why does this work without .mkdir(target_test_files.parent) ?
+            # not necessary because CPython's shutil.move() creates
+            # intermediary dirs, but good practice to have it here
+            target_test_files.parent.mkdir(parents=True, exist_ok=True)
             self._move_test_files(artifacts_files, target_test_files)
 
     def __str__(self):

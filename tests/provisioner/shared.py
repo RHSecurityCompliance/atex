@@ -118,6 +118,3 @@ def rsync(p):
         )
         out = proc.stdout
         assert out == bstr, f"{repr(out)} is {bstr}"
-
-
-# TODO: .start() and .stop() manually

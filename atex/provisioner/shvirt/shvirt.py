@@ -179,7 +179,7 @@ class SharedVirtProvisioner(Provisioner):
     # 'to_reserve' is > 0. The thread exits on its own once it reaches 0.
     # This thread reserves (locks) domains, clones disk images, starts up
     # the domain OS, waits for sshd, connects a new SharedVirtRemote and
-    # appends it to self.remotes and self.reserving_remotes.
+    # adds it to self.remotes and self.reserving_remotes.
     # It also increases a Semaphore by 1 to signal that "something happened".
     #
     # If the thread fails with an exception, the Semaphore is also increased,
@@ -241,7 +241,7 @@ class SharedVirtProvisioner(Provisioner):
         self.reserving_events = threading.Semaphore(0)
 
         self.to_reserve = 0
-        self.remotes = []  # TODO: set()?
+        self.remotes = set()
 
     def _helper_query(self, data):
         with self.helper_lock:
@@ -372,10 +372,7 @@ class SharedVirtProvisioner(Provisioner):
 
                 # remove from the list of remotes inside this Provisioner
                 with self.lock:
-                    try:
-                        self.remotes.remove(remote)
-                    except ValueError:
-                        pass
+                    self.remotes.discard(remote)
                 # issue a cmd:release to the remote helper
                 response = self._helper_query({"cmd": "release", "domain": remote.domain})
                 if not response["success"]:
@@ -419,9 +416,9 @@ class SharedVirtProvisioner(Provisioner):
                 else:
                     break
 
-            self.logger.debug(f"appending {remote}")
+            self.logger.debug(f"adding {remote}")
             with self.lock:
-                self.remotes.append(remote)
+                self.remotes.add(remote)
                 self.reserving_remotes.add(remote)
                 self.to_reserve -= 1
             self.reserving_events.release(1)
@@ -480,7 +477,7 @@ class SharedVirtProvisioner(Provisioner):
                 self.to_reserve = -math.inf
                 self.reserving_exit.set()
 
-        # join outside the lock - the thread needs it to finish appending
+        # join outside the lock - the thread needs it to finish adding
         # to self.remotes before we can clean up
         if (
             self.reserving_thread is not None and
@@ -501,7 +498,7 @@ class SharedVirtProvisioner(Provisioner):
                 with remote.lock:
                     remote.release_called = True  # we do it below, globally
                     remote.disconnect()
-            self.remotes = []
+            self.remotes = set()
 
             if self.helper is not None:
                 self.helper.terminate()

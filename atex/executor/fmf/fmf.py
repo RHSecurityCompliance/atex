@@ -4,7 +4,6 @@ import os
 import select
 import subprocess
 import threading
-import time
 from pathlib import Path
 
 from ... import util
@@ -49,7 +48,7 @@ class FMFExecutor(Executor):
         self.conn = connection
         self.env = env or {}
         self.work_dir = None
-        self.cancelled = False
+        self._cancel_event = threading.Event()
 
     def start(self):
         self.logger.debug(f"starting: {self}")
@@ -90,7 +89,7 @@ class FMFExecutor(Executor):
         self.work_dir = None
 
     def cancel(self):
-        self.cancelled = True
+        self._cancel_event.set()
 
     def _run_plan_prepare_finish(self, plugin_type):
         # make environment for 'prepare' / 'finish' scripts
@@ -197,6 +196,8 @@ class FMFExecutor(Executor):
 
         - `env` is a dict of extra environment variables to pass to the test.
         """
+        self._cancel_event.clear()
+
         if test_name not in self.fmf_tests.data:
             raise ValueError(f"'{test_name}' doesn't exist in the given FMFTests")
 
@@ -285,7 +286,7 @@ class FMFExecutor(Executor):
                 self.logger.debug(f"'{test_name}': {state.name}")
 
                 while not duration.out_of_time():
-                    if self.cancelled:
+                    if self._cancel_event.is_set():
                         abort("cancel requested")
 
                     if state == self.State.STARTING_TEST:
@@ -374,12 +375,12 @@ class FMFExecutor(Executor):
                         except BlockingIOError:
                             # avoid 100% CPU spinning if the connection is too slow
                             # to come up (ie. ssh ControlMaster socket file not created)
-                            time.sleep(0.5)
+                            self._cancel_event.wait(timeout=0.1)
                         except ConnectionError:
                             # can happen when ie. ssh is connecting over a LocalForward port,
                             # causing 'read: Connection reset by peer' instead of timeout
                             # - just retry again after a short delay
-                            time.sleep(0.5)
+                            self._cancel_event.wait(timeout=0.5)
 
                     else:
                         raise AssertionError("reached unexpected state")

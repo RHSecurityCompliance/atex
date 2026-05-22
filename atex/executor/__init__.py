@@ -37,6 +37,12 @@ class Executor(ABC):
         Stop the Executor instance, cleaning the system up after test execution.
         """
 
+    @abstractmethod
+    def cancel(self):
+        """
+        Cancel any active `.run_test()`, interrupting it as soon as possible.
+        """
+
     def __enter__(self):
         try:
             self.start()

@@ -20,6 +20,7 @@ class CommandExecutor(Executor):
         self.logger = get_logger()
         self.conn = connection
         self.tests = tests
+        self._proc = None
 
     def run_test(self, test_name, artifacts, *, output="output.txt"):
         """
@@ -38,23 +39,26 @@ class CommandExecutor(Executor):
         files_dir = artifacts / "files"
         files_dir.mkdir()
 
-        proc = self.conn.cmd(
-            command,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-        )
-
         output_file = files_dir / util.normalize_path(output)
-        output_file.write_bytes(proc.stdout)
+        with open(output_file, "wb") as f:
+            self._proc = self.conn.cmd(
+                command,
+                stdout=f,
+                stderr=subprocess.STDOUT,
+                func=subprocess.Popen,
+            )
+            self._proc.wait()
+        returncode = self._proc.returncode
+        self._proc = None
 
-        status = self.evaluate(proc.returncode, output_file)
+        status = self.evaluate(returncode, output_file)
 
         result = {"status": status, "files": (output,)}
         (artifacts / "results").write_text(
             json.dumps(result, indent=None) + "\n",
         )
 
-        return proc.returncode
+        return returncode
 
     def evaluate(self, exit_code, output):  # noqa: PLR6301, ARG002
         """
@@ -79,7 +83,7 @@ class CommandExecutor(Executor):
         class_name = self.__class__.__name__
         return f"{class_name}({self.conn}, {len(self.tests)} tests)"
 
-    # TODO: added for AdHocAggregator compatibility, remove it after removing
-    #       the non-standard .cancel() from FMFExecutor
     def cancel(self):
-        pass
+        proc = self._proc
+        if proc:
+            proc.kill()

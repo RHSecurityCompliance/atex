@@ -1,4 +1,6 @@
 import json
+import threading
+import time
 
 from atex.connection.local import LocalConnection
 from atex.executor.command import CommandExecutor
@@ -123,3 +125,19 @@ def test_custom_evaluate(tmp_path):
             executor.run_test("/test1", artifacts)
     results = (artifacts / "results").read_text()
     assert json.loads(results)["status"] == "fail"
+
+
+def test_cancel(tmp_path):
+    """Cancelling a running test kills the process promptly."""
+    tests = {"/test1": ("sleep", "30")}
+    with LocalConnection() as conn:
+        with CommandExecutor(conn, tests) as executor:
+            thread = threading.Thread(
+                target=executor.run_test,
+                args=("/test1", tmp_path),
+            )
+            thread.start()
+            time.sleep(1)
+            executor.cancel()
+            thread.join(timeout=5)
+            assert not thread.is_alive()

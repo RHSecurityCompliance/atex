@@ -389,7 +389,7 @@ class AdHocOrchestrator(Orchestrator):
 
         # cancel all running tests and wait for them to clean up
         for rinfo in self.running_tests.values():
-            rinfo.executor.cancel()  # TODO: .cancel() is nonstandard
+            rinfo.executor.cancel()
         self.test_queue.join()    # also ignore any exceptions raised
 
         # wait for all running ingestions to finish, print exceptions

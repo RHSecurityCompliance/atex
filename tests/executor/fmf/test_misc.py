@@ -1,4 +1,6 @@
 import shutil
+import threading
+import time
 
 from atex.executor.fmf import FMFExecutor, discover
 
@@ -22,3 +24,19 @@ def test_output(provisioner, tmp_path, monkeypatch):
         output = (artifacts / "files" / "output.txt").read_bytes()
         assert b"test output" not in output
         shutil.rmtree(artifacts)
+
+
+def test_cancel(provisioner, tmp_path):
+    fmf_tests = discover("fmf_trees/misc", plan="/plan")
+    provisioner.provision(1)
+    remote = provisioner.get_remote()
+    with FMFExecutor(remote, fmf_tests=fmf_tests) as e:
+        thread = threading.Thread(
+            target=e.run_test,
+            args=("/test_cancel", tmp_path),
+        )
+        thread.start()
+        time.sleep(10)
+        e.cancel()
+        thread.join(timeout=30)
+        assert not thread.is_alive()

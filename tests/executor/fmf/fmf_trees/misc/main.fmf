@@ -7,3 +7,8 @@
 /test_output:
   test: |
     printf 'test output \x00\x01\x02\x03'
+
+/test_cancel:
+  duration: 5m
+  test: |
+    sleep 120

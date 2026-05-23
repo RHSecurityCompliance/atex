@@ -5,10 +5,12 @@ from .fmf import (  # noqa: F401, I001
 )
 from .metadata import (  # noqa: F401, I001
     FMFTests,
-    discover,
     duration_to_seconds,
     test_pkg_requires,
     all_pkg_requires,
+)
+from .discover import (  # noqa: F401, I001
+    discover,
 )
 
 __all__ = (

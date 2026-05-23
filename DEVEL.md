@@ -145,6 +145,12 @@ Also note that `.reserve()` and `.abort()` could be also called by a context
 manager as `__enter__` and `__exit__`, ie. by a non-threaded caller (running
 everything in the main thread).
 
+### Public vs private attributes
+
+In general, prefer attributes assigned from `__init__()` arguments to be public,
+along with any publicly-documented attributes. Prefix internal-only attributes
+with `_` to hide them.
+
 ## SSH with -T (RequestTTY) problems
 
 We don't allow pseudo-tty allocation via SSH, Podman or any other Connection

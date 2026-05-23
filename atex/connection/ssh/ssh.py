@@ -9,7 +9,7 @@ from pathlib import Path
 from ... import util
 from .. import Connection
 
-get_logger = util.get_loggers("atex.connection.ssh")
+_get_logger = util.get_loggers("atex.connection.ssh")
 
 
 DEFAULT_OPTIONS = {
@@ -194,7 +194,7 @@ class ManagedSSHConnection(Connection):
     """
 
     def __init__(self, options, *, password=None, sudo=None):
-        self.logger = get_logger()
+        self.logger = _get_logger()
 
         self.options = DEFAULT_OPTIONS.copy()
         self.options.update(options)

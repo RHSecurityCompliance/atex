@@ -13,33 +13,33 @@ class Duration:
 
     def __init__(self, fmf_duration):
         duration = duration_to_seconds(fmf_duration)
-        self.end = time.monotonic() + duration
+        self._end = time.monotonic() + duration
         # keep track of only the first 'save' and the last 'restore',
         # ignore any nested ones (as tracked by 'saved_count')
-        self.saved = None
-        self.saved_count = 0
+        self._saved = None
+        self._saved_count = 0
 
     def set(self, to):
-        self.end = time.monotonic() + duration_to_seconds(to)
+        self._end = time.monotonic() + duration_to_seconds(to)
 
     def increment(self, by):
-        self.end += duration_to_seconds(by)
+        self._end += duration_to_seconds(by)
 
     def decrement(self, by):
-        self.end -= duration_to_seconds(by)
+        self._end -= duration_to_seconds(by)
 
     def save(self):
-        if self.saved_count == 0:
-            self.saved = self.end - time.monotonic()
-        self.saved_count += 1
+        if self._saved_count == 0:
+            self._saved = self._end - time.monotonic()
+        self._saved_count += 1
 
     def restore(self):
-        if self.saved_count > 1:
-            self.saved_count -= 1
-        elif self.saved_count == 1:
-            self.end = time.monotonic() + self.saved
-            self.saved_count = 0
-            self.saved = None
+        if self._saved_count > 1:
+            self._saved_count -= 1
+        elif self._saved_count == 1:
+            self._end = time.monotonic() + self._saved
+            self._saved_count = 0
+            self._saved = None
 
     def out_of_time(self):
-        return time.monotonic() > self.end
+        return time.monotonic() > self._end

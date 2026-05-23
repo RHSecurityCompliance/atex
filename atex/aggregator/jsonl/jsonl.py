@@ -9,7 +9,7 @@ from pathlib import Path
 from ... import util
 from .. import Aggregator, AggregatorError
 
-get_logger = util.get_loggers("atex.aggregator.jsonl")
+_get_logger = util.get_loggers("atex.aggregator.jsonl")
 
 
 def verbatim_move(src, dst):
@@ -34,14 +34,14 @@ class JSONLinesAggregator(Aggregator):
     """
 
     def __init__(self, target, files, *, allow_duplicate=False):
-        self.lock = threading.RLock()
-        self.logger = get_logger()
+        self._lock = threading.RLock()
+        self.logger = _get_logger()
 
         self.target = Path(target)
         self.files = Path(files)
         self.allow_duplicate = allow_duplicate
-        self.seen_tests = {}
-        self.target_fobj = None
+        self._seen_tests = {}
+        self._target_fobj = None
 
     def _open_target(self, target):  # noqa: PLR6301
         return open(target, "w")
@@ -51,7 +51,7 @@ class JSONLinesAggregator(Aggregator):
 
         if self.target.exists(follow_symlinks=False):
             raise FileExistsError(f"{self.target} already exists")
-        self.target_fobj = self._open_target(self.target)
+        self._target_fobj = self._open_target(self.target)
 
         if self.files.exists(follow_symlinks=False):
             raise FileExistsError(f"{self.files} already exists")
@@ -60,9 +60,9 @@ class JSONLinesAggregator(Aggregator):
     def stop(self):
         self.logger.debug(f"stopping: {self}")
 
-        if self.target_fobj:
-            self.target_fobj.close()
-            self.target_fobj = None
+        if self._target_fobj:
+            self._target_fobj.close()
+            self._target_fobj = None
 
     @staticmethod
     def _modify_file_list(test_files):
@@ -101,17 +101,17 @@ class JSONLinesAggregator(Aggregator):
 
     def ingest(self, platform, test_name, artifacts):
         unique_id = (platform, test_name)
-        with self.lock:
-            if unique_id in self.seen_tests:
+        with self._lock:
+            if unique_id in self._seen_tests:
                 if not self.allow_duplicate:
                     raise AggregatorError(
                         f"'{test_name}' was already ingested once for '{platform}'",
                     )
                 else:
-                    test_name = f"{test_name} ({self.seen_tests[unique_id]})"
-                    self.seen_tests[unique_id] += 1
+                    test_name = f"{test_name} ({self._seen_tests[unique_id]})"
+                    self._seen_tests[unique_id] += 1
             else:
-                self.seen_tests[unique_id] = 1
+                self._seen_tests[unique_id] = 1
 
         self.logger.info(f"ingesting '{platform}' / '{test_name}' from '{artifacts}'")
 
@@ -134,9 +134,9 @@ class JSONLinesAggregator(Aggregator):
             output_results = self._gen_test_results(f, platform, test_name)
             output_json = "\n".join(output_results) + "\n"
 
-        with self.lock:
-            self.target_fobj.write(output_json)
-            self.target_fobj.flush()
+        with self._lock:
+            self._target_fobj.write(output_json)
+            self._target_fobj.flush()
 
         # clean up the source test_results (Aggregator should 'mv', not 'cp')
         Path(artifacts_results).unlink()

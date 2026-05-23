@@ -7,7 +7,7 @@ import yaml
 from ... import util
 from .metadata import test_pkg_requires
 
-test_wrapper = importlib.resources.files(__package__).joinpath("test-wrapper")
+_test_wrapper = importlib.resources.files(__package__).joinpath("test-wrapper")
 
 
 def make_pkg_install(required=None, recommended=None):
@@ -116,7 +116,7 @@ def make_test_setup(*, test_data, test_dir, wrapper_exec, test_exec, test_yaml, 
     # make the wrapper script
     out += f"printf '#!%s\\n' \"$pyexec\" > {wrapper_exec_path}\n"
     out += f"cat >> {wrapper_exec_path} <<'{eof}'\n"
-    out += test_wrapper.read_text()
+    out += _test_wrapper.read_text()
     out += f"\n{eof}\n"
 
     # make the test script

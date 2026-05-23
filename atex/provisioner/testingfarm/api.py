@@ -282,8 +282,8 @@ class Request:
     def __init__(self, id=None, api=None, initial_data=None):
         self.id = id
         self.api = api or TestingFarmAPI()
-        self.data = initial_data or {}
-        self.next_query = 0
+        self._data = initial_data or {}
+        self._next_query = 0
 
     def submit(self, spec):
         """
@@ -292,32 +292,32 @@ class Request:
         """
         if self.id:
             raise ValueError("this Request instance already has 'id', refusing submit")
-        self.data = self.api.submit_request(spec)
-        self.id = self.data["id"]
+        self._data = self.api.submit_request(spec)
+        self.id = self._data["id"]
 
     def _refresh(self):
         if not self.id:
             return
-        if time.monotonic() > self.next_query:
-            self.data = self.api.get_request(self.id)
-            self.next_query = time.monotonic() + self.api_query_limit
+        if time.monotonic() > self._next_query:
+            self._data = self.api.get_request(self.id)
+            self._next_query = time.monotonic() + self.api_query_limit
 
     def cancel(self):
         if not self.id:
             return
-        self.data = self.api.cancel_request(self.id)
+        self._data = self.api.cancel_request(self.id)
         self.id = None
-        return self.data
+        return self._data
 
     def alive(self):
         if not self.id:
             return False
         self._refresh()
-        return self.data["state"] in ALIVE_STATES
+        return self._data["state"] in ALIVE_STATES
 
     def assert_alive(self):
         if not self.alive():
-            state = self.data["state"]
+            state = self._data["state"]
             raise GoneAwayError(f"request {self.id} not alive anymore, entered: {state}")
 
     def wait_for_state(self, state):
@@ -327,12 +327,12 @@ class Request:
         watched = (state,) if isinstance(state, str) else state
         while True:
             self._refresh()
-            if self.data["state"] in watched:
+            if self._data["state"] in watched:
                 break
             # if the request ended in one of end states and the above condition
             # did not catch it, the wait will never end
-            if self.data["state"] not in ALIVE_STATES:
-                raise GoneAwayError(f"request {self.id} ended with {self.data['state']}")
+            if self._data["state"] not in ALIVE_STATES:
+                raise GoneAwayError(f"request {self.id} ended with {self._data['state']}")
             time.sleep(0.1)
 
     def __repr__(self):
@@ -341,15 +341,15 @@ class Request:
     def __str__(self):
         self._refresh()
         # python has no better dict-pretty-printing logic
-        return json.dumps(self.data, sort_keys=True, indent=4)
+        return json.dumps(self._data, sort_keys=True, indent=4)
 
     def __contains__(self, item):
         self._refresh()
-        return item in self.data
+        return item in self._data
 
     def __getitem__(self, key):
         self._refresh()
-        return self.data[key]
+        return self._data[key]
 
 
 class PipelineLogStreamer:
@@ -556,10 +556,10 @@ class Reserve:
         self._spec = spec
         self._ssh_key = Path(ssh_key) if ssh_key else None
         self._source_host = source_host
-        self.os_cleaning = os_cleaning
+        self._os_cleaning = os_cleaning
         self.api = api or TestingFarmAPI()
 
-        self.lock = threading.RLock()
+        self._lock = threading.RLock()
         self.request = None
         self._tmpdir = None
 
@@ -581,7 +581,7 @@ class Reserve:
         return r.data.decode().strip()
 
     def reserve(self):
-        with self.lock:
+        with self._lock:
             if self.request:
                 raise RuntimeError("reservation already in progress")
 
@@ -612,7 +612,7 @@ class Reserve:
         elif ssh_key := util.default_ssh_key():
             ssh_pubkey = Path(f"{ssh_key}.pub")
         else:
-            with self.lock:
+            with self._lock:
                 self._tmpdir = tempfile.TemporaryDirectory()
                 ssh_key, ssh_pubkey = util.ssh_keygen(self._tmpdir.name)
 
@@ -625,7 +625,7 @@ class Reserve:
         encoded_pubkey = base64.b64encode(pubkey_contents.encode()).decode()
         spec_env["secrets"]["TF_RESERVATION_AUTHORIZED_KEYS_BASE64"] = encoded_pubkey
 
-        with self.lock:
+        with self._lock:
             self.request = Request(api=self.api)
             self.request.submit(spec)
         self.logger.info(f"submitted request {self.request.id}")
@@ -674,7 +674,7 @@ class Reserve:
                 break
 
         # run OS cleaning script (if requested)
-        if self.os_cleaning:
+        if self._os_cleaning:
             util.subprocess_log(
                 (*ssh_cmd, "bash"),
                 logger=self.logger,
@@ -692,7 +692,7 @@ class Reserve:
         )
 
     def release(self):
-        with self.lock:
+        with self._lock:
             if self.request:
                 try:
                     self.request.cancel()

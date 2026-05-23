@@ -3,7 +3,7 @@ import threading
 from ... import connection, util
 from .. import Provisioner, Remote
 
-get_logger = util.get_loggers("atex.provisioner.local")
+_get_logger = util.get_loggers("atex.provisioner.local")
 
 
 class LocalRemote(Remote, connection.local.LocalConnection):
@@ -16,16 +16,16 @@ class LocalRemote(Remote, connection.local.LocalConnection):
 
     def __init__(self, *, release_hook, **kwargs):
         super().__init__(**kwargs)
-        self.lock = threading.RLock()
-        self.release_called = False
+        self._lock = threading.RLock()
+        self._release_called = False
         self.release_hook = release_hook
 
     def release(self):
-        with self.lock:
-            if self.release_called:
+        with self._lock:
+            if self._release_called:
                 return
             else:
-                self.release_called = True
+                self._release_called = True
         self.disconnect()
         self.release_hook(self)
 
@@ -41,26 +41,26 @@ class LocalProvisioner(Provisioner):
     """
 
     def __init__(self, **kwargs):
-        self.lock = threading.RLock()
-        self.logger = get_logger()
-        self.remotes = []
+        self._lock = threading.RLock()
+        self.logger = _get_logger()
+        self._remotes = []
         self._requested = 0
         self._cond = threading.Condition()
-        self.started = False
+        self._started = False
         self.kwargs = kwargs
 
     def start(self):
         self.logger.debug(f"starting: {self}")
-        self.started = True
+        self._started = True
 
     def stop(self):
         self.logger.debug(f"stopping: {self}")
         with self._cond:
-            self.started = False
+            self._started = False
             self._cond.notify_all()
-        with self.lock:
-            while self.remotes:
-                self.remotes.pop().release()
+        with self._lock:
+            while self._remotes:
+                self._remotes.pop().release()
 
     def provision(self, count=1):
         assert count >= 0
@@ -72,8 +72,8 @@ class LocalProvisioner(Provisioner):
     def get_remote(self, block=True):
         with self._cond:
             if block:
-                self._cond.wait_for(lambda: self._requested > 0 or not self.started)
-                if not self.started:
+                self._cond.wait_for(lambda: self._requested > 0 or not self._started)
+                if not self._started:
                     return None
             elif self._requested <= 0:
                 return None
@@ -81,14 +81,14 @@ class LocalProvisioner(Provisioner):
 
         def release_hook(remote):
             self.logger.debug(f"releasing {remote}")
-            with self.lock:
+            with self._lock:
                 try:
-                    self.remotes.remove(remote)
+                    self._remotes.remove(remote)
                 except ValueError:
                     pass
 
         remote = LocalRemote(release_hook=release_hook, **self.kwargs)
-        self.remotes.append(remote)
+        self._remotes.append(remote)
         return remote
 
     def clear(self):
@@ -97,4 +97,4 @@ class LocalProvisioner(Provisioner):
 
     def __str__(self):
         class_name = self.__class__.__name__
-        return f"{class_name}({len(self.remotes)} remotes)"
+        return f"{class_name}({len(self._remotes)} remotes)"

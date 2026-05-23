@@ -12,7 +12,7 @@ from pathlib import Path
 from ... import connection, util
 from .. import Provisioner, ProvisionerError, Remote
 
-get_logger = util.get_loggers("atex.provisioner.shvirt")
+_get_logger = util.get_loggers("atex.provisioner.shvirt")
 
 
 def _wait_for_sshd(host, port, event, logger=None):
@@ -100,29 +100,31 @@ class SharedVirtRemote(Remote, connection.ssh.ManagedSSHConnection):
 
     - `release_hook` is a callable called on `.release()` in addition
       to disconnecting the connection.
+
+    - `kwargs` are passed to the underlying ManagedSSHConnection.
     """
 
-    def __init__(self, ssh_options, host, domain, source_image, *, release_hook):
-        super().__init__(options=ssh_options)
-        self.lock = threading.RLock()
+    def __init__(self, host, domain, source_image, *, release_hook, **kwargs):
+        super().__init__(**kwargs)
+        self._lock = threading.RLock()
         self.host = host
         self.domain = domain
         self.source_image = source_image
-        self.release_called = False
+        self._release_called = False
         self.release_hook = release_hook
 
     def release(self):
-        with self.lock:
-            if self.release_called:
+        with self._lock:
+            if self._release_called:
                 return
             else:
-                self.release_called = True
+                self._release_called = True
         self.disconnect()
         self.release_hook(self)
 
     def connect(self, **kwargs):
-        with self.lock:
-            if self.release_called:
+        with self._lock:
+            if self._release_called:
                 raise ConnectionError("remote released, cannot connect")
         super().connect(**kwargs)
 
@@ -179,7 +181,7 @@ class SharedVirtProvisioner(Provisioner):
     # 'to_reserve' is > 0. The thread exits on its own once it reaches 0.
     # This thread reserves (locks) domains, clones disk images, starts up
     # the domain OS, waits for sshd, connects a new SharedVirtRemote and
-    # adds it to self.remotes and self.reserving_remotes.
+    # adds it to self._remotes and self._reserving_remotes.
     # It also increases a Semaphore by 1 to signal that "something happened".
     #
     # If the thread fails with an exception, the Semaphore is also increased,
@@ -207,8 +209,8 @@ class SharedVirtProvisioner(Provisioner):
         domain_filter=None, domain_user="root", domain_sshkey, domain_host=None,
         reserve_delay=3, reserve_name=None,
     ):
-        self.lock = threading.RLock()
-        self.logger = get_logger()
+        self._lock = threading.RLock()
+        self.logger = _get_logger()
 
         self.host = host
         self.image = image
@@ -230,24 +232,24 @@ class SharedVirtProvisioner(Provisioner):
         else:
             self.domain_host = domain_host
 
-        self.started = False
-        self.helper = None
-        self.helper_lock = threading.RLock()
+        self._started = False
+        self._helper = None
+        self._helper_lock = threading.RLock()
 
-        self.reserving_thread = None
-        self.reserving_exit = threading.Event()
-        self.reserving_remotes = set()
-        self.reserving_exc = None
-        self.reserving_events = threading.Semaphore(0)
+        self._reserving_thread = None
+        self._reserving_exit = threading.Event()
+        self._reserving_remotes = set()
+        self._reserving_exc = None
+        self._reserving_events = threading.Semaphore(0)
 
-        self.to_reserve = 0
-        self.remotes = set()
+        self._to_reserve = 0
+        self._remotes = set()
 
     def _helper_query(self, data):
-        with self.helper_lock:
+        with self._helper_lock:
             # capture into a local to avoid racing with stop() setting
-            # self.helper = None under a different lock (self.lock)
-            helper = self.helper
+            # self._helper = None under a different lock (self._lock)
+            helper = self._helper
             if helper is None:
                 raise ProvisionerError("helper not running")
             json.dump(data, helper.stdin)
@@ -262,18 +264,18 @@ class SharedVirtProvisioner(Provisioner):
         try:
             self._reserve()
         except BaseException as e:
-            self.reserving_exc = e
+            self._reserving_exc = e
             self.logger.warning(f"reserve thread got {type(e).__name__}({e})")
-            self.reserving_remotes.clear()
+            self._reserving_remotes.clear()
             self.stop()
             # wake up any waiting .get_remote() calls
-            self.reserving_events.release(1_000_000_000)  # needs integer, not math.inf
+            self._reserving_events.release(1_000_000_000)  # needs integer, not math.inf
         else:
             self.logger.debug("reserve thread exited cleanly")
 
     def _reserve(self):
-        while self.to_reserve > 0:
-            if (exit_code := self.helper.poll()) is not None:
+        while self._to_reserve > 0:
+            if (exit_code := self._helper.poll()) is not None:
                 raise ProvisionerError(f"helper not running, exited with {exit_code}")
 
             reserve_cmd = {"cmd": "reserve"}
@@ -286,7 +288,7 @@ class SharedVirtProvisioner(Provisioner):
                 reply = response["reply"]
                 if reply == "no domain could be reserved":
                     # wait reserve_delay before trying again
-                    if self.reserving_exit.wait(timeout=self.reserve_delay):
+                    if self._reserving_exit.wait(timeout=self.reserve_delay):
                         return
                     continue
                 else:
@@ -310,7 +312,7 @@ class SharedVirtProvisioner(Provisioner):
                 if not response["success"]:
                     raise ProvisionerError(f"failed destroy {domain}: {response['reply']}")
                 while True:
-                    if self.reserving_exit.wait(timeout=0.1):
+                    if self._reserving_exit.wait(timeout=0.1):
                         return
                     response = self._helper_query({"cmd": "virsh", "args": ["domstate", domain]})
                     if not response["success"]:
@@ -371,29 +373,29 @@ class SharedVirtProvisioner(Provisioner):
                 self.logger.debug(f"releasing {remote}")
 
                 # remove from the list of remotes inside this Provisioner
-                with self.lock:
-                    self.remotes.discard(remote)
+                with self._lock:
+                    self._remotes.discard(remote)
                 # issue a cmd:release to the remote helper
                 response = self._helper_query({"cmd": "release", "domain": remote.domain})
                 if not response["success"]:
                     self.logger.warning(f"failed to release {remote}: {response['reply']}")
 
             remote = SharedVirtRemote(
-                ssh_options=ssh_options,
                 host=self.domain_host,
                 domain=domain,
                 source_image=self.image,
                 release_hook=release_hook,
+                options=ssh_options,
             )
 
             self.logger.debug(f"waiting for sshd on {remote}")
-            if not _wait_for_sshd(self.domain_host, int(port), self.reserving_exit, self.logger):
+            if not _wait_for_sshd(self.domain_host, int(port), self._reserving_exit, self.logger):
                 return
 
             self.logger.debug(f"connecting to {remote}")
             retries = 0
             while True:
-                if self.reserving_exit.wait(timeout=0.1):
+                if self._reserving_exit.wait(timeout=0.1):
                     remote.disconnect()
                     return
                 try:
@@ -417,24 +419,24 @@ class SharedVirtProvisioner(Provisioner):
                     break
 
             self.logger.debug(f"adding {remote}")
-            with self.lock:
-                self.remotes.add(remote)
-                self.reserving_remotes.add(remote)
-                self.to_reserve -= 1
-            self.reserving_events.release(1)
+            with self._lock:
+                self._remotes.add(remote)
+                self._reserving_remotes.add(remote)
+                self._to_reserve -= 1
+            self._reserving_events.release(1)
 
             # delay for reserve_delay before reserving more
-            if self.reserving_exit.wait(timeout=self.reserve_delay):
+            if self._reserving_exit.wait(timeout=self.reserve_delay):
                 return
 
     def start(self):
         self.logger.debug(f"starting: {self}")
 
-        with self.lock:
+        with self._lock:
             # launch the helper on the remote host
-            if self.helper:
+            if self._helper:
                 raise ProvisionerError("helper already launched")
-            self.helper = self.host.cmd(
+            self._helper = self.host.cmd(
                 self.helper_command,
                 func=subprocess.Popen,
                 stdin=subprocess.PIPE,
@@ -457,80 +459,80 @@ class SharedVirtProvisioner(Provisioner):
 
             # re-zero the event counter, in case we're re-starting
             # and it was set to a large integer previously
-            self.reserving_events = threading.Semaphore(0)
-            self.reserving_exc = None
+            self._reserving_events = threading.Semaphore(0)
+            self._reserving_exc = None
 
-            self.started = True
+            self._started = True
 
     def stop(self):
         self.logger.debug(f"stopping: {self}")
 
-        with self.lock:
-            self.started = False
+        with self._lock:
+            self._started = False
 
             # signal the reserving thread to exit
             if (
-                self.reserving_thread is not None and
-                self.reserving_thread.is_alive() and
-                self.reserving_exc is None
+                self._reserving_thread is not None and
+                self._reserving_thread.is_alive() and
+                self._reserving_exc is None
             ):
-                self.to_reserve = -math.inf
-                self.reserving_exit.set()
+                self._to_reserve = -math.inf
+                self._reserving_exit.set()
 
         # join outside the lock - the thread needs it to finish adding
-        # to self.remotes before we can clean up
+        # to self._remotes before we can clean up
         if (
-            self.reserving_thread is not None and
-            self.reserving_thread.is_alive() and
-            self.reserving_thread is not threading.current_thread()
+            self._reserving_thread is not None and
+            self._reserving_thread.is_alive() and
+            self._reserving_thread is not threading.current_thread()
         ):
-            self.reserving_thread.join()
+            self._reserving_thread.join()
 
-        with self.lock:
-            self.to_reserve = 0
-            self.reserving_exit.clear()
-            self.reserving_thread = None
+        with self._lock:
+            self._to_reserve = 0
+            self._reserving_exit.clear()
+            self._reserving_thread = None
 
             # disconnect all existing Remotes to prevent our user messing with
             # their port-forwarded connections after we release all by
             # terminating the helper below
-            for remote in self.remotes:
-                with remote.lock:
-                    remote.release_called = True  # we do it below, globally
+            for remote in self._remotes:
+                with remote._lock:
+                    remote._release_called = True  # we do it below, globally
                     remote.disconnect()
-            self.remotes = set()
+            self._remotes = set()
 
-            if self.helper is not None:
-                self.helper.terminate()
-                self.helper = None
+            if self._helper is not None:
+                self._helper.terminate()
+                self._helper = None
 
     def _sanity_check(self):
-        if exc := self.reserving_exc:
+        if exc := self._reserving_exc:
             raise exc from None
-        if not self.started:
+        if not self._started:
             raise ProvisionerError("the provisioner is stopped")
 
     def provision(self, count=1):
         self._sanity_check()
 
-        with self.lock:
-            self.to_reserve += count
-            if self.to_reserve <= 0:
+        with self._lock:
+            self._to_reserve += count
+            if self._to_reserve <= 0:
                 return
             # if it isn't running, start up a reserving thread
-            if self.reserving_thread is None or not self.reserving_thread.is_alive():
-                self.reserving_thread = threading.Thread(target=self._reserve_wrapper)
-                self.reserving_thread.start()
+            if self._reserving_thread is None or not self._reserving_thread.is_alive():
+                self._reserving_thread = threading.Thread(target=self._reserve_wrapper)
+                self._reserving_thread.start()
 
     def get_remote(self, block=True):
         self._sanity_check()
 
-        if self.reserving_events.acquire(blocking=block):
+        if self._reserving_events.acquire(blocking=block):
             try:
-                remote = self.reserving_remotes.pop()
+                remote = self._reserving_remotes.pop()
             except KeyError:
                 # the event was an exception by _reserve_wrapper(), re-raise it
-                raise self.reserving_exc from None
+                raise self._reserving_exc from None
             else:
                 return remote
 
@@ -542,13 +544,13 @@ class SharedVirtProvisioner(Provisioner):
         # to -1, but that's fine because the next .provision() will increase
         # it back to >= 0 and a follow-up .get_remote() will get the one
         # Remote that was reserved before
-        with self.lock:
-            self.to_reserve = 0
+        with self._lock:
+            self._to_reserve = 0
 
     def __str__(self):
         class_name = self.__class__.__name__
         dfilter = f", {self.domain_filter}" if self.domain_filter is not None else ""
         return (
             f"{class_name}({self.domain_host}{dfilter}, {self.image}, "
-            f"{len(self.remotes)} remotes, {self.to_reserve} to reserve)"
+            f"{len(self._remotes)} remotes, {self._to_reserve} to reserve)"
         )

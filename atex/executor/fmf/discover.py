@@ -133,7 +133,7 @@ def discover(
         if "/" in prefix or prefix in (".", ".."):
             raise ValueError(f"invalid discover section 'name': {prefix}")
 
-        section_tree, section_tests, section_sources = discover_section(
+        section_tree, section_tests, section_sources = _discover_section(
             tree,
             section,
             tmp_dir_path / prefix,
@@ -179,7 +179,7 @@ def discover(
     return fmf_tests
 
 
-def merge_lists(into, name, source):
+def _merge_lists(into, name, source):
     if source:  # avoid None or empty sequences
         if name in into:
             into[name] += source
@@ -187,7 +187,7 @@ def merge_lists(into, name, source):
             into[name] = list(source)
 
 
-def discover_section(
+def _discover_section(
     origin_tree, section, tmp_dir, context, *,
     names=None, filters=None, conditions=None, excludes=None,
 ):
@@ -235,11 +235,11 @@ def discover_section(
 
     # merge plan-defined filters with argument-passed ones
     prune_kwargs = {}
-    merge_lists(prune_kwargs, "names", listlike(section, "test"))
-    merge_lists(prune_kwargs, "names", names)
-    merge_lists(prune_kwargs, "filters", listlike(section, "filter"))
-    merge_lists(prune_kwargs, "filters", filters)
-    merge_lists(prune_kwargs, "conditions", conditions)
+    _merge_lists(prune_kwargs, "names", listlike(section, "test"))
+    _merge_lists(prune_kwargs, "names", names)
+    _merge_lists(prune_kwargs, "filters", listlike(section, "filter"))
+    _merge_lists(prune_kwargs, "filters", filters)
+    _merge_lists(prune_kwargs, "conditions", conditions)
     prune_excludes = [*excludes] if excludes else []
     prune_excludes += listlike(section, "exclude")
 

@@ -15,7 +15,7 @@ from .reporter import Reporter
 from .scripts import make_pkg_install, make_plan_script, make_test_setup
 from .testcontrol import TestControl
 
-get_logger = util.get_loggers("atex.executor.fmf")
+_get_logger = util.get_loggers("atex.executor.fmf")
 
 
 class TestSetupError(ExecutorError):
@@ -41,8 +41,7 @@ class FMFExecutor(Executor):
     """
 
     def __init__(self, connection, fmf_tests, *, env=None):
-        self.lock = threading.RLock()
-        self.logger = get_logger()
+        self.logger = _get_logger()
 
         self.fmf_tests = fmf_tests
         self.conn = connection

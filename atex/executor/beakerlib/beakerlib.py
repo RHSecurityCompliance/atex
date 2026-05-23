@@ -7,7 +7,7 @@ from ... import util
 from ..fmf import FMFExecutor
 from ..fmf.scripts import make_pkg_install
 
-get_logger = util.get_loggers("atex.executor.beakerlib")
+_get_logger = util.get_loggers("atex.executor.beakerlib")
 
 
 class BeakerlibExecutor(FMFExecutor):
@@ -22,7 +22,7 @@ class BeakerlibExecutor(FMFExecutor):
 
     def __init__(self, connection, fmf_tests, *, env=None):
         super().__init__(connection, fmf_tests, env=env)
-        self.logger = get_logger()
+        self.logger = _get_logger()
 
     def _make_start_script(self):
         report_result = util.dedent(r"""

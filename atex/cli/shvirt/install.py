@@ -10,7 +10,7 @@ from pathlib import Path
 
 from .common import make_helper_cmd
 
-ks_builtin = importlib.resources.files(__package__).joinpath("ks.cfg")
+_ks_builtin = importlib.resources.files(__package__).joinpath("ks.cfg")
 
 
 def install(args):
@@ -18,7 +18,7 @@ def install(args):
     if args.ks:
         ks_contents = Path(args.ks).read_text()
     else:
-        ks_contents = ks_builtin.read_text()
+        ks_contents = _ks_builtin.read_text()
 
         for regex in args.ks_del:
             ks_contents = re.sub(regex, "", ks_contents, flags=re.MULTILINE | re.DOTALL)

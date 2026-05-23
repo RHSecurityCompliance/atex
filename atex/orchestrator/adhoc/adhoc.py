@@ -3,7 +3,7 @@ import tempfile
 from ... import util
 from .. import Orchestrator, OrchestratorError
 
-get_logger = util.get_loggers("atex.orchestrator.adhoc")
+_get_logger = util.get_loggers("atex.orchestrator.adhoc")
 
 
 class FailedSetupError(OrchestratorError):
@@ -95,37 +95,37 @@ class AdHocOrchestrator(Orchestrator):
         self, platform, tests, provisioners, executor, aggregator, *,
         old_aggregator=None, max_spares=0, max_failed_setups=10,
     ):
-        self.logger = get_logger()
+        self.logger = _get_logger()
 
         self.platform = platform
         # dict() instead of set() to preserve order
-        self.to_run = dict.fromkeys(tests)
+        self._to_run = dict.fromkeys(tests)
         self.provisioners = tuple(provisioners)
         self.aggregator = aggregator
         self.executor = executor
 
-        if not self.to_run:
+        if not self._to_run:
             raise ValueError("no tests were passed to run, 'tests' is empty")
 
         self.old_aggregator = old_aggregator
         self.max_spares = max_spares
-        self.failed_setups_left = max_failed_setups
+        self._failed_setups_left = max_failed_setups
 
         # just for str(self)
-        self.total_tests = len(self.to_run)
-        # True if empty self.to_run was seen at least once;
-        # needed because re-runs add the test back to self.to_run
-        self.finishing_up = False
+        self._total_tests = len(self._to_run)
+        # True if empty self._to_run was seen at least once;
+        # needed because re-runs add the test back to self._to_run
+        self._finishing_up = False
         # running tests as a dict, indexed by test name, with RunningInfo values
-        self.running_tests = {}
+        self._running_tests = {}
         # thread queue for actively running tests
-        self.test_queue = util.ThreadReturnQueue(daemon=False)
+        self._test_queue = util.ThreadReturnQueue(daemon=False)
         # thread queue for remotes being set up (uploading tests, etc.)
-        self.setup_queue = util.ThreadReturnQueue(daemon=True)
+        self._setup_queue = util.ThreadReturnQueue(daemon=True)
         # thread queue for remotes being released
-        self.release_queue = util.ThreadReturnQueue(daemon=True)
+        self._release_queue = util.ThreadReturnQueue(daemon=True)
         # thread queue for results being ingested
-        self.ingest_queue = util.ThreadReturnQueue(daemon=False)
+        self._ingest_queue = util.ThreadReturnQueue(daemon=False)
 
     def _run_new_test(self, info):
         """
@@ -136,12 +136,12 @@ class AdHocOrchestrator(Orchestrator):
           - FinishedInfo instance of a previously executed test
             (reusing Remote/Executor for a new test).
         """
-        next_test_name = self.next_test(self.to_run.keys(), info)
-        assert next_test_name in self.to_run, "next_test() needs to return a valid test name"
+        next_test_name = self.next_test(self._to_run.keys(), info)
+        assert next_test_name in self._to_run, "next_test() needs to return a valid test name"
 
         self.logger.info(f"starting '{next_test_name}' on {info.remote}")
 
-        del self.to_run[next_test_name]
+        del self._to_run[next_test_name]
 
         # let __del__ take care of it in case we don't
         artifacts = tempfile.TemporaryDirectory(
@@ -154,7 +154,7 @@ class AdHocOrchestrator(Orchestrator):
             artifacts=artifacts,
         )
 
-        self.test_queue.start_thread(
+        self._test_queue.start_thread(
             target=info.executor.run_test,
             target_args=(
                 next_test_name,
@@ -163,7 +163,7 @@ class AdHocOrchestrator(Orchestrator):
             rinfo=rinfo,
         )
 
-        self.running_tests[next_test_name] = rinfo
+        self._running_tests[next_test_name] = rinfo
 
     @staticmethod
     def _ingest_and_cleanup(ingest, args, cleanup):
@@ -186,7 +186,7 @@ class AdHocOrchestrator(Orchestrator):
 
         if (finfo.exception or finfo.exit_code != 0) and self.should_be_rerun(finfo):
             self.logger.info(f"'{finfo.test_name}' failed, re-running")
-            self.to_run[finfo.test_name] = None  # add it
+            self._to_run[finfo.test_name] = None  # add it
 
             # provision a replacement for a destroyed Remote
             if remote_destroyed:
@@ -195,7 +195,7 @@ class AdHocOrchestrator(Orchestrator):
 
             if self.old_aggregator:
                 # ingest the test artifacts into old_aggregator (will be rerun)
-                self.ingest_queue.start_thread(
+                self._ingest_queue.start_thread(
                     self._ingest_and_cleanup,
                     target_args=(
                         # ingest func itself
@@ -215,7 +215,7 @@ class AdHocOrchestrator(Orchestrator):
             self.logger.info(f"'{finfo.test_name}' completed, ingesting result")
 
             # ingest the artifacts into the main aggregator
-            self.ingest_queue.start_thread(
+            self._ingest_queue.start_thread(
                 self._ingest_and_cleanup,
                 target_args=(
                     # ingest func itself
@@ -233,31 +233,31 @@ class AdHocOrchestrator(Orchestrator):
 
         # if there are still tests to run and the Remote is still valid,
         # run the next test on it (possibly a rerun)
-        if self.to_run and not remote_destroyed:
+        if self._to_run and not remote_destroyed:
             self.logger.debug(f"'{finfo.test_name}' was non-destructive, running next test")
             self._run_new_test(finfo)
         else:
             self.logger.debug(f"{finfo.remote} no longer useful, releasing it")
-            self.release_queue.start_thread(
+            self._release_queue.start_thread(
                 finfo.remote.release,
                 remote=finfo.remote,
             )
 
     def serve_once(self):
         # all done
-        if not self.to_run and not self.running_tests:
+        if not self._to_run and not self._running_tests:
             return False
 
         # process all finished tests, potentially reusing remotes for executing
         # further tests
         while True:
             try:
-                treturn = self.test_queue.get_raw(block=False)
+                treturn = self._test_queue.get_raw(block=False)
             except util.ThreadReturnQueue.Empty:
                 break
 
             rinfo = treturn.rinfo
-            del self.running_tests[rinfo.test_name]
+            del self._running_tests[rinfo.test_name]
 
             finfo = self.FinishedInfo(
                 **rinfo,
@@ -267,9 +267,9 @@ class AdHocOrchestrator(Orchestrator):
             self._process_finished_test(finfo)
 
         # process any remotes with finished setup, start executing tests on them
-        while self.to_run:
+        while self._to_run:
             try:
-                treturn = self.setup_queue.get_raw(block=False)
+                treturn = self._setup_queue.get_raw(block=False)
             except util.ThreadReturnQueue.Empty:
                 break
 
@@ -278,14 +278,14 @@ class AdHocOrchestrator(Orchestrator):
             if treturn.exception:
                 exc_str = f"{type(treturn.exception).__name__}({treturn.exception})"
                 msg = f"{sinfo.remote}: setup failed with {exc_str}"
-                self.release_queue.start_thread(
+                self._release_queue.start_thread(
                     sinfo.remote.release,
                     remote=sinfo.remote,
                 )
-                if self.failed_setups_left > 0:
-                    self.failed_setups_left -= 1
+                if self._failed_setups_left > 0:
+                    self._failed_setups_left -= 1
                     self.logger.warning(
-                        f"{msg}, re-trying ({self.failed_setups_left} setup retries left)",
+                        f"{msg}, re-trying ({self._failed_setups_left} setup retries left)",
                     )
                     sinfo.provisioner.provision(1)
                 else:
@@ -300,11 +300,11 @@ class AdHocOrchestrator(Orchestrator):
         # so exit the "get as many Remotes as possible" mode, and enter
         # the "provision only replacements for destroyed Remotes" mode
         if (
-            not self.to_run and
-            not self.finishing_up and
-            self.setup_queue.qsize() >= self.max_spares
+            not self._to_run and
+            not self._finishing_up and
+            self._setup_queue.qsize() >= self.max_spares
         ):
-            self.finishing_up = True
+            self._finishing_up = True
             self.logger.info("switching to finishing-up mode, sending .clear() to provisioners")
             for prov in self.provisioners:
                 prov.clear()
@@ -312,13 +312,13 @@ class AdHocOrchestrator(Orchestrator):
         # release any extra Remotes being held as set-up beyond what we need
         # for re-runs + self.max_spares
         # (may happen due to reservation batching in a Provisioner)
-        while self.setup_queue.qsize() > len(self.to_run) + self.max_spares:
+        while self._setup_queue.qsize() > len(self._to_run) + self.max_spares:
             try:
-                treturn = self.setup_queue.get_raw(block=False)
+                treturn = self._setup_queue.get_raw(block=False)
             except util.ThreadReturnQueue.Empty:
                 break
             self.logger.info(f"releasing extraneous set-up {treturn.sinfo.remote}")
-            self.release_queue.start_thread(
+            self._release_queue.start_thread(
                 treturn.sinfo.remote.release,
                 remote=treturn.sinfo.remote,
             )
@@ -333,7 +333,7 @@ class AdHocOrchestrator(Orchestrator):
                     remote=remote,
                     executor=ex,
                 )
-                self.setup_queue.start_thread(
+                self._setup_queue.start_thread(
                     target=self.run_setup,
                     target_args=(sinfo,),
                     sinfo=sinfo,
@@ -345,7 +345,7 @@ class AdHocOrchestrator(Orchestrator):
         # for operation
         while True:
             try:
-                treturn = self.release_queue.get_raw(block=False)
+                treturn = self._release_queue.get_raw(block=False)
             except util.ThreadReturnQueue.Empty:
                 break
             else:
@@ -358,7 +358,7 @@ class AdHocOrchestrator(Orchestrator):
         # gather returns from Aggregator.ingest() calls - check for exceptions
         while True:
             try:
-                treturn = self.ingest_queue.get_raw(block=False)
+                treturn = self._ingest_queue.get_raw(block=False)
             except util.ThreadReturnQueue.Empty:
                 break
             else:
@@ -378,9 +378,9 @@ class AdHocOrchestrator(Orchestrator):
         # from EACH provisioner, allowing any one of them to supply the Remotes
         # - any destructive tests do .provision(1) anyway
         #
-        # after self.to_run is exhausted, we do .clear() on all of these
+        # after self._to_run is exhausted, we do .clear() on all of these
         # and let just the destructive .provision(1) logic get new Remotes
-        remotes = len(self.to_run)
+        remotes = len(self._to_run)
         for prov in self.provisioners:
             prov.provision(remotes)
 
@@ -388,15 +388,15 @@ class AdHocOrchestrator(Orchestrator):
         self.logger.debug(f"stopping: {self}")
 
         # cancel all running tests and wait for them to clean up
-        for rinfo in self.running_tests.values():
+        for rinfo in self._running_tests.values():
             rinfo.executor.cancel()
-        self.test_queue.join()    # also ignore any exceptions raised
+        self._test_queue.join()    # also ignore any exceptions raised
 
         # wait for all running ingestions to finish, print exceptions
-        self.ingest_queue.join()
+        self._ingest_queue.join()
         while True:
             try:
-                treturn = self.ingest_queue.get_raw(block=False)
+                treturn = self._ingest_queue.get_raw(block=False)
             except util.ThreadReturnQueue.Empty:
                 break
             else:
@@ -408,10 +408,10 @@ class AdHocOrchestrator(Orchestrator):
 
     def __str__(self):
         class_name = self.__class__.__name__
-        running = len(self.running_tests)
-        queued = len(self.to_run)
-        total = self.total_tests
-        set_up = self.setup_queue.qsize()
+        running = len(self._running_tests)
+        queued = len(self._to_run)
+        total = self._total_tests
+        set_up = self._setup_queue.qsize()
         return (
             f"{class_name}({self.platform}, {queued}/{total} queued, {running} running, "
             f"{set_up} set up)"

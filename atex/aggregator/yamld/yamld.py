@@ -8,7 +8,7 @@ from ... import util
 from .. import Aggregator, AggregatorError
 from ..jsonl.jsonl import verbatim_move
 
-get_logger = util.get_loggers("atex.aggregator.yamld")
+_get_logger = util.get_loggers("atex.aggregator.yamld")
 
 
 class YAMLDocumentAggregator(Aggregator):
@@ -25,21 +25,21 @@ class YAMLDocumentAggregator(Aggregator):
     """
 
     def __init__(self, target, files, *, allow_duplicate=False):
-        self.lock = threading.RLock()
-        self.logger = get_logger()
+        self._lock = threading.RLock()
+        self.logger = _get_logger()
 
         self.target = Path(target)
         self.files = Path(files)
         self.allow_duplicate = allow_duplicate
-        self.seen_tests = {}
-        self.target_fobj = None
+        self._seen_tests = {}
+        self._target_fobj = None
 
     def start(self):
         self.logger.debug(f"starting: {self}")
 
         if self.target.exists(follow_symlinks=False):
             raise FileExistsError(f"{self.target} already exists")
-        self.target_fobj = open(self.target, "w")
+        self._target_fobj = open(self.target, "w")
 
         if self.files.exists(follow_symlinks=False):
             raise FileExistsError(f"{self.files} already exists")
@@ -48,23 +48,23 @@ class YAMLDocumentAggregator(Aggregator):
     def stop(self):
         self.logger.debug(f"stopping: {self}")
 
-        if self.target_fobj:
-            self.target_fobj.close()
-            self.target_fobj = None
+        if self._target_fobj:
+            self._target_fobj.close()
+            self._target_fobj = None
 
     def ingest(self, platform, test_name, artifacts):
         unique_id = (platform, test_name)
-        with self.lock:
-            if unique_id in self.seen_tests:
+        with self._lock:
+            if unique_id in self._seen_tests:
                 if not self.allow_duplicate:
                     raise AggregatorError(
                         f"'{test_name}' was already ingested once for '{platform}'",
                     )
                 else:
-                    test_name = f"{test_name} ({self.seen_tests[unique_id]})"
-                    self.seen_tests[unique_id] += 1
+                    test_name = f"{test_name} ({self._seen_tests[unique_id]})"
+                    self._seen_tests[unique_id] += 1
             else:
-                self.seen_tests[unique_id] = 1
+                self._seen_tests[unique_id] = 1
 
         self.logger.info(f"ingesting '{platform}' / '{test_name}' from '{artifacts}'")
 
@@ -127,15 +127,15 @@ class YAMLDocumentAggregator(Aggregator):
         if not document["subtests"]:
             del document["subtests"]
 
-        with self.lock:
+        with self._lock:
             yaml.dump(
                 document,
-                self.target_fobj,
+                self._target_fobj,
                 explicit_start=True,
                 default_flow_style=False,
                 sort_keys=False,
             )
-            self.target_fobj.flush()
+            self._target_fobj.flush()
 
         # clean up the source test_results (Aggregator should 'mv', not 'cp')
         Path(artifacts_results).unlink()

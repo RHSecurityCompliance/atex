@@ -65,10 +65,10 @@ class ThreadReturnQueue:
     Empty = queue.Empty
 
     def __init__(self, daemon=False):
-        self.lock = threading.RLock()
-        self.queue = queue.SimpleQueue()
+        self._lock = threading.RLock()
+        self._queue = queue.SimpleQueue()
         self.daemon = daemon
-        self.threads = set()
+        self._threads = set()
 
     def _wrapper(self, func, func_args, func_kwargs, **user_kwargs):
         current_thread = threading.current_thread()
@@ -87,7 +87,7 @@ class ThreadReturnQueue:
                 exception=e,
                 **user_kwargs,
             )
-        self.queue.put(result)
+        self._queue.put(result)
 
     def start_thread(self, target, *, target_args=None, target_kwargs=None, **user_kwargs):
         """
@@ -105,7 +105,7 @@ class ThreadReturnQueue:
             daemon=self.daemon,
         )
         t.start()
-        self.threads.add(t)
+        self._threads.add(t)
 
     def get_raw(self, block=True, timeout=None):
         """
@@ -113,10 +113,10 @@ class ThreadReturnQueue:
         queue, as enqueued by a finished callable started by the
         `.start_thread()` method.
         """
-        treturn = self.queue.get(block=block, timeout=timeout)
-        with self.lock:
+        treturn = self._queue.get(block=block, timeout=timeout)
+        with self._lock:
             try:
-                self.threads.remove(treturn.thread)
+                self._threads.remove(treturn.thread)
             except KeyError:
                 # may have been already .pop()ed by .join()
                 pass
@@ -144,7 +144,7 @@ class ThreadReturnQueue:
         """
         while True:
             try:
-                thread = self.threads.pop()
+                thread = self._threads.pop()
             except KeyError:
                 break
             thread.join()
@@ -154,4 +154,4 @@ class ThreadReturnQueue:
         Return the amount of elements `.get()` can retrieve before it raises
         `queue.Empty`.
         """
-        return self.queue.qsize()
+        return self._queue.qsize()

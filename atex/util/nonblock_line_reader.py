@@ -32,7 +32,7 @@ class NonblockLineReader:
         self.src = src
         self.read_len = read_len
         self.eof = False
-        self.buffer = bytearray(max_len)
+        self._buffer = bytearray(max_len)
         self.bytes_read = 0
 
     def readline(self):
@@ -45,17 +45,17 @@ class NonblockLineReader:
         """
         while True:
             # return a buffered line before trying to read more
-            if (idx := self.buffer.find(b"\n", 0, self.bytes_read)) != -1:
-                line = bytes(self.buffer[:idx])
+            if (idx := self._buffer.find(b"\n", 0, self.bytes_read)) != -1:
+                line = bytes(self._buffer[:idx])
                 remainder = self.bytes_read - idx - 1  # \n
-                self.buffer[:remainder] = memoryview(self.buffer)[idx+1 : self.bytes_read]
+                self._buffer[:remainder] = memoryview(self._buffer)[idx+1 : self.bytes_read]
                 self.bytes_read -= idx+1
                 return line
 
-            if self.bytes_read >= len(self.buffer):
-                raise BufferFullError(f"line buffer reached {len(self.buffer)} bytes")
+            if self.bytes_read >= len(self._buffer):
+                raise BufferFullError(f"line buffer reached {len(self._buffer)} bytes")
 
-            space_left = len(self.buffer) - self.bytes_read
+            space_left = len(self._buffer) - self.bytes_read
             try:
                 data = os.read(self.src, min(space_left, self.read_len))
             except BlockingIOError:
@@ -66,5 +66,5 @@ class NonblockLineReader:
                 self.eof = True
                 return None
 
-            self.buffer[self.bytes_read : self.bytes_read + len(data)] = data
+            self._buffer[self.bytes_read : self.bytes_read + len(data)] = data
             self.bytes_read += len(data)

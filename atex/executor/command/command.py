@@ -5,7 +5,7 @@ from pathlib import Path
 from ... import util
 from .. import Executor
 
-get_logger = util.get_loggers("atex.executor.command")
+_get_logger = util.get_loggers("atex.executor.command")
 
 
 class CommandExecutor(Executor):
@@ -17,7 +17,7 @@ class CommandExecutor(Executor):
     """
 
     def __init__(self, connection, tests):
-        self.logger = get_logger()
+        self.logger = _get_logger()
         self.conn = connection
         self.tests = tests
         self._proc = None

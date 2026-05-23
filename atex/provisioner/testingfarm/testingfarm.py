@@ -7,7 +7,7 @@ from ... import connection, util
 from .. import Provisioner, Remote
 from . import api
 
-get_logger = util.get_loggers("atex.provisioner.testingfarm")
+_get_logger = util.get_loggers("atex.provisioner.testingfarm")
 
 
 class TestingFarmRemote(Remote, connection.ssh.ManagedSSHConnection):
@@ -15,25 +15,25 @@ class TestingFarmRemote(Remote, connection.ssh.ManagedSSHConnection):
     - `request_id` is a string with Testing Farm request UUID
       (for printouts).
 
-    - `ssh_options` are a dict, passed to ManagedSSHConnection `__init__()`.
-
     - `release_hook` is a callable called on `.release()` in addition
       to disconnecting the connection.
+
+    - `kwargs` are passed to the underlying ManagedSSHConnection.
     """
 
-    def __init__(self, request_id, ssh_options, *, release_hook):
-        super().__init__(options=ssh_options)
-        self.lock = threading.RLock()
+    def __init__(self, request_id, *, release_hook, **kwargs):
+        super().__init__(**kwargs)
+        self._lock = threading.RLock()
         self.request_id = request_id
         self.release_hook = release_hook
-        self.release_called = False
+        self._release_called = False
 
     def release(self):
-        with self.lock:
-            if self.release_called:
+        with self._lock:
+            if self._release_called:
                 return
             else:
-                self.release_called = True
+                self._release_called = True
         self.disconnect()
         self.release_hook(self)
 
@@ -67,28 +67,28 @@ class TestingFarmProvisioner(Provisioner):
     stop_release_workers = 10
 
     def __init__(self, compose, arch="x86_64", max_remotes=3, *, max_retries=10, **reserve_kwargs):
-        self.lock = threading.RLock()
-        self.logger = get_logger()
+        self._lock = threading.RLock()
+        self.logger = _get_logger()
 
         self.compose = compose
         self.arch = arch
         self.max_remotes = min(max_remotes, self.absolute_max_remotes)
         self.reserve_kwargs = reserve_kwargs
-        self.retries = max_retries
+        self._retries = max_retries
 
         self._tmpdir = None
-        self.ssh_key = self.ssh_pubkey = None
-        self.queue = util.ThreadReturnQueue(daemon=True)
-        self.tf_api = api.TestingFarmAPI()
-        self.to_reserve = 0
+        self._ssh_key = self._ssh_pubkey = None
+        self._queue = util.ThreadReturnQueue(daemon=True)
+        self._tf_api = api.TestingFarmAPI()
+        self._to_reserve = 0
 
         # TF Reserve instances (not Remotes) actively being provisioned,
         # in case we need to call their .release() on abort
-        self.reserving = []
+        self._reserving = []
 
         # active TestingFarmRemote instances, ready to be handed over to the user,
         # or already in use by the user
-        self.remotes = []
+        self._remotes = []
 
     def _wait_for_reservation(self, tf_reserve, initial_delay):
         # assuming this function will be called many times, attempt to
@@ -116,9 +116,9 @@ class TestingFarmProvisioner(Provisioner):
                 self.logger.debug(f"releasing {remote}")
 
                 # remove from the list of remotes inside this Provisioner
-                with self.lock:
+                with self._lock:
                     try:
-                        self.remotes.remove(remote)
+                        self._remotes.remove(remote)
                     except ValueError:
                         pass
                 # call TF API, cancel the request, etc.
@@ -126,55 +126,55 @@ class TestingFarmProvisioner(Provisioner):
 
             remote = TestingFarmRemote(
                 tf_reserve.request.id,
-                ssh_options,
                 release_hook=release_hook,
+                options=ssh_options,
             )
 
             remote.connect()
 
             # since the system is fully ready, stop tracking its reservation
             # and return the finished Remote instance
-            with self.lock:
-                self.remotes.append(remote)
-                self.reserving.remove(tf_reserve)
+            with self._lock:
+                self._remotes.append(remote)
+                self._reserving.remove(tf_reserve)
 
         except BaseException:
-            with self.lock:
-                self.reserving.remove(tf_reserve)
+            with self._lock:
+                self._reserving.remove(tf_reserve)
             tf_reserve.release()
             raise
 
         return remote
 
     def _schedule_new_reservations(self):
-        if self.to_reserve <= 0:
+        if self._to_reserve <= 0:
             return
 
         # calculate how much can we still reserve to fit within
         # self.max_remotes, and clamp will_reserve to it
-        with self.lock:
-            capacity = self.max_remotes - len(self.remotes) - len(self.reserving)
-            will_reserve = min(self.to_reserve, capacity)
+        with self._lock:
+            capacity = self.max_remotes - len(self._remotes) - len(self._reserving)
+            will_reserve = min(self._to_reserve, capacity)
             if will_reserve <= 0:
                 return
-            self.to_reserve -= will_reserve
+            self._to_reserve -= will_reserve
 
             self.logger.info(f"reserving {will_reserve} new remotes")
             for i in range(will_reserve):
                 tf_reserve = api.Reserve(
                     compose=self.compose,
                     arch=self.arch,
-                    ssh_key=self.ssh_key,
-                    api=self.tf_api,
+                    ssh_key=self._ssh_key,
+                    api=self._tf_api,
                     logger=self.logger,
                     **self.reserve_kwargs,
                 )
-                # add it to self.reserving even before we schedule a provision,
+                # add it to self._reserving even before we schedule a provision,
                 # to avoid races on sudden abort
-                self.reserving.append(tf_reserve)
+                self._reserving.append(tf_reserve)
                 # start a background wait
                 initial_delay = (api.Request.api_query_limit / will_reserve) * i
-                self.queue.start_thread(
+                self._queue.start_thread(
                     target=self._wait_for_reservation,
                     target_args=(tf_reserve, initial_delay),
                 )
@@ -182,20 +182,20 @@ class TestingFarmProvisioner(Provisioner):
     def start(self):
         self.logger.debug(f"starting: {self}")
 
-        with self.lock:
+        with self._lock:
             self._tmpdir = tempfile.TemporaryDirectory()
-            self.ssh_key, self.ssh_pubkey = util.ssh_keygen(self._tmpdir.name)
+            self._ssh_key, self._ssh_pubkey = util.ssh_keygen(self._tmpdir.name)
 
     def stop(self):
         self.logger.debug(f"stopping: {self}")
 
         release_funcs = []
 
-        with self.lock:
-            release_funcs += (f.release for f in self.reserving)
-            self.reserving = []
-            release_funcs += (r.release for r in self.remotes)
-            self.remotes = []  # just in case of a later .start()
+        with self._lock:
+            release_funcs += (f.release for f in self._reserving)
+            self._reserving = []
+            release_funcs += (r.release for r in self._remotes)
+            self._remotes = []  # just in case of a later .start()
 
         # parallelize at most stop_release_workers TF API release (DELETE) calls
         if release_funcs:
@@ -204,15 +204,15 @@ class TestingFarmProvisioner(Provisioner):
                 for func in release_funcs:
                     ex.submit(func)
 
-        with self.lock:
+        with self._lock:
             if self._tmpdir:
                 # explicitly remove the tmpdir rather than relying on destructor
                 self._tmpdir.cleanup()
                 self._tmpdir = None
 
     def provision(self, count=1):
-        with self.lock:
-            self.to_reserve += count
+        with self._lock:
+            self._to_reserve += count
         self._schedule_new_reservations()
 
     def get_remote(self, block=True):
@@ -220,20 +220,20 @@ class TestingFarmProvisioner(Provisioner):
             self._schedule_new_reservations()
             # otherwise wait on a queue of Remotes being provisioned
             try:
-                return self.queue.get(block=block)  # thread-safe
+                return self._queue.get(block=block)  # thread-safe
             except util.ThreadReturnQueue.Empty:
                 # always non-blocking
                 return None
             except BaseException as e:
                 exc_str = f"{type(e).__name__}({e})"
-                with self.lock:
-                    if self.retries > 0:
+                with self._lock:
+                    if self._retries > 0:
                         self.logger.warning(
                             f"caught while reserving a TF system: {exc_str}, "
-                            f"retrying ({self.retries} left)",
+                            f"retrying ({self._retries} left)",
                         )
-                        self.retries -= 1
-                        self.to_reserve += 1
+                        self._retries -= 1
+                        self._to_reserve += 1
                         if block:
                             continue
                         else:
@@ -246,20 +246,20 @@ class TestingFarmProvisioner(Provisioner):
                         raise
 
     def clear(self):
-        with self.lock:
-            self.to_reserve = 0
-        # keep all self.reserving running
+        with self._lock:
+            self._to_reserve = 0
+        # keep all self._reserving running
         # - this optimizes further .get_remote() calls as we don't have to
         #   re-enter the queue for systems with new TF Requests
-        # - but also, cancelling would produce exceptions in self.queue;
-        #   TODO: add some spare=N for how many self.reserving to keep running
+        # - but also, cancelling would produce exceptions in self._queue;
+        #   TODO: add some spare=N for how many self._reserving to keep running
         #         and cancel the rest cleanly, once we get rid of daemon=True
         #         and switch TF API to threading.Event waits
 
     def __str__(self):
         class_name = self.__class__.__name__
-        reserving = len(self.reserving)
-        remotes = len(self.remotes)
+        reserving = len(self._reserving)
+        remotes = len(self._remotes)
         return (
             f"{class_name}({self.compose} @ {self.arch}, {reserving} reserving, "
             f"{remotes} remotes)"

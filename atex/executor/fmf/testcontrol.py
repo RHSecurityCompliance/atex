@@ -43,10 +43,10 @@ class TestControl:
         self.duration = duration
         if control_fd is not None:
             self.control_fd = control_fd
-            self.stream = util.NonblockLineReader(control_fd, read_len=1)
+            self._stream = util.NonblockLineReader(control_fd, read_len=1)
         else:
             self.control_fd = None
-            self.stream = None
+            self._stream = None
         self.eof = False
         self.in_progress = None
         self.exit_code = None
@@ -60,11 +60,11 @@ class TestControl:
         err = "tried to assign new control fd while"
         if self.in_progress:
             raise BadControlError(f"{err} old one is reading non-control binary data")
-        elif self.stream and self.stream.bytes_read != 0:
+        elif self._stream and self._stream.bytes_read != 0:
             raise BadControlError(f"{err} old one is in the middle of reading a control line")
         self.eof = False
         self.control_fd = new_fd
-        self.stream = util.NonblockLineReader(new_fd, read_len=1)
+        self._stream = util.NonblockLineReader(new_fd, read_len=1)
 
     def process(self):
         """
@@ -82,13 +82,13 @@ class TestControl:
                 self.in_progress = None
 
         try:
-            line = self.stream.readline()
+            line = self._stream.readline()
         except util.BufferFullError as e:
             raise BadControlError(str(e)) from None
 
-        self.logger.debug(f"control line: {line} // eof: {self.stream.eof}")
+        self.logger.debug(f"control line: {line} // eof: {self._stream.eof}")
 
-        if self.stream.eof:
+        if self._stream.eof:
             self.eof = True
             return
         # partial read or BlockingIOError, try next time

@@ -34,9 +34,9 @@ class Reporter:
 
         self.output_dir = Path(output_dir)
         self.results_file = self.output_dir / results_file
-        self.results_fobj = None
+        self._results_fobj = None
         self.files_dir = self.output_dir / files_dir
-        self.testout_file = self.output_dir / self.TESTOUT
+        self._testout_file = self.output_dir / self.TESTOUT
         # data of partial results
         self.partial = {}
         # whether any one of the results was without a 'name' key,
@@ -110,9 +110,9 @@ class Reporter:
             self.nameless_result_seen = True
 
         # write persistently to the results file
-        json.dump(result_line, self.results_fobj, indent=None)
-        self.results_fobj.write("\n")
-        self.results_fobj.flush()
+        json.dump(result_line, self._results_fobj, indent=None)
+        self._results_fobj.write("\n")
+        self._results_fobj.flush()
 
     def replay_partial(self):
         """
@@ -207,7 +207,7 @@ class Reporter:
         Open a file named after self.TESTOUT inside self.output_dir.
         Yields an opened file descriptor (as integer) as a Context Manager.
         """
-        fd = os.open(self.testout_file, os.O_WRONLY | os.O_CREAT | os.O_APPEND)
+        fd = os.open(self._testout_file, os.O_WRONLY | os.O_CREAT | os.O_APPEND)
         if "ATEX_DEBUG_TEST_OUTPUT_FD" in os.environ:
             # leave behind an empty file
             os.close(fd)
@@ -232,17 +232,17 @@ class Reporter:
         rel_path = self._test_files_path(file_name, result_name)
         full_path = self.files_dir / rel_path
         full_path.parent.mkdir(parents=True, exist_ok=True)
-        os.link(self.testout_file, full_path)
+        os.link(self._testout_file, full_path)
         return rel_path
 
     def start(self):
         if self.results_file.exists(follow_symlinks=False):
             raise FileExistsError(f"{self.results_file} already exists")
-        self.results_fobj = open(self.results_file, "w", newline="\n")
+        self._results_fobj = open(self.results_file, "w", newline="\n")
 
-        if self.testout_file.exists(follow_symlinks=False):
-            raise FileExistsError(f"{self.testout_file} already exists")
-        self.testout_file.touch()
+        if self._testout_file.exists(follow_symlinks=False):
+            raise FileExistsError(f"{self._testout_file} already exists")
+        self._testout_file.touch()
 
         if self.files_dir.exists(follow_symlinks=False):
             raise FileExistsError(f"{self.files_dir} already exists")
@@ -251,11 +251,11 @@ class Reporter:
     def stop(self):
         self.replay_partial()
 
-        if self.results_fobj:
-            self.results_fobj.close()
-            self.results_fobj = None
+        if self._results_fobj:
+            self._results_fobj.close()
+            self._results_fobj = None
 
-        self.testout_file.unlink(missing_ok=True)
+        self._testout_file.unlink(missing_ok=True)
 
         self.nameless_result_seen = False
 

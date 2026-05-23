@@ -90,6 +90,7 @@ ignore = [
     "PLR0916",  # too-many-boolean-expressions
     "PLR0917",  # too-many-positional-arguments
     "PLR1702",  # too-many-nested-blocks
+    "PLW0717",  # too-many-statements-in-try-clause
     "PLR2004",  # magic-value-comparison
     "PLR5501",  # collapsible-else-if
     "PLW0603",  # global-statement

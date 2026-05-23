@@ -79,7 +79,6 @@ def test_local_library_symlink():
     assert "optional_dependency" in recommends
 
 
-
 def test_http_section():
     """One local + one HTTP section using beakerlib/yum."""
     try:

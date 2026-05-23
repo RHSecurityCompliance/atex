@@ -565,13 +565,15 @@ class Reserve:
 
     @staticmethod
     def _guess_host_ipv4():
+        # fail faster than the default TF API one
+        http = urllib3.PoolManager(retries=10)
         curl_agent = {"User-Agent": "curl/1.2.3"}
         try:
-            r = _http.request("GET", "https://ifconfig.me", headers=curl_agent)
+            r = http.request("GET", "https://ifconfig.me", headers=curl_agent)
             if r.status != 200:
                 raise ConnectionError
         except (ConnectionError, urllib3.exceptions.HTTPError):
-            r = _http.request("GET", "https://ifconfig.co", headers=curl_agent)
+            r = http.request("GET", "https://ifconfig.co", headers=curl_agent)
             if r.status != 200:
                 raise urllib3.exceptions.HTTPError(
                     f"failed to determine public IP (returned {r.status})",

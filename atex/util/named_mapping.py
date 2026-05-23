@@ -88,6 +88,8 @@ class _NamedMappingMeta(abc.ABCMeta):
 
 
 class NamedMapping(collections.abc.Mapping, metaclass=_NamedMappingMeta):
+    """A namedtuple-inspired frozen mapping with attribute access."""
+
     __slots__ = ("_data",)
 
     def __init__(self, **keys):

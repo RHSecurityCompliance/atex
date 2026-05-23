@@ -200,11 +200,10 @@ def discover(
             excludes=excludes,
         )
 
-        # store beakerlib libraries under libs/ in the tests tree
-        # - if the test repo already has 'libs', Beakerlib would have discovered
-        #   it sooner than any 'libs' in levels above, so skip library fetching
-        #   and trust the repo knows what it's doing
-        if libraries and not (Path(section_tree.root) / "libs").exists():
+        # store beakerlib libraries under libs/ in the tests tree,
+        # merging into any pre-existing libs/ from the repo
+        # (just like tmt does)
+        if libraries:
             resolve_libraries(
                 section_tests.values(),
                 section_tree,
@@ -387,8 +386,6 @@ def resolve_libraries(tests_data, tests_tree, libs_dir, context):
                         continue
 
                     target = libs_dir / nick / name.lstrip("/")
-                    if target.exists():
-                        raise ValueError(f"{require} already exists in {target}")
 
                     # query using urllib3 to avoid git-clone asking for password
                     response = _http.request("HEAD", f"{url}/tree/HEAD{name}", redirect=False)
@@ -403,7 +400,7 @@ def resolve_libraries(tests_data, tests_tree, libs_dir, context):
                             continue
                         source = Path(node.root) / node.name.lstrip("/")
                         target.parent.mkdir(parents=True, exist_ok=True)
-                        shutil.copytree(source, target, symlinks=True)
+                        shutil.copytree(source, target, symlinks=True, dirs_exist_ok=True)
                         new_require.append(equiv_dict)
 
                     # else leave it for the package manager to install
@@ -463,8 +460,6 @@ def resolve_libraries(tests_data, tests_tree, libs_dir, context):
                     continue
 
                 target = libs_dir / nick / fmf_path.lstrip("/") / name.lstrip("/")
-                if target.exists():
-                    raise ValueError(f"{require} already exists in {target}")
 
                 # use fmf-native cloning/fetching
                 try:
@@ -474,7 +469,7 @@ def resolve_libraries(tests_data, tests_tree, libs_dir, context):
                     raise ValueError(f"repository has no fmf metadata: {require}") from None
                 source = Path(node.root) / node.name.lstrip("/")
                 target.parent.mkdir(parents=True, exist_ok=True)
-                shutil.copytree(source, target, symlinks=True)
+                shutil.copytree(source, target, symlinks=True, dirs_exist_ok=True)
 
             # invalid require?
             else:

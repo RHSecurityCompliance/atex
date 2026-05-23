@@ -39,8 +39,8 @@ def test_virtual():
 
 
 def test_source_dir():
-    subtest = fmf_tests.dirs["/virtual/subtest"]
-    nested_subtest = fmf_tests.dirs["/virtual/nested/subtest"]
+    subtest = fmf_tests.sources["/virtual/subtest"]
+    nested_subtest = fmf_tests.sources["/virtual/nested/subtest"]
     assert subtest == nested_subtest  # defined in the same dir
 
 

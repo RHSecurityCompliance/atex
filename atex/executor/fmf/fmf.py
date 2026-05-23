@@ -204,7 +204,7 @@ class FMFExecutor(Executor):
         self.logger.info(f"'{test_name}': running, {artifacts=}")
 
         test_data = self.fmf_tests.data[test_name]
-        test_fmf_dir = self.work_dir / "tests" / self.fmf_tests.dirs[test_name]
+        test_fmf_dir = self.work_dir / "tests" / self.fmf_tests.sources[test_name]
 
         # start with fmf-plan-defined environment
         env_vars = {}

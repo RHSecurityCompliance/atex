@@ -15,7 +15,7 @@ class FMFTests:
 
     - `data` - dict, indexed by test name, holding fmf test metadata.
 
-    - `dirs` - dict, indexed by test name, holding relative paths (strings)
+    - `sources` - dict, indexed by test name, holding relative paths (strings)
       of each test's definition directory, eg. where the .fmf file defining
       the test is.
 
@@ -27,7 +27,7 @@ class FMFTests:
     """
     plan: dict
     data: dict
-    dirs: dict
+    sources: dict
     root: Path
 
     def __str__(self):

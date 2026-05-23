@@ -119,7 +119,7 @@ def discover(
             raise ValueError("'name' must be unique for each discover section")
 
     all_tests_data = {}
-    all_tests_dirs = {}
+    all_tests_sources = {}
 
     # don't use a context manager here; it would be an overkill to require
     # callers to always use discover() via a CM, especially given the most
@@ -133,7 +133,7 @@ def discover(
         if "/" in prefix or prefix in (".", ".."):
             raise ValueError(f"invalid discover section 'name': {prefix}")
 
-        section_tree, section_tests, section_dirs = discover_section(
+        section_tree, section_tests, section_sources = discover_section(
             tree,
             section,
             tmp_dir_path / prefix,
@@ -161,18 +161,18 @@ def discover(
                 f"/{prefix}{name}": data
                 for name, data in section_tests.items()
             }
-            section_dirs = {
+            section_sources = {
                 f"/{prefix}{name}": str(Path(prefix) / path)
-                for name, path in section_dirs.items()
+                for name, path in section_sources.items()
             }
 
         all_tests_data |= section_tests
-        all_tests_dirs |= section_dirs
+        all_tests_sources |= section_sources
 
     fmf_tests = FMFTests(
         plan=plan_data,
         data=all_tests_data,
-        dirs=all_tests_dirs,
+        sources=all_tests_sources,
         root=tmp_dir_path,
     )
     weakref.finalize(fmf_tests, tmp_dir.cleanup)
@@ -244,7 +244,7 @@ def discover_section(
     prune_excludes += listlike(section, "exclude")
 
     tests_data = {}
-    tests_dirs = {}
+    tests_sources = {}
 
     # actually discover the tests
     for child in tree.prune(**prune_kwargs):
@@ -265,9 +265,9 @@ def discover_section(
         # sharing the same dict, modified twice by resolve_libraries()
         tests_data[child.name] = child.data.copy()
         # child.sources ie. ['/abs/path/to/some.fmf', '/abs/path/to/some/node.fmf']
-        tests_dirs[child.name] = str(Path(child.sources[-1]).parent.relative_to(tree.root))
+        tests_sources[child.name] = str(Path(child.sources[-1]).parent.relative_to(tree.root))
 
-    return (tree, tests_data, tests_dirs)
+    return (tree, tests_data, tests_sources)
 
 
 _http = urllib3.PoolManager()

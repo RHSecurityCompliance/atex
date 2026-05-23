@@ -1,3 +1,4 @@
+import fmf
 import pytest
 
 from atex.executor.fmf import discover
@@ -130,8 +131,6 @@ def test_environment():
 
 
 def test_existing_tree():
-    # external fmf module
-    import fmf  # noqa: PLC0415
     tree = fmf.Tree("fmf_trees/metadata")
     fmf_tests = discover(tree)
     assert "/simple" in fmf_tests.data

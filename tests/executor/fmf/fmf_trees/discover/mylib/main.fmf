@@ -1,0 +1,3 @@
+summary: local in-tree library
+require: some_dependency
+recommend: optional_dependency

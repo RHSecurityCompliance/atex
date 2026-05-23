@@ -1,0 +1,2 @@
+/test_subdir_cwd:
+  test: cat file_in_subdir

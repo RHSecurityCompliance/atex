@@ -1,0 +1,59 @@
+/plans:
+  /single:
+    discover:
+      how: fmf
+    execute:
+      how: tmt
+
+  /filtered:
+    discover:
+      - how: fmf
+        name: group_a
+        filter:
+          - "tag:group_a"
+      - how: fmf
+        name: group_b
+        filter:
+          - "tag:group_b"
+    execute:
+      how: tmt
+
+  /duplicate:
+    discover:
+      - how: fmf
+        name: first
+      - how: fmf
+        name: second
+    execute:
+      how: tmt
+
+  /with_http:
+    discover:
+      - how: fmf
+        name: local
+      - how: fmf
+        name: remote
+        url: https://github.com/beakerlib/yum
+    execute:
+      how: tmt
+
+/test_one:
+  test: echo one
+  tag: [group_a]
+
+/test_two:
+  test: echo two
+  tag: [group_b]
+
+/test_three:
+  test: echo three
+  tag: [group_a, group_b]
+
+/test_with_lib:
+  test: echo with_lib
+  require:
+    nick: mylib
+    name: /mylib
+
+/test_with_path_lib:
+  test: echo path_lib

@@ -7,5 +7,25 @@
     how: shell
     script: cat file_in_fmfdir > /tmp/file_contents
 
+/plan_named:
+  discover:
+    how: fmf
+    name: section
+  execute:
+    how: tmt
+
+/plan_two_sections:
+  discover:
+    - how: fmf
+      name: root_tests
+      test:
+        - /test_cwd
+    - how: fmf
+      name: sub_tests
+      test:
+        - /subdir/test_subdir_cwd
+  execute:
+    how: tmt
+
 /test_cwd:
   test: cat file_in_fmfdir

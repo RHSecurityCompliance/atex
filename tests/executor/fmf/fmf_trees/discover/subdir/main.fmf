@@ -1,0 +1,3 @@
+/test_nested:
+  test: echo nested
+  tag: [group_a]

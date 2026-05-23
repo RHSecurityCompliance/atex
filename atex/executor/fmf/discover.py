@@ -398,12 +398,18 @@ def resolve_libraries(tests_data, tests_tree, libs_dir, context):
 
                 new_require.append(require)
 
-                fmf_path = require.get("path", "")
-                cache_key = f"{nick}{fmf_path}{name}"
+                if "url" in require:
+                    # path is a subdir within the cloned repo - honor it
+                    fmf_path = require.get("path", "")
+                    cache_key = f"{nick}{fmf_path}{name}"
+                    target = libs_dir / nick / fmf_path.lstrip("/") / name.lstrip("/")
+                else:
+                    # path is a local url-less source, store it using nick+name
+                    cache_key = f"{nick}{name}"
+                    target = libs_dir / nick / name.lstrip("/")
+
                 if update_from_cache(cache_key):
                     continue
-
-                target = libs_dir / nick / fmf_path.lstrip("/") / name.lstrip("/")
 
                 # use fmf-native cloning/fetching
                 try:

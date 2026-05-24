@@ -1,11 +1,7 @@
-import errno
 import json
-import logging
 import math
-import socket
 import subprocess
 import threading
-import time
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
@@ -13,78 +9,6 @@ from ... import connection, util
 from .. import Provisioner, ProvisionerError, Remote
 
 _get_logger = util.get_loggers("atex.provisioner.shvirt")
-
-
-def _wait_for_sshd(host, port, event, logger=None):
-    """
-    Wait for real OpenSSH server to start responding on host/port,
-    non-blockingly.
-
-    Return True if successful, False if `event` was set and the waiting
-    was thus interrupted.
-    """
-    logger = logger or logging.getLogger("atex")
-
-    # 2 secs to reply over connected socket initially,
-    # with exponential back off (in case the system is too slow
-    # to respond)
-    backoff_sleep = 2
-
-    while True:
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            s.setblocking(False)
-
-            # try connecting
-            try:
-                s.connect((host, port))
-            except BlockingIOError:
-                pass
-
-            connected = False
-            while not connected:
-                if event.wait(timeout=0.1):
-                    return False
-                # wait for the connection to either fail (SO_ERROR)
-                if s.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR) != 0:
-                    break
-                # or succeed (getpeername)
-                try:
-                    s.getpeername()
-                except OSError as e:
-                    if e.errno == errno.ENOTCONN:
-                        continue
-                    break
-                else:
-                    connected = True
-
-            # re-try connecting with a new socket
-            if not connected:
-                logger.debug("connection attempt to sshd failed, re-trying")
-                continue
-
-            # connected, try receiving
-            sshd_signature = False
-            end = time.monotonic() + backoff_sleep
-            backoff_sleep = min(backoff_sleep * 2, 180)  # up to 3min
-            while not sshd_signature and time.monotonic() < end:
-                if event.wait(timeout=0.1):
-                    return False
-                try:
-                    data = s.recv(4)
-                except BlockingIOError:
-                    continue
-                except OSError:
-                    break
-                else:
-                    if data == b"SSH-":
-                        sshd_signature = True
-                    break
-
-            if not sshd_signature:
-                logger.debug("connected to sshd, but no signature, re-trying")
-                continue
-
-            return True
 
 
 class SharedVirtRemote(Remote, connection.ssh.ManagedSSHConnection):
@@ -389,7 +313,9 @@ class SharedVirtProvisioner(Provisioner):
             )
 
             self.logger.debug(f"waiting for sshd on {remote}")
-            if not _wait_for_sshd(self.domain_host, int(port), self._reserving_exit, self.logger):
+            if not util.wait_for_sshd(
+                self.domain_host, int(port), event=self._reserving_exit, logger=self.logger,
+            ):
                 return
 
             self.logger.debug(f"connecting to {remote}")

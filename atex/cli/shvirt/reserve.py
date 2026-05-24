@@ -2,27 +2,12 @@ import atexit
 import getpass
 import json
 import logging
-import socket
 import subprocess
 import time
 import xml.etree.ElementTree as ET
 
+from ... import util
 from .common import make_helper_cmd
-
-
-def _wait_for_sshd(host, port):
-    while True:
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            s.settimeout(5.0)
-            try:
-                s.connect((host, port))
-                if s.recv(4) == b"SSH-":
-                    return
-                else:
-                    logging.debug("connected to sshd, but no signature, re-trying")
-            except OSError:
-                logging.debug("connection attempt to sshd failed, re-trying")
-        time.sleep(0.1)
 
 
 def reserve(args):
@@ -141,7 +126,7 @@ def reserve(args):
     domain_ssh_host = "127.0.0.1" if args.helper_localhost else args.helper_host
 
     logging.info(f"waiting for sshd on {domain_ssh_host}:{domain_ssh_port}")
-    _wait_for_sshd(domain_ssh_host, int(domain_ssh_port))
+    util.wait_for_sshd(domain_ssh_host, int(domain_ssh_port))
 
     while True:
         logging.info(

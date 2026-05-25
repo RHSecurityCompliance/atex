@@ -1,58 +1,17 @@
 import atexit
 import getpass
-import importlib.resources
 import json
 import logging
-import re
 import subprocess
 import time
-from pathlib import Path
 
+from ..virt.kickstart import add_kickstart_args, kickstart_from_args
 from .common import make_helper_cmd
-
-_ks_builtin = importlib.resources.files(__package__).joinpath("ks.cfg")
 
 
 def install(args):
     logging.info("preparing kickstart")
-    if args.ks:
-        ks_contents = Path(args.ks).read_text()
-    else:
-        ks_contents = _ks_builtin.read_text()
-
-        for regex in args.ks_del:
-            ks_contents = re.sub(regex, "", ks_contents, flags=re.MULTILINE | re.DOTALL)
-
-        if args.ks_cmd:
-            cmds = {cmd.partition(" ")[0]: cmd for cmd in args.ks_cmd}
-            new_ks_lines = ks_contents.splitlines()
-            for i, line in enumerate(new_ks_lines):
-                line_cmd = line.partition(" ")[0]
-                if new_content := cmds.get(line_cmd):
-                    new_ks_lines[i] = new_content
-            ks_contents = "\n".join(new_ks_lines) + "\n"
-
-        if args.ks_packages:
-            ks_contents += (
-                "\n%packages --ignoremissing\n" +
-                args.ks_packages.strip("\n") +
-                "\n%end\n"
-            )
-
-        if args.ks_sshkeys:
-            ks_contents += (
-                "\n%post --erroronfail\n"
-                "mkdir -p /root/.ssh\n"
-                "cat > /root/.ssh/authorized_keys <<'EOF'\n"
-            ) + args.ks_sshkeys.strip("\n") + (
-                "\nEOF\n"
-                "chmod go-rwx -R /root/.ssh\n"
-                "chown root:root -R /root/.ssh\n"
-                "%end\n"
-            )
-
-        for extra in args.ks_append:
-            ks_contents += f"\n{extra}\n"
+    ks_contents = kickstart_from_args(args)
 
     if args.dry_run:
         print(ks_contents, end="")
@@ -230,28 +189,7 @@ def add_install_args(parser):
     grp.add_argument("--size", help="maximum image size in GB", default=40, type=int)
     grp.add_argument("--bios", help="create old BIOS image instead of UEFI", action="store_true")
 
-    grp = parser.add_argument_group("Kickstart")
-    grp.add_argument("--ks-packages", help=r"string with \n-separated extra RPMs to install")
-    grp.add_argument("--ks-sshkeys", help=r"string with \n-separated ssh keys for root")
-    grp.add_argument(
-        "--ks-cmd",
-        help="kickstart cmd with args, replaces built-in one",
-        action="append",
-        default=[],
-    )
-    grp.add_argument(
-        "--ks-del",
-        help=r"multi-line regexp to delete from the built-in kickstart",
-        action="append",
-        default=[],
-    )
-    grp.add_argument(
-        "--ks-append",
-        help="verbatim string to append to kickstart",
-        action="append",
-        default=[],
-    )
-    grp.add_argument("--ks", help="full kickstart file to use, ignore other --ks-* opts")
+    add_kickstart_args(parser)
 
     grp = parser.add_argument_group(
         title="Reservation",

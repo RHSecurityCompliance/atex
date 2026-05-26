@@ -71,9 +71,9 @@ class PodmanProvisioner(Provisioner):
 
     def __init__(
         self, image, *,
-        max_remotes=None, run_options=None, run_command=("sleep", "inf"),
+        max_remotes=10, run_options=None, run_command=("sleep", "inf"),
     ):
-        self._lock = threading.RLock()
+        self._lock = threading.Condition()
         self.logger = _get_logger()
 
         self.image = image
@@ -81,55 +81,45 @@ class PodmanProvisioner(Provisioner):
         self.run_options = run_options or ()
         self.run_command = run_command
 
-        self._remotes = []
+        self._remotes = set()
         self._to_reserve = 0
         self._reserving = 0
-        self._cond = threading.Condition()
-        self._started = False
+        self._stopped = True
 
     def start(self):
         self.logger.debug(f"starting: {self}")
-        self._to_reserve = 0
-        self._reserving = 0
-        self._started = True
-
-        if not self.image:
-            raise ValueError("image cannot be empty")
+        self._stopped = False
 
     def stop(self):
         self.logger.debug(f"stopping: {self}")
-
-        with self._cond:
-            self._started = False
-            self._to_reserve = 0
-            self._reserving = 0
-            self._cond.notify_all()
-
         with self._lock:
-            while self._remotes:
-                self._remotes.pop().release()
+            self._stopped = True
+            self._to_reserve = 0
+            # wait for currently-reserving get_remote() to finish and
+            # self-release based on self._stopped == True
+            self._lock.notify_all()
+            self._lock.wait_for(lambda: self._reserving == 0)
+            to_release = self._remotes
+            self._remotes = set()
+        for remote in to_release:
+            remote.release()
 
     def provision(self, count=1):
-        assert count >= 0
         self.logger.debug(f"provisioning {count}")
-        with self._cond:
+        with self._lock:
             self._to_reserve += count
-            self._cond.notify(count)
+            self._lock.notify(count)
 
     def _has_capacity(self):
-        return (
-            self.max_remotes is None
-            or len(self._remotes) + self._reserving < self.max_remotes
-        )
+        return len(self._remotes) + self._reserving < self.max_remotes
 
     def get_remote(self, block=True):
-        with self._cond:
+        with self._lock:
             if block:
-                self._cond.wait_for(
-                    lambda: (self._to_reserve > 0 and self._has_capacity())
-                    or not self._started,
+                self._lock.wait_for(
+                    lambda: (self._to_reserve > 0 and self._has_capacity()) or self._stopped,
                 )
-                if not self._started:
+                if self._stopped:
                     return None
             elif self._to_reserve <= 0 or not self._has_capacity():
                 return None
@@ -146,21 +136,17 @@ class PodmanProvisioner(Provisioner):
             container_id = proc.stdout.rstrip("\n")
             self.logger.debug(f"new container: {cmd} --> {container_id}")
         except BaseException:
-            with self._cond:
+            with self._lock:
                 self._reserving -= 1
-                self._cond.notify()
+                self._lock.notify()
             raise
 
         def release_hook(remote):
             self.logger.debug(f"releasing {remote}")
             # remove from the list of remotes inside this Provisioner
             with self._lock:
-                try:
-                    self._remotes.remove(remote)
-                except ValueError:
-                    pass
-            with self._cond:
-                self._cond.notify()
+                self._remotes.discard(remote)
+                self._lock.notify()
 
         remote = PodmanRemote(
             self.image,
@@ -168,13 +154,18 @@ class PodmanProvisioner(Provisioner):
             container=container_id,
         )
 
-        with self._cond:
+        with self._lock:
             self._reserving -= 1
-            self._remotes.append(remote)
+            # if .stop() was called while podman was starting up
+            if self._stopped:
+                remote.release()
+                return None
+            self._remotes.add(remote)
+
         return remote
 
     def clear(self):
-        with self._cond:
+        with self._lock:
             self._to_reserve = 0
 
     def __str__(self):

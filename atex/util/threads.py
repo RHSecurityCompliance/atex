@@ -4,7 +4,7 @@ import threading
 from .named_mapping import NamedMapping
 
 
-class ThreadReturn(threading.Thread):
+class ThreadJoin(threading.Thread):
     """
     Simple wrapper around threading.Thread that propagates the target function
     return value or raised exception to the parent via .join().
@@ -36,23 +36,24 @@ class ThreadReturn(threading.Thread):
             return self.__result
 
 
-class ThreadReturnQueue:
+class ThreadJoinQueue:
     """
-    Extension of ThreadReturn to support multiple threads and a central
+    Extension of ThreadJoin to support multiple threads and a central
     SimpleQueue that collects their return values (or exceptions).
 
-    This is very similar to concurrent.futures.ThreadPoolExecutor and its
-    .submit() and .as_completed() or FIRST_COMPLETED, but with support for
-    additional metadata via a custom NamedMapping and (crucially) support
-    for daemon=True threads.
+    This is similar to concurrent.futures.ThreadPoolExecutor and its .submit()
+    and .as_completed() or FIRST_COMPLETED, but with support for additional
+    metadata via a custom NamedMapping and (crucially) support for daemon=True
+    threads.
 
-    (Also, this starts one thread per function, not a thread pool of workers.)
+    Crucially, this starts one thread per function, it does not use a persistent
+    always-running pool of (potentially idle) workers like ThreadPoolExecutor.
 
     Example:
         def func(*args):
             return args
 
-        queue = ThreadReturnQueue(daemon=True)
+        queue = ThreadJoinQueue(daemon=True)
         queue.start_thread(target=func, target_args=(1,2,3))
         queue.start_thread(target=func, target_args=(4,5,6))
         queue.get()  # returns (1,2,3) or (4,5,6)

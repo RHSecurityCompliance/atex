@@ -119,13 +119,13 @@ class AdHocOrchestrator(Orchestrator):
         # running tests as a dict, indexed by test name, with RunningInfo values
         self._running_tests = {}
         # thread queue for actively running tests
-        self._test_queue = util.ThreadReturnQueue(daemon=False)
+        self._test_queue = util.ThreadJoinQueue(daemon=False)
         # thread queue for remotes being set up (uploading tests, etc.)
-        self._setup_queue = util.ThreadReturnQueue(daemon=True)
+        self._setup_queue = util.ThreadJoinQueue(daemon=True)
         # thread queue for remotes being released
-        self._release_queue = util.ThreadReturnQueue(daemon=True)
+        self._release_queue = util.ThreadJoinQueue(daemon=True)
         # thread queue for results being ingested
-        self._ingest_queue = util.ThreadReturnQueue(daemon=False)
+        self._ingest_queue = util.ThreadJoinQueue(daemon=False)
 
     def _run_new_test(self, info):
         """
@@ -253,7 +253,7 @@ class AdHocOrchestrator(Orchestrator):
         while True:
             try:
                 treturn = self._test_queue.get_raw(block=False)
-            except util.ThreadReturnQueue.Empty:
+            except util.ThreadJoinQueue.Empty:
                 break
 
             rinfo = treturn.rinfo
@@ -270,7 +270,7 @@ class AdHocOrchestrator(Orchestrator):
         while self._to_run:
             try:
                 treturn = self._setup_queue.get_raw(block=False)
-            except util.ThreadReturnQueue.Empty:
+            except util.ThreadJoinQueue.Empty:
                 break
 
             sinfo = treturn.sinfo
@@ -315,7 +315,7 @@ class AdHocOrchestrator(Orchestrator):
         while self._setup_queue.qsize() > len(self._to_run) + self.max_spares:
             try:
                 treturn = self._setup_queue.get_raw(block=False)
-            except util.ThreadReturnQueue.Empty:
+            except util.ThreadJoinQueue.Empty:
                 break
             self.logger.info(f"releasing extraneous set-up {treturn.sinfo.remote}")
             self._release_queue.start_thread(
@@ -346,7 +346,7 @@ class AdHocOrchestrator(Orchestrator):
         while True:
             try:
                 treturn = self._release_queue.get_raw(block=False)
-            except util.ThreadReturnQueue.Empty:
+            except util.ThreadJoinQueue.Empty:
                 break
             else:
                 if treturn.exception:
@@ -359,7 +359,7 @@ class AdHocOrchestrator(Orchestrator):
         while True:
             try:
                 treturn = self._ingest_queue.get_raw(block=False)
-            except util.ThreadReturnQueue.Empty:
+            except util.ThreadJoinQueue.Empty:
                 break
             else:
                 if treturn.exception:
@@ -397,7 +397,7 @@ class AdHocOrchestrator(Orchestrator):
         while True:
             try:
                 treturn = self._ingest_queue.get_raw(block=False)
-            except util.ThreadReturnQueue.Empty:
+            except util.ThreadJoinQueue.Empty:
                 break
             else:
                 if treturn.exception:

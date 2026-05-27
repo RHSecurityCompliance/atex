@@ -34,8 +34,8 @@ class SharedVirtRemote(Remote, connection.ssh.ManagedSSHConnection):
         self.host = host
         self.domain = domain
         self.source_image = source_image
-        self._release_called = False
         self.release_hook = release_hook
+        self._release_called = False
 
     def release(self):
         with self._lock:
@@ -43,8 +43,10 @@ class SharedVirtRemote(Remote, connection.ssh.ManagedSSHConnection):
                 return
             else:
                 self._release_called = True
-        self.disconnect()
-        self.release_hook(self)
+        try:
+            self.disconnect()
+        finally:
+            self.release_hook(self)
 
     def connect(self, **kwargs):
         with self._lock:
@@ -54,6 +56,7 @@ class SharedVirtRemote(Remote, connection.ssh.ManagedSSHConnection):
 
     def __str__(self):
         class_name = self.__class__.__name__
+        # ManagedSSHConnection public attr
         port = self.options["Port"]
         return f"{class_name}({self.host}, {self.domain} ({port}), {self.source_image})"
 

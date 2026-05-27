@@ -4,6 +4,23 @@ import threading
 from .named_mapping import NamedMapping
 
 
+class ThreadResult:
+    """
+    Kind of like concurrent.futures.Future, but without all the baggage
+    and custom locking/synchronization. Just a container for a thread
+    result.
+    """
+    def __init__(self, value=None, exception=None):
+        self.value = value
+        self.exception = exception
+
+    def result(self):
+        if self.exception:
+            raise self.exception
+        else:
+            return self.value
+
+
 class ThreadJoin(threading.Thread):
     """
     Simple wrapper around threading.Thread that propagates the target function

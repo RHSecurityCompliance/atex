@@ -1,9 +1,61 @@
+import errno
 import logging
+import os
+import select
 import subprocess
 import tempfile
 from pathlib import Path
 
 from .kickstart import add_kickstart_args, kickstart_from_args
+
+
+def _run_with_pty(cmd):
+    m_fd, s_fd = os.openpty()
+    proc = None
+    try:
+        try:
+            proc = subprocess.Popen(
+                cmd,
+                stdin=s_fd,
+                stdout=s_fd,
+                stderr=subprocess.STDOUT,
+            )
+        finally:
+            os.close(s_fd)
+
+        poller = select.poll()
+        poller.register(m_fd, select.POLLIN)
+
+        while True:
+            events = poller.poll()
+            for _fd, event in events:
+                if event & select.POLLIN:
+                    try:
+                        data = os.read(m_fd, 1024)
+                    except OSError as e:
+                        if e.errno == errno.EIO:
+                            break
+                        raise
+                    if data == b"":
+                        break
+                    while data:
+                        written = os.write(2, data)
+                        data = data[written:]
+                elif event & (select.POLLERR | select.POLLHUP):
+                    break
+            else:
+                continue
+            break
+    except BaseException:
+        if proc is not None:
+            proc.terminate()
+        raise
+    finally:
+        os.close(m_fd)
+
+    code = proc.wait()
+    if code != 0:
+        raise subprocess.CalledProcessError(code, cmd)
 
 
 def install(args):
@@ -91,7 +143,10 @@ def install(args):
         )
 
         logging.info(f"running {cmd}")
-        subprocess.run(cmd, check=True)
+        if args.emulate_pty:
+            _run_with_pty(cmd)
+        else:
+            subprocess.run(cmd, check=True)
 
         if args.final_memory:
             subprocess.run(
@@ -118,6 +173,11 @@ def parse_args(parser):
     cmd.add_argument(
         "--dry-run",
         help="just generate and print the kickstart",
+        action="store_true",
+    )
+    cmd.add_argument(
+        "--emulate-pty",
+        help="emulate a terminal for virt-install console output",
         action="store_true",
     )
     cmd.add_argument("--name", "-n", help="domain (VM) name", required=True)

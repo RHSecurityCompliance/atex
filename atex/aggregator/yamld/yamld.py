@@ -101,21 +101,21 @@ class YAMLDocumentAggregator(Aggregator):
                 # if it is a subtest, add it to subtests
                 if name := result_line.get("name"):
                     subtest = {"name": name}
-                    if status := result_line.get("status"):
+                    if (status := result_line.get("status")) is not None:
                         subtest["status"] = status
                     if files := result_line.get("files"):
                         subtest["files"] = files
-                    if note := result_line.get("note"):
+                    if (note := result_line.get("note")) is not None:
                         subtest["note"] = note
                     document["subtests"].append(subtest)
 
                 # update document for the test itself
                 else:
-                    if status := result_line.get("status"):
+                    if (status := result_line.get("status")) is not None:
                         document["status"] = status
                     if files := result_line.get("files"):
                         document["files"] += files
-                    if note := result_line.get("note"):
+                    if (note := result_line.get("note")) is not None:
                         document["note"] = note
 
         if document["status"] is None:

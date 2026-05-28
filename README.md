@@ -97,7 +97,7 @@ There are some limited sanity tests provided via `pytest`, although:
 
 Currently, the recommended approach is to split the execution:
 
-```
+```shell
 # synchronously, because podman CLI has concurrency issues
 pytest tests/provisioner/test_podman.py
 
@@ -106,8 +106,17 @@ export TESTING_FARM_API_TOKEN=...
 export TESTING_FARM_COMPOSE=...
 pytest -n 20 tests/provisioner/test_testingfarm.py
 
+# needs a HVM-capable host to run, unprivileged qemu:///session is fine
+#export LIBVIRT_DEFAULT_URI=...  # override default autodetection
+export TEMPVIRT_LOCATION=...
+pytest tests/provisioner/test_tempvirt.py
+
 # fast enough for synchronous execution
-pytest tests/executor
+pytest \
+    tests/executor \
+    tests/aggregator \
+    tests/orchestrator \
+    tests/provisioner/test_local.py
 ```
 
 ## Unsorted notes

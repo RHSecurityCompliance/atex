@@ -35,7 +35,10 @@ def install(args):
         helper_proc.stdin.flush()
 
     def helper_read():
-        return json.loads(helper_proc.stdout.readline().decode())
+        response = helper_proc.stdout.readline()
+        if not response:
+            raise RuntimeError("empty response from helper (not running?)")
+        return json.loads(response.decode())
 
     def helper_query(data):
         helper_write(data)

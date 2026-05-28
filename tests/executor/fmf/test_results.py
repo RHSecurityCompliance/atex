@@ -43,11 +43,8 @@ def test_noresult_fail(provisioner, tmp_path):
 
 def test_noresult_abort(provisioner, tmp_path):
     """Automatic fallback exception."""
-    try:
+    with pytest.raises(TestAbortedError, match=r"^test duration timeout reached$"):
         run_fmf_test(provisioner, tmp_path, read_results=False)
-    except TestAbortedError as e:
-        if str(e) != "test duration timeout reached":
-            raise
     results = (tmp_path / "results").read_text()
     assert results.count("\n") == 1
     assert json.loads(results) == {
@@ -98,11 +95,8 @@ def test_trivial_exit_mismatch(provisioner, tmp_path):
 
 def test_trivial_abort(provisioner, tmp_path):
     """No fallback exception is written if test provided a result."""
-    try:
+    with pytest.raises(TestAbortedError, match=r"^test duration timeout reached$"):
         run_fmf_test(provisioner, tmp_path, read_results=False)
-    except TestAbortedError as e:
-        if str(e) != "test duration timeout reached":
-            raise
     results = (tmp_path / "results").read_text()
     assert results.count("\n") == 1
     assert json.loads(results) == {"status": "pass"}
@@ -381,11 +375,8 @@ def test_partial_abrupt_fileonly(provisioner, tmp_path):
 
 def test_partial_abrupt_abort(provisioner, tmp_path):
     """Exception overrides status/note via a fallback result."""
-    try:
+    with pytest.raises(TestAbortedError, match=r"^test duration timeout reached$"):
         run_fmf_test(provisioner, tmp_path, read_results=False)
-    except TestAbortedError as e:
-        if str(e) != "test duration timeout reached":
-            raise
     results = (tmp_path / "results").read_text()
     assert results.count("\n") == 1
     assert json.loads(results) == {
@@ -551,10 +542,8 @@ def test_testout_fallback_partial(provisioner, tmp_path):
 # -----------------------------------------------------------------------------
 def test_bad_json(provisioner, tmp_path):
     """Bad JSON result reported by a test."""
-    try:
+    with pytest.raises(BadReportJSONError):
         run_fmf_test(provisioner, tmp_path, read_results=False)
-    except BadReportJSONError:
-        pass
 
 
 def test_empty_json(provisioner, tmp_path):

@@ -8,44 +8,54 @@ from atex.provisioner.podman import PodmanProvisioner, build_container_with_deps
 from tests.provisioner.test_podman import IMAGE
 
 
-@pytest.fixture(scope="module")
-def provisioner():
+@pytest.fixture(scope="session")
+def custom_image():
     base_image = os.environ.get("BASE_IMAGE")
     if base_image is None:
         base_image = pull_image(IMAGE)
-    custom_image = build_container_with_deps(base_image)
+    image = build_container_with_deps(base_image)
     try:
-        with PodmanProvisioner(custom_image) as prov:
-            yield prov
+        yield image
     finally:
         subprocess.run(
-            ("podman", "image", "rm", "-f", custom_image),
+            ("podman", "image", "rm", "-f", image),
             check=True,
             stdout=subprocess.DEVNULL,
         )
 
 
-@pytest.fixture(scope="module")
-def provisioner_systemd():
+@pytest.fixture
+def provisioner(custom_image):
+    with PodmanProvisioner(custom_image) as prov:
+        yield prov
+
+
+@pytest.fixture(scope="session")
+def custom_image_systemd():
     base_image = os.environ.get("BASE_IMAGE")
     if base_image is None:
         base_image = pull_image(IMAGE)
 
     pkgs = ("systemd",)
     content = "RUN systemctl mask systemd-oomd systemd-resolved systemd-hostnamed"
-    custom_image = build_container_with_deps(base_image, extra_pkgs=pkgs, extra_content=content)
+    image = build_container_with_deps(base_image, extra_pkgs=pkgs, extra_content=content)
 
-    opts = ("--systemd=always", "--restart=always")
-    cmd = ("/sbin/init",)
     try:
-        with PodmanProvisioner(custom_image, run_options=opts, run_command=cmd) as prov:
-            yield prov
+        yield image
     finally:
         subprocess.run(
-            ("podman", "image", "rm", "-f", custom_image),
+            ("podman", "image", "rm", "-f", image),
             check=True,
             stdout=subprocess.DEVNULL,
         )
+
+
+@pytest.fixture
+def provisioner_systemd(custom_image_systemd):
+    opts = ("--systemd=always", "--restart=always")
+    cmd = ("/sbin/init",)
+    with PodmanProvisioner(custom_image_systemd, run_options=opts, run_command=cmd) as prov:
+        yield prov
 
 
 # safeguard against blocking API function freezing pytest

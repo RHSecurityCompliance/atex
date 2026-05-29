@@ -1,5 +1,4 @@
 import concurrent.futures
-import tempfile
 import threading
 import time
 
@@ -76,8 +75,6 @@ class TestingFarmProvisioner(Provisioner):
         self.reserve_kwargs = reserve_kwargs
         self._retries = max_retries
 
-        self._tmpdir = None
-        self._ssh_key = self._ssh_pubkey = None
         self._queue = util.ThreadJoinQueue(daemon=True)
         self._tf_api = api.TestingFarmAPI()
         self._to_reserve = 0
@@ -164,7 +161,6 @@ class TestingFarmProvisioner(Provisioner):
                 tf_reserve = api.Reserve(
                     compose=self.compose,
                     arch=self.arch,
-                    ssh_key=self._ssh_key,
                     api=self._tf_api,
                     logger=self.logger,
                     **self.reserve_kwargs,
@@ -181,10 +177,6 @@ class TestingFarmProvisioner(Provisioner):
 
     def start(self):
         self.logger.debug(f"starting: {self}")
-
-        with self._lock:
-            self._tmpdir = tempfile.TemporaryDirectory()
-            self._ssh_key, self._ssh_pubkey = util.ssh_keygen(self._tmpdir.name)
 
     def stop(self):
         self.logger.debug(f"stopping: {self}")
@@ -203,12 +195,6 @@ class TestingFarmProvisioner(Provisioner):
             with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as ex:
                 for func in release_funcs:
                     ex.submit(func)
-
-        with self._lock:
-            if self._tmpdir:
-                # explicitly remove the tmpdir rather than relying on destructor
-                self._tmpdir.cleanup()
-                self._tmpdir = None
 
     def provision(self, count=1):
         with self._lock:

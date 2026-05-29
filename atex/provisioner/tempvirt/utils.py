@@ -20,8 +20,7 @@ def virsh(*args, connect=None, **kwargs):
 
 def image_from_volume(pool, volume, *, connect=None):
     """
-    Extract a disk image path (of the first/primary disk) from a storage pool
-    and storage volume specification.
+    Extract a disk image path from a storage pool / volume specification.
 
     - `pool` is a storage pool name.
 
@@ -52,7 +51,10 @@ def image_from_volume(pool, volume, *, connect=None):
 
 
 def _find_primary_disk(xml_devices, *, connect=None):
-    """Return (disk_element, disk_file_path, disk_format) as a tuple."""
+    """
+    Return (disk_element, disk_file_path, disk_format) as a tuple,
+    or None if no disk was found.
+    """
     for xml_disk in xml_devices.findall("disk"):
         # skip non-disk devices (cdroms, floppies, etc.)
         if xml_disk.get("device") != "disk":
@@ -81,7 +83,7 @@ def _find_primary_disk(xml_devices, *, connect=None):
 
 def transient_domain_xml(from_domain, *, connect=None):
     """
-    Build a XML root element of a to-be-created domain using another domain,
+    Build an XML root element of a to-be-created domain using another domain,
     identified by a `from_domain` name, as a template.
 
     - `connect` is an optional libvirt URI to connect to.

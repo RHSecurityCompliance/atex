@@ -53,7 +53,7 @@ while IFS= read -r -d '' path; do
     # replace trailing \ with two spaces for line breaks
     # (pdoc doesn't support CommonMark's backslash line breaks)
     sed -r \
-      -e 's/\[(.+).md\]\(([^:\]+).md\)/[\1](\2.html)/g ; s/\[(.+)\]\(([^:\)]+).md\)/[\1](\2.html)/g' \
+      -e 's/\[(.+).md\]\(([^:\)]+).md\)/[\1](\2.html)/g ; s/\[(.+)\]\(([^:\)]+).md\)/[\1](\2.html)/g' \
       -e '/^#/s/`//g' \
       -e 's/\\$/  /' \
       "$path"
@@ -92,7 +92,7 @@ while IFS= read -r -d '' path; do
   # post-process the README docstring, add module-name/ to all relative
   # Markdown links (pdoc treats __init__.py as if it was in the parent)
   module_name=${parent##*/}
-  contents=$(sed -r "s/\[(.+)\]\(([^:\]+)\)/[\1]($module_name\/\2)/g" "$readme")
+  contents=$(sed -r "s/\[(.+)\]\(([^:\)]+)\)/[\1]($module_name\/\2)/g" "$readme")
 
   # prepend the README to __init__.py
   echo "prepending '$readme' to '$path'"

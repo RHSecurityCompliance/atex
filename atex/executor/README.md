@@ -50,10 +50,10 @@ finally:
 
 ## Test Artifacts
 
-Test artifacts is a directory that contains:
+Test artifacts are a directory that contains:
 
 - A file named `results`, which is a line-JSON formatted file (complete JSON
-  on each line, see https://jsonltools.com/).
+  on each line, see https://jsonlines.org/).
 - A directory named `files`, which contains files uploaded by the test.
 
 ### Results

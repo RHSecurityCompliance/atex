@@ -33,9 +33,9 @@ it, otherwise the transient domains would try to boot up an OS in an unclean
 state.
 
 Finally, TempVirtProvisioner only works with origin domains that specify their
-primary disk via `type='file'`. Note that `type='volume'` is supported too,
-but the underlying storage pool must be of `type='dir'`. IOW the disk image
-must be a regular file, not an LVM volume or something nebulous.
+primary disk via `type='file'` or `type='volume'`.\
+With `type='volume'`, the underlying storage pool must be of `type='dir'`. IOW
+the disk image must be a regular file, not an LVM volume or something nebulous.
 
 ## How it works
 
@@ -54,8 +54,8 @@ Networking of the origin domain is swapped for `<interface type='user'/>`
 and its `<portForward ...>` exposing the in-domain sshd via a simple listening
 TCP port on the host.
 
-The starting port is `__init__()` configurable and the address is `0.0.0.0`
+The starting port is configurable via `__init__()` and the address is `0.0.0.0`
 for remote libvirt hosts, or simply `127.0.0.1` for local ones, for safety.
 
 TempVirtRemote then, backed by ManagedSSHConnection, simply connects to the
-libvirt host on this port, providing user with a class Remote API.
+libvirt host on this port, providing the user with a Remote API.

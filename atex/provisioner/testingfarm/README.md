@@ -22,7 +22,7 @@ Note that `max_remotes` limits how many Testing Farm Requests are active at
 any one time. The remaining `.provision()` requests are queued internally and
 submitted when active Remotes are released.
 
-The keyword arguments you can pass extend beyond just TestingFarmProvisioner,
+The keyword arguments you can pass extend beyond just TestingFarmProvisioner;
 any extra ones are passed to the underlying [Reserve API class](api.py).
 
 ## Reservation time

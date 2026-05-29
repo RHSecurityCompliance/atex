@@ -13,8 +13,6 @@ _get_logger = util.get_loggers("atex.provisioner.shvirt")
 
 class SharedVirtRemote(Remote, connection.ssh.ManagedSSHConnection):
     """
-    - `ssh_options` are a dict, passed to ManagedSSHConnection `__init__()`.
-
     - `host` is a str of libvirt host name (used for `str(self)`).
 
     - `domain` is a str of libvirt domain name.
@@ -433,6 +431,7 @@ class SharedVirtProvisioner(Provisioner):
 
             if self._helper is not None:
                 self._helper.terminate()
+                self._helper.wait()
                 self._helper = None
 
     def _sanity_check(self):

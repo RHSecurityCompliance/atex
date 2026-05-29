@@ -152,8 +152,8 @@ def make_test_setup(*, test_data, test_dir, wrapper_exec, test_exec, test_yaml, 
 
 def make_plan_script(*, contents, cwd):
     """
-    Generate a bash script header to be prefixed to every prepare/finish script
-    defined by a tmt-style plan.
+    Generate a bash script to be used for every prepare/finish script defined
+    by a tmt-style plan.
 
     - `contents` is a string with the literal script contents from fmf metadata.
 

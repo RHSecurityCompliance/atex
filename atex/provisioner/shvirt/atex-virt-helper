@@ -641,8 +641,9 @@ def loop():
         except SilentError:
             continue
         except BaseException as e:
-            logging.exception(f"{type(e)} while handling cmd '{cmd}'")
-            reply(False, f"{type(e).__name__}({e}) while handling cmd '{cmd}'")
+            msg = f"{type(e).__name__} while handling cmd '{cmd}'"
+            logging.exception(msg)
+            reply(False, msg)
             continue
 
 

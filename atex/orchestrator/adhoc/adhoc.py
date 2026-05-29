@@ -44,7 +44,7 @@ class AdHocOrchestrator(Orchestrator):
       test names.
 
     - `max_spares` is how many set-up Remotes to hold reserved and unused,
-      ready to replace a Remote destroyed by test. Values above 0 can
+      ready to replace a Remote destroyed by a test. Values above 0 can
       greatly speed up test reruns for Provisioners that take a long time
       to reserve a Remote.
 
@@ -373,7 +373,7 @@ class AdHocOrchestrator(Orchestrator):
     def start(self):
         self.logger.debug(f"starting: {self}")
 
-        # start up initial reservations - the idea is to request as much remotes
+        # start up initial reservations - the idea is to request as many remotes
         # as there are tests (worst possible case where Remotes are not reused)
         # from EACH provisioner, allowing any one of them to supply the Remotes
         # - any destructive tests do .provision(1) anyway

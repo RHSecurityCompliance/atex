@@ -55,8 +55,8 @@ class ThreadJoin(threading.Thread):
 
 class ThreadJoinQueue:
     """
-    Extension of ThreadJoin to support multiple threads and a central
-    SimpleQueue that collects their return values (or exceptions).
+    Extension of the ThreadJoin concept to support multiple threads and
+    a central SimpleQueue that collects their return values (or exceptions).
 
     This is similar to concurrent.futures.ThreadPoolExecutor and its .submit()
     and .as_completed() or FIRST_COMPLETED, but with support for additional
@@ -169,7 +169,7 @@ class ThreadJoinQueue:
 
     def qsize(self):
         """
-        Return the amount of elements `.get()` can retrieve before it raises
+        Return the number of elements `.get()` can retrieve before it raises
         `queue.Empty`.
         """
         return self._queue.qsize()

@@ -20,7 +20,7 @@ def ssh_keygen(dest_dir, key_type="rsa"):
 def wait_for_sshd(host, port, *, event=None, logger=None):
     """
     Wait for a real OpenSSH server to start responding on `host`:`port`,
-    non-blockingly.
+    in an interruptible way.
 
     - `event` is an optional `threading.Event` that, when set, interrupts
       the wait. If None, the wait blocks until sshd is up.

@@ -192,7 +192,7 @@ class TestingFarmAPI:
 
         return self._query("GET", "/requests", fields=fields, auth=mine)
 
-    def search_requests_paged(self, *args, page=43200, **kwargs):
+    def search_requests_paged(self, *, page=43200, **kwargs):
         """
         An unofficial wrapper for search_requests() that can search a large
         interval incrementally (in "pages") and yield batches of results.
@@ -201,7 +201,7 @@ class TestingFarmAPI:
 
         - `page` specifies the time interval of one page, in seconds.
 
-        - `args` and `kwargs` are passed to `search_requests()`.
+        - `kwargs` are passed to `search_requests()`.
         """
         if not kwargs.get("created_after"):
             raise ValueError("at least 'created_after' is needed for paging")
@@ -234,7 +234,7 @@ class TestingFarmAPI:
                 "created_after": start.replace(tzinfo=None).isoformat(),
                 "created_before": end.replace(tzinfo=None).isoformat(),
             }
-            found = self.search_requests(*args, **new_kwargs)
+            found = self.search_requests(**new_kwargs)
             if found is not None:
                 yield from found
             start = end

@@ -96,8 +96,8 @@ def search_requests(args):
 
         for req in reply:
             req_id = req["id"]
-            state = req["state"]
-            created = req["created"].partition(".")[0]
+            req_state = req["state"]
+            req_created = req["created"].partition(".")[0]
 
             if "fmf" in req["test"] and req["test"]["fmf"]:
                 test = req["test"]["fmf"]["url"]
@@ -114,7 +114,7 @@ def search_requests(args):
                     if compose and arch:
                         envs.append(f"{compose}@{arch}")
 
-            print(f"{created} {state:<8} {req_id}", end="")
+            print(f"{req_created} {req_state:<8} {req_id}", end="")
             if test:
                 print(f" | test:{test}", end="")
             if envs:
@@ -318,7 +318,7 @@ def parse_args(parser):
     cmd.add_argument("--compose", "-c", help="OS compose to install", required=True)
     cmd.add_argument("--arch", "-a", help="system HW architecture", default="x86_64")
     cmd.add_argument("--timeout", "-t", help="pipeline timeout (in minutes)", type=int, default=60)
-    cmd.add_argument("--ssh-key", help="path to a ssh private key file like 'id_rsa'")
+    cmd.add_argument("--ssh-key", help="path to an ssh private key file like 'id_rsa'")
     cmd.add_argument("--hvm", help="request a HVM virtualization capable HW", action="store_true")
     cmd.add_argument(
         "--no-cleaning",

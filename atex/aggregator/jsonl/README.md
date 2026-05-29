@@ -5,7 +5,7 @@
 # JSON Lines Aggregators
 
 These Aggregators collect reported results in a line-JSON output file
-(see https://jsonltools.com/) and uploaded files (logs) from multiple
+(see https://jsonlines.org/) and uploaded files (logs) from multiple
 test runs under a shared directory.
 
 For example:

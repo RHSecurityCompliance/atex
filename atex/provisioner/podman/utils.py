@@ -8,7 +8,7 @@ from ... import util
 
 def pull_image(origin):
     """
-    Pull podman images from repositories.
+    Pull a podman image from a repository.
     """
     proc = subprocess.run(
         ("podman", "image", "pull", "-q", origin),

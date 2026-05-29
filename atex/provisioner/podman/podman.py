@@ -58,7 +58,7 @@ class PodmanRemote(Remote, connection.podman.PodmanConnection):
 class PodmanProvisioner(Provisioner):
     """
     - `image` is a string of image tag/ID to create containers from.
-      It can be a local identifier or an URL.
+      It can be a local identifier or a URL.
 
     - `max_remotes` is how many containers can exist at any one time.
 

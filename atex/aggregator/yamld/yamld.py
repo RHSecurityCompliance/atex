@@ -134,6 +134,7 @@ class YAMLDocumentAggregator(Aggregator):
                 explicit_start=True,
                 default_flow_style=False,
                 sort_keys=False,
+                indent=2,
             )
             self._target_fobj.flush()
 

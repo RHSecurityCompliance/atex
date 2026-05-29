@@ -71,9 +71,9 @@ class JSONLinesAggregator(Aggregator):
     @staticmethod
     def _move_test_files(test_files, target_dir):
         """
-        Move (or otherwise process) `test_files` as directory of files uploaded
-        by the test, into the pre-computed `target_dir` location (inside
-        a hierarchy of all files from all tests).
+        Move (or otherwise process) `test_files` as a directory of files
+        uploaded by the test, into the pre-computed `target_dir` location
+        (inside a hierarchy of all files from all tests).
         """
         verbatim_move(test_files, target_dir)
 
@@ -186,7 +186,7 @@ class CompressedJSONLinesAggregator(JSONLinesAggregator, abc.ABC):
 
                 dst_path.parent.mkdir(parents=True, exist_ok=True)
 
-                # skip dirs, symlinks, device files, etc.
+                # skip symlinks, device files, etc.
                 if not src_path.is_file() or src_path.is_symlink() or file_name in self.exclude:
                     verbatim_move(src_path, dst_path)
                     continue

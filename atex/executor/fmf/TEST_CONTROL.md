@@ -95,7 +95,8 @@ The parent then read `word2 arg1 arg2\n` as another *control line*, calling
   - A special value of `save` saves the remaining test duration, allowing
     a subsequent value of `restore` to re-set it to the saved value.
     - Useful when performing infrastructure tasks (log upload) that may take
-      unknown amount of time that should not be deducted from the test duration.
+      an unknown amount of time that should not be deducted from the test
+      duration.
     - Can be used as `duration save` + `duration 600` + perform infra action
       + `duration restore` to add a 600sec safety timer for the infra task.
     - The save/restore logic works a bit like a stack, so ie. library code can
@@ -116,9 +117,10 @@ The parent then read `word2 arg1 arg2\n` as another *control line*, calling
     sent over test control, a TestAbortedError is raised.
   - Note that `disconnect` needs to be issued before **every** reboot, the flag
     is cleared after a successful Connection disconnect.
-  - Note that `duration save` + `restore` can be used to subtract the disconnect
-    time from test run time (as long as the test starts up again and does
-    `restore`). Useful for reboots that might take up to 30 minutes on some HW.
+  - Note that `duration save` + `duration restore` can be used to subtract the
+    disconnect time from test run time (as long as the test starts up again and
+    does `duration restore`).
+    - Useful for reboots that might take up to 30 minutes on some HW.
 - **`noop`**
   - ie. `noop\n`
   - Do nothing.

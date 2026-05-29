@@ -49,6 +49,7 @@ def _run_with_pty(cmd):
     except BaseException:
         if proc is not None:
             proc.terminate()
+            proc.wait()
         raise
     finally:
         os.close(m_fd)
@@ -131,7 +132,7 @@ def install(args):
             "--os-variant", "rhel8-unknown",
             "--extra-args", (
                 "brltty=no "  # avoid heavy console spam on missing devices
-                "mitigations=off "  # make things faster a bit during install
+                "mitigations=off "  # make things a bit faster during install
                 f"inst.ks=file:/{Path(ks_tmp.name).name} "  # basename
                 f"inst.repo={args.location}"
                 + ((" " + " ".join(kernel_args)) if kernel_args else "")

@@ -65,7 +65,7 @@ def _shell_cmd(command, sudo=None):
 
 def _options_to_cli(options):
     """
-    Assemble an `ssh(1)` or `sshpass(1)` command line with `-o` options.
+    Assemble `-o` options for an `ssh(1)` or `sshpass(1)` command line.
     """
     list_opts = []
     for key, value in options.items():

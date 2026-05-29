@@ -39,7 +39,7 @@ readability - if multiple args look messy in your case (ie. passing kwargs),
 put each on its own line.
 
 Generally speaking, when in doubt, see how the rest of the project looks like,
-and what `ruff` and other Pull Requests checks allow.
+and what `ruff` and other Pull Request checks allow.
 
 ## Release workflow
 
@@ -53,7 +53,7 @@ NEVER commit these to git, they are ONLY for the PyPI release.
 1. `pip install -U twine`
 1. `python3 -m twine upload dist/*`
 
-### Public vs private attributes
+## Public vs private attributes
 
 In general, prefer attributes assigned from `__init__()` arguments to be public,
 along with any publicly-documented attributes. Prefix internal-only attributes

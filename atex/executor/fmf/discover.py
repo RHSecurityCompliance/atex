@@ -15,7 +15,7 @@ def discover(
     names=None, filters=None, conditions=None, excludes=None,
     context=None, libraries=True,
 ):
-    """
+    r"""
     Discover fmf tests in an `fmf_tree` (repository) location, using
     tmt `plan` for filtering and additional metadata, and return a fully
     resolved and filled-in FMFTests instance.
@@ -338,7 +338,7 @@ def resolve_libraries(tests_data, tests_tree, libs_dir, context):
                         try:
                             node = fmf.Tree.node({"url": url, "name": name})
                             node.adjust(context=context)
-                        except fmf.utils.RootError:
+                        except (fmf.utils.RootError, fmf.utils.ReferenceError):
                             not_found_cache.add(cache_key)
                             new_require.append(require)
                             continue
@@ -401,7 +401,7 @@ def resolve_libraries(tests_data, tests_tree, libs_dir, context):
                 if "url" in require:
                     # path is a subdir within the cloned repo - honor it
                     fmf_path = require.get("path", "")
-                    cache_key = f"{nick}{fmf_path}{name}"
+                    cache_key = f"{nick}:{fmf_path}:{name}"
                     target = libs_dir / nick / fmf_path.lstrip("/") / name.lstrip("/")
                 else:
                     # path is a local url-less source, store it using nick+name
@@ -417,6 +417,8 @@ def resolve_libraries(tests_data, tests_tree, libs_dir, context):
                     node.adjust(context=context)
                 except fmf.utils.RootError:
                     raise ValueError(f"repository has no fmf metadata: {require}") from None
+                except fmf.utils.ReferenceError:
+                    raise ValueError(f"library node not found in repository: {require}") from None
                 source = Path(node.root) / node.name.lstrip("/")
                 target.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copytree(source, target, symlinks=True, dirs_exist_ok=True)

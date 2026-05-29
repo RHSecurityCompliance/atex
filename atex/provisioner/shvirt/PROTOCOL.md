@@ -89,8 +89,9 @@ channel.
   - List all domains and whether anybody has them reserved.
   - The response contains `domains` as a JSON object (dict) with keys being
     domain names and values one of:
-    - `"(free)"` when not reserved,
-    - a string containing process name that holds the reservation, see also `setname`,
+    - `(free)` when not reserved,
+    - a string containing the process name that holds the reservation,
+      see also `setname`,
     - special string `(reserved for us)` when our process holds the reservation,
     - other special strings inside `()`, such as when a process name is empty
 
@@ -142,7 +143,7 @@ channel.
   ```json
   C: {"cmd": "virt-install", "args": ["--name", "vmname", "--memory", "4096", ...], "destroy_on_error": true}
   S (stderr): ... virt-install output ...
-  S (stdout): {"success": true, "cmd": "virt-install", "args": ["--name", "vmname", "--memory", "4096", ...]}
+  S (stdout): {"success": true, "cmd": "virt-install", "args": ["--name", "vmname", "--memory", "4096", ...], "destroy_on_error": true}
 
   C: {"cmd": "virt-install", "args": ["asds"]}
   S (stderr): usage: virt-install OPTIONS
@@ -157,9 +158,9 @@ channel.
       `preallocation=falloc`, NOT `preallocation=metadata`, causing the full
       image to be allocated, not just metadata.
   - Useful mainly for `virt-install`, to prepare an empty image to install to.
-    - Because `virt-install` otherwise cannot create an image with name
-      different to domain name (weirdly), but it can take an existing one as
-      `--disk vol=pool_name/volume_name,format=...`.
+    - Because `virt-install` otherwise cannot create an image with a name
+      different to the domain name (weirdly), but it can take an existing one
+      as `--disk vol=pool_name/volume_name,format=...`.
   - The created `raw` images are always sparse, `qcow2` ones are always with
     `preallocation=metadata` (consumes a few extra MBs, but is faster).
   - Pass `remove_existing` to replace an existing volume if one exists with

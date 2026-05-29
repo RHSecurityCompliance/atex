@@ -5,8 +5,8 @@ special way. This doc details how.
 
 ## OS
 
-Use as recent OS version as you can, ideally the latest released Fedora (or
-equivalent) as the virtualization host.
+Use as recent an OS version as you can, ideally the latest released Fedora
+(or equivalent) as the virtualization host.
 
 The domains (VMs) can be much older, basically limited only by compatible
 OpenSSH algorithms. If you need RHEL-6 or older, you might want to avoid using

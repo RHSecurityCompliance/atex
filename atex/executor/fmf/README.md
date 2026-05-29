@@ -26,7 +26,7 @@ with FMFExecutor(conn, fmf_tests=fmf_tests) as e:
 
 You are free to modify the discovered FMFTests prior to passing them to
 the Executor. See documented FMFTests instance attributes.\
-Ie. to double allowed 'duration':
+Ie. to double allowed `duration`:
 
 ```python
 from atex.executor.fmf import duration_to_seconds

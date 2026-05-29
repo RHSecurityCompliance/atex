@@ -173,9 +173,9 @@ class FMFExecutor(Executor):
         if partial and "status" in partial:
             status_addition = {"status": partial["status"]}
         else:
+            # regular fallback result - use pass/fail based on exitcode
             status_addition = {"status": "pass" if exit_code == 0 else "fail"}
 
-        # regular fallback result - use pass/fail based on exitcode
         self.logger.debug(f"'{test_name}': reporting fallback result")
         reporter.report({
             **status_addition,

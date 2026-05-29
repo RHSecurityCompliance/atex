@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -x -e
+
 templates_dir=$1
 
 mkdir -p "$templates_dir"

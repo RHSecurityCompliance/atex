@@ -13,7 +13,7 @@ to `-o` client CLI options, incl. Hostname, User, Port, IdentityFile, etc.
 
 This allows for a nice flexibility from Python code - this module provides
 some sensible option defaults (for scripted use), but you are free to
-overwrite any options via class or function arguments (where appropriate).
+override any options via class or function arguments (where appropriate).
 See [ssh_config(5)](https://linux.die.net/man/5/ssh_config).
 
 Note that `.cmd()` quotes arguments to really execute individual arguments

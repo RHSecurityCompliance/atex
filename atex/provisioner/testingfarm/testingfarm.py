@@ -33,8 +33,10 @@ class TestingFarmRemote(Remote, connection.ssh.ManagedSSHConnection):
                 return
             else:
                 self._release_called = True
-        self.disconnect()
-        self.release_hook(self)
+        try:
+            self.disconnect()
+        finally:
+            self.release_hook(self)
 
     def __str__(self):
         class_name = self.__class__.__name__
@@ -55,7 +57,7 @@ class TestingFarmProvisioner(Provisioner):
       one time (both queued / pending, and already reserved).
 
     - `max_retries` is a maximum number of provisioning (Testing Farm) errors
-      that will be reprovisioned before giving up.
+      that will be retried (systems reprovisioned) before giving up.
     """
 
     # maximum number of TF requests the user can .provision(),

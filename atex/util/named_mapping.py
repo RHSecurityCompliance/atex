@@ -131,7 +131,7 @@ class NamedMapping(collections.abc.Mapping, metaclass=_NamedMappingMeta):
         raise AttributeError(
             f"'{self}' is read-only, cannot set '{name}'",
             name=name,
-            obj=value,
+            obj=self,
         )
 
     def __getitem__(self, key):

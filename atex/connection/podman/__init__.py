@@ -1,3 +1,3 @@
-from .podman import PodmanConnection  # noqa: F401
+from .podman import PodmanConnection
 
 __all__ = ("PodmanConnection",)

@@ -1,4 +1,4 @@
-from .tempvirt import TempVirtProvisioner, TempVirtRemote  # noqa: F401
+from .tempvirt import TempVirtProvisioner, TempVirtRemote
 
 __all__ = (
     "TempVirtProvisioner",

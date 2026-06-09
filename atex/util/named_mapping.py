@@ -67,9 +67,7 @@ import collections
 
 
 class _NamedMappingMeta(abc.ABCMeta):
-    def __new__(
-        metacls, name, bases, namespace, *, required=None, default=None, **kwargs,  # noqa: N804
-    ):
+    def __new__(metacls, name, bases, namespace, *, required=None, default=None, **kwargs):
         new_required = []
         for base in bases:
             new_required.extend(getattr(base, "_required", ()))

@@ -1,4 +1,4 @@
-from .shvirt import SharedVirtProvisioner, SharedVirtRemote  # noqa: F401
+from .shvirt import SharedVirtProvisioner, SharedVirtRemote
 
 __all__ = (
     "SharedVirtProvisioner",

@@ -1,4 +1,4 @@
-from .command import (  # noqa: F401
+from .command import (
     CommandExecutor,
 )
 

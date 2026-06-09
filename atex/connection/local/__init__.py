@@ -1,3 +1,3 @@
-from .local import LocalConnection  # noqa: F401
+from .local import LocalConnection
 
 __all__ = ("LocalConnection",)

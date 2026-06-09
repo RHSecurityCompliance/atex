@@ -1,4 +1,4 @@
-from .jsonl import (  # noqa: F401, I001
+from .jsonl import (  # noqa: I001
     JSONLinesAggregator,
     GzipJSONLinesAggregator,
     LZMAJSONLinesAggregator,

@@ -29,7 +29,7 @@ def make_pkg_install(required=None, recommended=None):
             # yum needs at least one valid package to not exit with 1
             skip_bad=(--skip-broken filesystem)
         fi
-    """) + "\n"  # noqa: E501
+    """) + "\n"
     if required:
         pkgs_str = " ".join(shlex.quote(p) for p in required)
         out += util.dedent(fr"""

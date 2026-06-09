@@ -119,18 +119,6 @@ pytest \
     tests/provisioner/test_local.py
 ```
 
-## Unsorted notes
-
-```
-- this is not tmt, the goal is to make a python toolbox *for* making runcontest
-  style tools easily, not to replace those tools with tmt-style CLI syntax
-
-  - the whole point is to make usecase-targeted easy-to-use tools that don't
-    intimidate users with 1 KB long command line, and runcontest is a nice example
-
-  - TL;DR - use a modular pythonic approach, not a gluetool-style long CLI
-```
-
 ## What it stands for
 
 ATEX = Ad-hoc Test EXecution, named after the most prominent Orchestrator,

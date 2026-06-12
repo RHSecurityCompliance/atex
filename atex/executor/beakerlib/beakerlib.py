@@ -29,6 +29,9 @@ class BeakerlibExecutor(FMFExecutor):
         #!/bin/bash
         set -e
         LC_ALL=C  # make ${#foo} count real bytes
+        # lock ATEX_TEST_CONTROL for the duration of this script
+        exec {lock}>/run/lock/atex-test-control
+        flock $lock || exit 1
         function report {
             local what=$1
             printf 'result %d\n%s' "${#what}" "$what" >&$ATEX_TEST_CONTROL
@@ -63,6 +66,9 @@ class BeakerlibExecutor(FMFExecutor):
         #!/bin/bash
         set -e
         LC_ALL=C  # make ${#foo} count real bytes
+        # lock ATEX_TEST_CONTROL for the duration of this script
+        exec {lock}>/run/lock/atex-test-control
+        flock $lock || exit 1
         function report {
             local what=$1
             printf 'result %d\n%s' "${#what}" "$what" >&$ATEX_TEST_CONTROL
@@ -83,6 +89,9 @@ class BeakerlibExecutor(FMFExecutor):
 
         reboot = util.dedent(r"""
         #!/bin/bash
+        # lock ATEX_TEST_CONTROL for the duration of this script
+        exec {lock}>/run/lock/atex-test-control
+        flock $lock || exit 1
         # if sshd is running, stop it to prevent pre-reboot reconnect
         if systemctl is-active --quiet sshd.service; then
             systemctl stop sshd.service

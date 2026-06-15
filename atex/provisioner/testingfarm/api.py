@@ -44,7 +44,6 @@ _http = urllib3.PoolManager(
         backoff_factor=2,
         backoff_max=120,
         # retry on API server errors too, not just connection issues
-        status=130,
         status_forcelist={408,429,500,502,503,504},
         # retry POST as well, even if risky
         allowed_methods=urllib3.Retry.DEFAULT_ALLOWED_METHODS | {"POST"},

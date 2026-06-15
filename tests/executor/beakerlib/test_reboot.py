@@ -26,12 +26,10 @@ def test_reboot_rhts(provisioner_systemd, tmp_path):
     result = json.loads(results[0])
     assert result.get("status") == "pass"
     assert result.get("name") == "Test"
-    assert len(result.get("files", ())) == 1
     # Test after reboot
     result = json.loads(results[1])
     assert result.get("status") == "pass"
     assert result.get("name") == "Test"
-    assert len(result.get("files", ())) == 1
     # nameless (test itself), fallback result
     assert json.loads(results[2]) == {
         "status": "pass",
@@ -57,12 +55,10 @@ def test_reboot_tmt(provisioner_systemd, tmp_path):
     result = json.loads(results[0])
     assert result.get("status") == "pass"
     assert result.get("name") == "Test"
-    assert len(result.get("files", ())) == 1
     # Test after reboot
     result = json.loads(results[1])
     assert result.get("status") == "pass"
     assert result.get("name") == "Test"
-    assert len(result.get("files", ())) == 1
     # nameless (test itself), fallback result
     assert json.loads(results[2]) == {
         "status": "pass",
@@ -88,12 +84,10 @@ def test_reboot_fail_before(provisioner_systemd, tmp_path):
     result = json.loads(results[0])
     assert result.get("status") == "fail"
     assert result.get("name") == "Test"
-    assert len(result.get("files", ())) == 1
     # Test after reboot
     result = json.loads(results[1])
     assert result.get("status") == "pass"
     assert result.get("name") == "Test"
-    assert len(result.get("files", ())) == 1
     # nameless (test itself), fallback result
     assert json.loads(results[2]) == {
         "status": "fail",
@@ -119,12 +113,10 @@ def test_reboot_fail_after(provisioner_systemd, tmp_path):
     result = json.loads(results[0])
     assert result.get("status") == "pass"
     assert result.get("name") == "Test"
-    assert len(result.get("files", ())) == 1
     # Test after reboot
     result = json.loads(results[1])
     assert result.get("status") == "fail"
     assert result.get("name") == "Test"
-    assert len(result.get("files", ())) == 1
     # nameless (test itself), fallback result
     assert json.loads(results[2]) == {
         "status": "fail",
@@ -150,7 +142,6 @@ def test_reboot_no_phase_end(provisioner_systemd, tmp_path):
     result = json.loads(results[0])
     assert result.get("status") == "pass"
     assert result.get("name") == "Test"
-    assert len(result.get("files", ())) == 1
     # nameless (test itself), fallback result
     assert json.loads(results[1]) == {
         "status": "pass",  # despite false before reboot
@@ -176,7 +167,6 @@ def test_reboot_rlrun(provisioner_systemd, tmp_path):
     result = json.loads(results[0])
     assert result.get("status") == "pass"
     assert result.get("name") == "Test"
-    assert len(result.get("files", ())) == 1
     # nameless (test itself), fallback result
     assert json.loads(results[1]) == {
         "status": "pass",  # despite false before reboot

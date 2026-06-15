@@ -22,7 +22,7 @@ def test_fallback_status_pass(provisioner, tmp_path):
     result = json.loads(results[0])
     assert result.get("status") == "pass"
     assert result.get("name") == "Test"
-    assert len(result.get("files", ())) == 1
+    assert "files" not in result  # no logs for Test
     # nameless (test itself), fallback result
     assert json.loads(results[1]) == {
         "status": "pass",
@@ -48,7 +48,7 @@ def test_fallback_status_fail(provisioner, tmp_path):
     result = json.loads(results[0])
     assert result.get("status") == "fail"
     assert result.get("name") == "Test"
-    assert len(result.get("files", ())) == 1
+    assert "files" not in result  # no logs for Test
     # nameless (test itself), fallback result
     assert json.loads(results[1]) == {
         "status": "fail",

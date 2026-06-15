@@ -26,7 +26,7 @@ def test_library_require_paren(provisioner, tmp_path):
     result = json.loads(results[0])
     assert result.get("status") == "pass"
     assert result.get("name") == "Test"
-    assert len(result.get("files", ())) == 1
+    assert "files" not in result  # no logs for Test
     # nameless (test itself), fallback result
     assert json.loads(results[1]) == {
         "status": "pass",
@@ -43,7 +43,7 @@ def test_library_require_paren_all(provisioner, tmp_path):
     result = json.loads(results[0])
     assert result.get("status") == "pass"
     assert result.get("name") == "Test"
-    assert len(result.get("files", ())) == 1
+    assert "files" not in result  # no logs for Test
     # nameless (test itself), fallback result
     assert json.loads(results[1]) == {
         "status": "pass",
@@ -60,7 +60,7 @@ def test_library_require_url(provisioner, tmp_path):
     result = json.loads(results[0])
     assert result.get("status") == "pass"
     assert result.get("name") == "Test"
-    assert len(result.get("files", ())) == 1
+    assert "files" not in result  # no logs for Test
     # nameless (test itself), fallback result
     assert json.loads(results[1]) == {
         "status": "pass",
@@ -77,7 +77,7 @@ def test_library_require_url_all(provisioner, tmp_path):
     result = json.loads(results[0])
     assert result.get("status") == "pass"
     assert result.get("name") == "Test"
-    assert len(result.get("files", ())) == 1
+    assert "files" not in result  # no logs for Test
     # nameless (test itself), fallback result
     assert json.loads(results[1]) == {
         "status": "pass",

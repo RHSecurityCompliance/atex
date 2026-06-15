@@ -20,7 +20,7 @@ def test_report_result(provisioner, tmp_path):
     result = json.loads(results[0])
     assert result.get("status") == "pass"
     assert result.get("name") == "Setup"
-    assert len(result.get("files", ())) == 1
+    assert "files" not in result  # no logs for Setup
     # custom rlReport
     result = json.loads(results[1])
     assert result.get("status") == "fail"
@@ -38,7 +38,7 @@ def test_report_result(provisioner, tmp_path):
     result = json.loads(results[3])
     assert result.get("status") == "pass"
     assert result.get("name") == "Test"
-    assert len(result.get("files", ())) == 1
+    assert "files" not in result  # no logs for Test
     # Test phase with a custom name
     result = json.loads(results[4])
     assert result.get("status") == "fail"
@@ -48,7 +48,7 @@ def test_report_result(provisioner, tmp_path):
     result = json.loads(results[5])
     assert result.get("status") == "pass"
     assert result.get("name") == "Cleanup"
-    assert len(result.get("files", ())) == 1
+    assert "files" not in result  # no logs for Cleanup
     # nameless (test itself), fallback result
     assert json.loads(results[6]) == {
         "status": "fail",
@@ -72,7 +72,7 @@ def test_submit_log(provisioner, tmp_path):
     result = json.loads(results[0])
     assert result.get("status") == "pass"
     assert result.get("name") == "Test"
-    assert len(result.get("files", ())) == 1
+    assert "files" not in result  # no logs for Test
     # nameless (test itself), fallback result
     assert json.loads(results[1]) == {
         "status": "pass",

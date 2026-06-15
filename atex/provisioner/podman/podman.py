@@ -2,7 +2,7 @@ import subprocess
 import threading
 
 from ... import connection, util
-from .. import Provisioner, Remote
+from .. import Provisioner, ProvisionerError, Remote
 
 _get_logger = util.get_loggers("atex.provisioner.podman")
 
@@ -105,8 +105,10 @@ class PodmanProvisioner(Provisioner):
             remote.release()
 
     def provision(self, count=1):
-        self.logger.debug(f"provisioning {count}")
         with self._lock:
+            if self._stopped:
+                raise ProvisionerError("the provisioner is stopped")
+            self.logger.debug(f"provisioning {count}")
             self._to_reserve += count
             self._lock.notify(count)
 
@@ -120,7 +122,7 @@ class PodmanProvisioner(Provisioner):
                     lambda: (self._to_reserve > 0 and self._has_capacity()) or self._stopped,
                 )
                 if self._stopped:
-                    return None
+                    raise ProvisionerError("the provisioner is stopped")
             elif self._to_reserve <= 0 or not self._has_capacity():
                 return None
             self._to_reserve -= 1

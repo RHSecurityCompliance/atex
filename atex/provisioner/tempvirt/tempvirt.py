@@ -200,6 +200,7 @@ class TempVirtProvisioner(Provisioner):
     def _create_domain(self):
         if self._stopped.is_set():
             raise RuntimeError
+        self.logger.debug("creating new domain")
 
         # if libvirt is remote, allow forwarding remote connections (us),
         # else keep everything local
@@ -237,7 +238,7 @@ class TempVirtProvisioner(Provisioner):
             raise RuntimeError(f"failed creating transient domain: {output}")
 
         domain_name = xml_root.find("name").text
-        self.logger.debug(f"created transient domain {domain_name}")
+        self.logger.info(f"created transient domain {domain_name}")
 
         if self._stopped.is_set():
             virsh("destroy", domain_name, connect=self.uri)
@@ -309,6 +310,7 @@ class TempVirtProvisioner(Provisioner):
             remote.release()
             raise RuntimeError
 
+        self.logger.info(f"created new {remote}")
         return remote
 
     def get_remote(self, block=True):

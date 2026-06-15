@@ -20,8 +20,7 @@ This works by running some background command (customizable as `run_command`
 passed to `__init__()`) to keep the container alive while `.cmd()` calls run
 on the running container.
 
-Note that `podman exec`, **not ssh**, is used for `.cmd()` and `.rsync()`,
-allowing you to run commands even in network-less containers.
+See also the related [PodmanConnection](../../connection/podman).
 
 ## Pre-built images
 
@@ -30,7 +29,11 @@ it via `dnf` every time is very costly, it's a good idea to pre-build an image
 with it included, and pass that image to the Provisioner.
 
 ```python
-from atex.provisioner.podman import build_container_with_deps, pull_image
+from atex.provisioner.podman import (
+    pull_image,
+    build_container_with_deps,
+    PodmanProvisioner,
+)
 
 pulled = pull_image("fedora:latest")
 custom_image = build_container_with_deps(pulled)
@@ -50,39 +53,36 @@ and pass it to the Provisioner.
 
 ```python
 from atex.provisioner.podman import (
-    build_container_with_deps,
     pull_image,
-    wait_for_systemd,
+    build_systemd_container_with_deps,
+    SystemdPodmanProvisioner,
 )
 
 pulled = pull_image("fedora:latest")
-custom_image = build_container_with_deps(
-    pulled,
-    extra_pkgs=["systemd"],
-    extra_content=(
-        # these tend to cause issues in containers, allegedly
-        "RUN systemctl mask "
-        "systemd-oomd systemd-resolved systemd-hostnamed"
-    ),
-)
+custom_image = build_systemd_container_with_deps(pulled)
 
-p = PodmanProvisioner(
-    custom_image,
-    run_options=["--systemd=always", "--restart=always"],
-    run_command=["/sbin/init"],
-)
+with SystemdPodmanProvisioner(custom_image) as p:
+    ...
 
-with p:
-    p.provision(1)
-    remote = p.get_remote()
-    wait_for_systemd(remote)
-    remote.cmd(["systemctl", "status", "1"])
+subprocess.run(("podman", "image", "rm", "-f", custom_image), check=True)
 ```
 
-This loosely follows various web sources for how to run systemd under podman.
+The `build_systemd_container_with_deps()` is just a wrapper around
+`build_container_with_deps()` that includes systemd-specific setup.
 
-## Using remote podman hosts
+### Automatic systemd-enabled image
 
-Podman can talk to remote hosts using a REST API and the `--remote` and
-`--connection` CLI options. Since this Provisioner is just a wrapper around this
-CLI, you can pass them via `run_options` just fine.
+If you need the image for just one Provisioner instance, use `.build_from()`
+which wraps the Provisioner and its context manager in a custom image build +
+removal.
+
+```python
+from atex.provisioner.podman import (
+    pull_image,
+    SystemdPodmanProvisioner,
+)
+
+pulled = pull_image("fedora:latest")
+with SystemdPodmanProvisioner.build_from(pulled) as p:
+    ...
+```

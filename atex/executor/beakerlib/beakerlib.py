@@ -108,7 +108,8 @@ class BeakerlibExecutor(FMFExecutor):
             sleep 0.1
         done
         sync
-        reboot
+        # block until a successful 'systemctl is-system-running' state change
+        systemctl start --no-block reboot.target --job-mode=replace-irreversibly
         sleep inf
         """)
 

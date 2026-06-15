@@ -115,6 +115,13 @@ class PodmanProvisioner(Provisioner):
     def _has_capacity(self):
         return len(self._remotes) + self._reserving < self.max_remotes
 
+    def _make_remote(self, container_id, release_hook):
+        return PodmanRemote(
+            self.image,
+            release_hook=release_hook,
+            container=container_id,
+        )
+
     def get_remote(self, block=True):
         with self._lock:
             if block:
@@ -128,6 +135,7 @@ class PodmanProvisioner(Provisioner):
             self._to_reserve -= 1
             self._reserving += 1
 
+        remote = None
         try:
             cmd = (
                 "podman", "container", "run", "--quiet", "--detach", "--pull", "never",
@@ -137,24 +145,23 @@ class PodmanProvisioner(Provisioner):
             proc = subprocess.run(cmd, check=True, text=True, stdout=subprocess.PIPE)
             container_id = proc.stdout.rstrip("\n")
             self.logger.debug(f"new container: {cmd} --> {container_id}")
+
+            def release_hook(remote):
+                self.logger.debug(f"releasing {remote}")
+                # remove from the list of remotes inside this Provisioner
+                with self._lock:
+                    self._remotes.discard(remote)
+                    self._lock.notify()
+
+            remote = self._make_remote(container_id, release_hook)
+            remote.connect()
         except BaseException:
+            if remote:
+                remote.release()
             with self._lock:
                 self._reserving -= 1
                 self._lock.notify()
             raise
-
-        def release_hook(remote):
-            self.logger.debug(f"releasing {remote}")
-            # remove from the list of remotes inside this Provisioner
-            with self._lock:
-                self._remotes.discard(remote)
-                self._lock.notify()
-
-        remote = PodmanRemote(
-            self.image,
-            release_hook=release_hook,
-            container=container_id,
-        )
 
         with self._lock:
             self._reserving -= 1

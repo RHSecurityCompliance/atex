@@ -2,7 +2,6 @@ import json
 
 from atex.executor.beakerlib import BeakerlibExecutor
 from atex.executor.fmf import discover
-from atex.provisioner.podman import wait_for_systemd
 
 # these don't work with RHEL-7 podman when running on modern Fedora
 # (as a host) due to cgroup v1 / v2 conflict, and possibly more
@@ -12,7 +11,6 @@ def test_reboot_rhts(provisioner_systemd, tmp_path):
     fmf_tests = discover("fmf_trees/reboot", plan="/plan")
     provisioner_systemd.provision(1)
     remote = provisioner_systemd.get_remote()
-    wait_for_systemd(remote)
     with BeakerlibExecutor(remote, fmf_tests=fmf_tests) as e:
         e.run_test("/test_reboot_rhts", tmp_path)
     output = (tmp_path / "files" / "output.txt").read_text()
@@ -41,7 +39,6 @@ def test_reboot_tmt(provisioner_systemd, tmp_path):
     fmf_tests = discover("fmf_trees/reboot", plan="/plan")
     provisioner_systemd.provision(1)
     remote = provisioner_systemd.get_remote()
-    wait_for_systemd(remote)
     with BeakerlibExecutor(remote, fmf_tests=fmf_tests) as e:
         e.run_test("/test_reboot_tmt", tmp_path)
     output = (tmp_path / "files" / "output.txt").read_text()
@@ -70,7 +67,6 @@ def test_reboot_fail_before(provisioner_systemd, tmp_path):
     fmf_tests = discover("fmf_trees/reboot", plan="/plan")
     provisioner_systemd.provision(1)
     remote = provisioner_systemd.get_remote()
-    wait_for_systemd(remote)
     with BeakerlibExecutor(remote, fmf_tests=fmf_tests) as e:
         e.run_test("/test_reboot_fail_before", tmp_path)
     output = (tmp_path / "files" / "output.txt").read_text()
@@ -99,7 +95,6 @@ def test_reboot_fail_after(provisioner_systemd, tmp_path):
     fmf_tests = discover("fmf_trees/reboot", plan="/plan")
     provisioner_systemd.provision(1)
     remote = provisioner_systemd.get_remote()
-    wait_for_systemd(remote)
     with BeakerlibExecutor(remote, fmf_tests=fmf_tests) as e:
         e.run_test("/test_reboot_fail_after", tmp_path)
     output = (tmp_path / "files" / "output.txt").read_text()
@@ -128,7 +123,6 @@ def test_reboot_no_phase_end(provisioner_systemd, tmp_path):
     fmf_tests = discover("fmf_trees/reboot", plan="/plan")
     provisioner_systemd.provision(1)
     remote = provisioner_systemd.get_remote()
-    wait_for_systemd(remote)
     with BeakerlibExecutor(remote, fmf_tests=fmf_tests) as e:
         e.run_test("/test_reboot_no_phase_end", tmp_path)
     output = (tmp_path / "files" / "output.txt").read_text()
@@ -153,7 +147,6 @@ def test_reboot_rlrun(provisioner_systemd, tmp_path):
     fmf_tests = discover("fmf_trees/reboot", plan="/plan")
     provisioner_systemd.provision(1)
     remote = provisioner_systemd.get_remote()
-    wait_for_systemd(remote)
     with BeakerlibExecutor(remote, fmf_tests=fmf_tests) as e:
         e.run_test("/test_reboot_rlrun", tmp_path)
     output = (tmp_path / "files" / "output.txt").read_text()

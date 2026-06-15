@@ -1,3 +1,9 @@
-from .podman import PodmanConnection
+from .podman import (
+    PodmanConnection,
+    SystemdPodmanConnection,
+)
 
-__all__ = ("PodmanConnection",)
+__all__ = (
+    "PodmanConnection",
+    "SystemdPodmanConnection",
+)

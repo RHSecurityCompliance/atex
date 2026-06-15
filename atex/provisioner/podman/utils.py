@@ -1,6 +1,5 @@
 import subprocess
 import tempfile
-import time
 import uuid
 
 from ... import util
@@ -22,6 +21,15 @@ def pull_image(origin):
 def build_container_with_deps(origin, tag=None, *, extra_pkgs=None, extra_content=""):
     """
     Create a new podman image with dependencies needed for PodmanProvisioner.
+
+    - `origin` is a local image name or ID (ie. from `pull_image()`).
+
+    - `tag` is a name (tag) for the newly created image.
+
+    - `extra_pkgs` are additional packages to install on top of
+      the base PodmanProvisioner dependencies.
+
+    - `extra_content` is appended to the Containerfile.
     """
     # podman *requires* tags for images
     # - this is an undocumented quirk; any image without a tag is considered
@@ -65,17 +73,27 @@ def build_container_with_deps(origin, tag=None, *, extra_pkgs=None, extra_conten
         return proc.stdout.rstrip("\n")
 
 
-def wait_for_systemd(conn):
-    # wait for the full system to be up
-    # (--wait doesn't exist on old RHELs and needs extra waiting
-    #  for /run/systemd/private)
-    for _ in range(600):
-        proc = conn.cmd(
-            ("systemctl", "is-system-running"),
-            stdout=subprocess.PIPE,
-        )
-        if b"running" in proc.stdout or b"degraded" in proc.stdout:
-            break
-        time.sleep(0.1)
-    else:
-        raise RuntimeError("systemctl is-system-running failed")
+def build_systemd_container_with_deps(origin, tag=None, *, extra_pkgs=None, extra_content=""):
+    """
+    Create a new podman image with dependencies needed for
+    SystemdPodmanProvisioner.
+
+    This is a wrapper for `build_container_with_deps()` with pre-filled
+    arguments for building a systemd-as-init container images.
+
+    - `origin` is a local image name or ID (ie. from `pull_image()`).
+
+    - `tag` is a name (tag) for the newly created image.
+
+    - `extra_pkgs` are additional packages to install on top of
+      the base dependencies and `systemd`.
+
+    - `extra_content` is appended to the Containerfile.
+    """
+    pkgs = ["systemd", "dbus-broker"]
+    if extra_pkgs:
+        pkgs += extra_pkgs
+    # these tend to cause issues in containers, allegedly
+    content = "RUN systemctl mask systemd-oomd systemd-resolved systemd-hostnamed\n"
+    content += extra_content
+    return build_container_with_deps(origin, tag=tag, extra_pkgs=pkgs, extra_content=content)

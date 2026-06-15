@@ -62,6 +62,12 @@ class Connection(ABC):
         """
 
 
+class NotConnectedError(ConnectionError):
+    """
+    Raised by `.cmd()` or `.rsync()` when a Connection is not connected.
+    """
+
+
 _submodules = tuple(
     info.name for info in pkgutil.iter_modules(__spec__.submodule_search_locations)
 )

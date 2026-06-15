@@ -4,7 +4,13 @@ import subprocess
 import pytest
 import testutil
 
-from atex.provisioner.podman import PodmanProvisioner, build_container_with_deps, pull_image
+from atex.provisioner.podman import (
+    PodmanProvisioner,
+    SystemdPodmanProvisioner,
+    build_container_with_deps,
+    build_systemd_container_with_deps,
+    pull_image,
+)
 from tests.provisioner.test_podman import IMAGE
 
 
@@ -35,11 +41,7 @@ def custom_image_systemd():
     base_image = os.environ.get("BASE_IMAGE")
     if base_image is None:
         base_image = pull_image(IMAGE)
-
-    pkgs = ("systemd",)
-    content = "RUN systemctl mask systemd-oomd systemd-resolved systemd-hostnamed"
-    image = build_container_with_deps(base_image, extra_pkgs=pkgs, extra_content=content)
-
+    image = build_systemd_container_with_deps(base_image)
     try:
         yield image
     finally:
@@ -52,9 +54,7 @@ def custom_image_systemd():
 
 @pytest.fixture
 def provisioner_systemd(custom_image_systemd):
-    opts = ("--systemd=always", "--restart=always")
-    cmd = ("/sbin/init",)
-    with PodmanProvisioner(custom_image_systemd, run_options=opts, run_command=cmd) as prov:
+    with SystemdPodmanProvisioner(custom_image_systemd) as prov:
         yield prov
 
 

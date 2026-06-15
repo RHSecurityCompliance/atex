@@ -7,7 +7,7 @@ import weakref
 from pathlib import Path
 
 from ... import util
-from .. import Connection
+from .. import Connection, NotConnectedError
 
 _get_logger = util.get_loggers("atex.connection.ssh")
 
@@ -30,16 +30,9 @@ class SSHError(ConnectionError):
     pass
 
 
-class DisconnectedError(SSHError):
+class GoneAwayError(SSHError):
     """
     Raised when an already-connected ssh session goes away (breaks connection).
-    """
-
-
-class NotConnectedError(SSHError):
-    """
-    Raised when an operation on ssh connection is requested, but the connection
-    is not yet open (or has been closed/disconnected).
     """
 
 
@@ -180,7 +173,7 @@ class StatelessSSHConnection(Connection):
 # If you need to kill the clients quickly after ControlMaster disconnects,
 # you need to set up an independent polling logic (ie. every 0.1sec) that
 # checks .assert_master() and manually signals the running clients
-# when it gets DisconnectedError from it.
+# when it gets GoneAwayError from it.
 
 class ManagedSSHConnection(Connection):
     """
@@ -214,7 +207,7 @@ class ManagedSSHConnection(Connection):
         if code is not None:
             self._master_proc = None
             out = f":\n{out.decode()}" if out else ""
-            raise DisconnectedError(
+            raise GoneAwayError(
                 f"SSH ControlMaster on {self._tmpdir} exited with {code}{out}",
             )
 

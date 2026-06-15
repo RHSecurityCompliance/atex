@@ -115,6 +115,7 @@ ignore = [
     "PLR6201",  # literal-membership
     "PLW1514",  # unspecified-encoding
     "PLW1641",  # eq-without-hash
+    "RUF076",   # pytest-fixture-autouse
 
     # buggy in ruff, inconsistent across ruff versions
     "RUF100",   # unused-noqa

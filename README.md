@@ -99,7 +99,7 @@ Currently, the recommended approach is to split the execution:
 
 ```shell
 # synchronously, because podman CLI has concurrency issues
-pytest tests/provisioner/test_podman.py
+pytest tests/provisioner/test_podman*.py
 
 # in parallel, because provisioning takes a long time
 export TESTING_FARM_API_TOKEN=...

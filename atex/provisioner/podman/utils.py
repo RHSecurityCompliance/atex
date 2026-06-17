@@ -93,17 +93,16 @@ def build_systemd_container_with_deps(origin, tag=None, *, extra_pkgs=None, extr
     pkgs = ["systemd", "dbus-broker"]
     if extra_pkgs:
         pkgs += extra_pkgs
-    # these tend to cause issues in containers, allegedly
-    content = "RUN systemctl mask systemd-oomd systemd-resolved systemd-hostnamed\n"
     # on RHEL-8 (systemd 239), systemd sends out SIGTERM to all processes
     # on reboot, but then waits for SIGCHLD, which does not arrive from
     # non-children ... and since we use 'crun exec' in .cmd(), the exec'd
     # process is never collected by PID 1 (systemd-shutdown), waiting for the
     # 90sec for SIGKILL broadcast - over the 60sec of _wait_for_systemd()
     # in SystemdPodmanConnection, ... so reduce the SIGKILL timer to 30sec
-    content += (
+    content = (
         "RUN mkdir -p /etc/systemd/system.conf.d && "
-        r"printf '[Manager]\nDefaultTimeoutStopSec=30s\n' > /etc/systemd/system.conf.d/container.conf"
+        r"printf '[Manager]\nDefaultTimeoutStopSec=30s\n' > "
+        "/etc/systemd/system.conf.d/container.conf"
         "\n"
     )
     # add user-passed content (if any)

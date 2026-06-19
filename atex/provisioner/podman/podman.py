@@ -168,7 +168,7 @@ class PodmanProvisioner(Provisioner):
             # if .stop() was called while podman was starting up
             if self._stopped:
                 remote.release()
-                return None
+                raise ProvisionerError("the provisioner is stopped")
             self._remotes.add(remote)
 
         return remote

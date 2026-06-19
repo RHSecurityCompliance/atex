@@ -7,7 +7,6 @@ import threading
 from pathlib import Path
 
 from ... import util
-from ...connection import NotConnectedError
 from ...connection.ssh import ManagedSSHConnection
 from .. import Executor, ExecutorError
 from .duration import Duration
@@ -86,8 +85,8 @@ class FMFExecutor(Executor):
 
             if self.work_dir:
                 self.conn.cmd(("rm", "-rf", self.work_dir), check=True)
-        except NotConnectedError:
-            self.logger.debug("ignoring .stop() cleanup due to NotConnectedError")
+        except ConnectionError:
+            self.logger.debug("ignoring .stop() cleanup due to ConnectionError")
 
         self.work_dir = None
 

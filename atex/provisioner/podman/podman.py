@@ -156,11 +156,11 @@ class PodmanProvisioner(Provisioner):
             remote = self._make_remote(container_id, release_hook)
             remote.connect()
         except BaseException:
-            if remote:
-                remote.release()
             with self._lock:
                 self._reserving -= 1
                 self._lock.notify()
+            if remote:
+                remote.release()
             raise
 
         with self._lock:

@@ -144,7 +144,7 @@ def test_subtest_testout(provisioner, tmp_path):
     assert json.loads(first) == {
         "status": "fail",
         "name": "subtest",
-        "files": ["subtest/out.txt"],
+        "files": ["out.txt"],
     }
     assert json.loads(second) == {
         "status": "pass",  # no automatic testout

@@ -233,7 +233,7 @@ class Reporter:
         full_path = self.files_dir / rel_path
         full_path.parent.mkdir(parents=True, exist_ok=True)
         os.link(self._testout_file, full_path)
-        return rel_path
+        return file_name
 
     def start(self):
         if self.results_file.exists(follow_symlinks=False):

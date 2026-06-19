@@ -90,6 +90,7 @@ class LocalProvisioner(Provisioner):
                     self._remotes.discard(remote)
 
             remote = LocalRemote(release_hook=release_hook, **self.kwargs)
+            remote.connect()
             self._remotes.add(remote)
             return remote
 

@@ -46,7 +46,7 @@ and what `ruff` and other Pull Request checks allow.
 NEVER commit these to git, they are ONLY for the PyPI release.
 
 1. Tag a new version in this repo and push the tag
-1. Increase `version = ` in `pyproject.toml`
+1. Set appropriate `version = ` in `pyproject.toml`
 1. `git status --ignored` to check what would be cleaned
 1. `git clean -fdx`
 1. `python3 -m build`

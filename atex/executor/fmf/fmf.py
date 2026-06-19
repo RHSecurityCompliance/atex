@@ -81,9 +81,8 @@ class FMFExecutor(Executor):
         self.logger.debug(f"stopping: {self}")
 
         try:
-            self._run_plan_prepare_finish("finish")
-
             if self.work_dir:
+                self._run_plan_prepare_finish("finish")
                 self.conn.cmd(("rm", "-rf", self.work_dir), check=True)
         except ConnectionError:
             self.logger.debug("ignoring .stop() cleanup due to ConnectionError")
@@ -309,7 +308,7 @@ class FMFExecutor(Executor):
                         # reconnect/reboot count (for compatibility)
                         env_vars["TMT_REBOOT_COUNT"] = str(reconnects)
                         env_vars["TMT_TEST_RESTART_COUNT"] = str(reconnects)
-                        env_args = (f"{k}={v}" for k, v in env_vars.items())
+                        env_args = tuple(f"{k}={v}" for k, v in env_vars.items())
                         # open a pipe for test control
                         control_fd, pipe_w = os.pipe()
                         try:
@@ -415,6 +414,9 @@ class FMFExecutor(Executor):
 
             except BaseException as e:
                 exception = e
+                if test_proc and test_proc.returncode is None:
+                    test_proc.kill()
+                    test_proc.wait()
                 raise
 
             finally:

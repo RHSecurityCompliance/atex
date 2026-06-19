@@ -79,7 +79,7 @@ def build_systemd_container_with_deps(origin, tag=None, *, extra_pkgs=None, extr
     SystemdPodmanProvisioner.
 
     This is a wrapper for `build_container_with_deps()` with pre-filled
-    arguments for building a systemd-as-init container images.
+    arguments for building systemd-as-init container images.
 
     - `origin` is a local image name or ID (ie. from `pull_image()`).
 

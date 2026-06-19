@@ -53,10 +53,10 @@ def launch_list(args):
     for launch in api.launch_list(**kwargs):
         uuid = launch["uuid"]
         number = launch.get("number")
-        number = f"#{number}" if number else "#0"
+        number = f" #{number}" if number else ""
         status = launch.get("status") or "<no status>"
         name = launch["name"]
-        print(f"{uuid} {number:>5} {status:>12}: {name}")
+        print(f"{uuid} {status:>12}: {name}{number}")
 
 
 def parse_args(parser):

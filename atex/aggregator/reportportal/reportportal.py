@@ -56,8 +56,11 @@ class ReportPortalAggregator(Aggregator):
         self._lock = threading.RLock()
         self.logger = _get_logger()
 
+        if not launch_name and not launch_rerun:
+            raise ValueError("'launch_name' or 'launch_rerun' must be given")
         if launch_name and launch_rerun:
             raise ValueError("'launch_name' and 'launch_rerun' are mutually exclusive")
+
         self._api = api
         self.launch_name = launch_name
         self.launch_rerun = launch_rerun
@@ -186,7 +189,11 @@ class ReportPortalAggregator(Aggregator):
 
     def _upload_files(self, parent_uuid, platform, test_name, artifacts_files, result):
         for file_name in result.get("files", ()):
-            path = artifacts_files / util.normalize_path(result.get("name", "")) / file_name
+            path = (
+                artifacts_files
+                / util.normalize_path(result.get("name", ""))
+                / util.normalize_path(file_name)
+            )
             if not path.exists():
                 raise FileNotFoundError(
                     f"'{file_name}' doesn't exist for '{test_name}': {result}",

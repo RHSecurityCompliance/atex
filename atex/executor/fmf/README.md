@@ -275,3 +275,49 @@ the whole testing session open forever.
 The fix is typically a `trap` (in a Bash test) to always kill the spawned
 daemon, or just a `kill` in some cleanup section of the test (if the cleanup
 runs always).
+
+## Edge cases
+
+### Discover function arguments vs section prefixes
+
+Note that when dealing with `names` and `excludes` (arguments to `discover()`),
+they apply as if specified in every discover section in the referenced `plan`.
+
+This means that the test names/regexps must be without any 'name:' prefix that
+would normally be specified if multiple 'discover' sections are used.
+
+For example, this:
+
+```python
+discover(names=["/foo", "/bar"])
+```
+
+is equivalent to (when using multiple named sections):
+
+```yaml
+discover:
+  - name: first
+    how: fmf
+    test:
+      - /foo
+      - /bar
+  - name: second
+    how: fmf
+    test:
+      - /foo
+      - /bar
+```
+
+Passing `names=["/first/foo", "/first/bar"]` would not work like the above.
+This is consistent with how tmt discovers tests.
+
+If you need to operate on complete prefixed test names, just mangle the final
+FMFTests instance instead.
+
+```python
+fmf_tests = discover(...)
+
+for name in ["/first/foo", "/first/bar"]:
+    if name in fmf_tests.data:
+        del fmf_tests.data[name]
+```

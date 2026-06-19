@@ -38,7 +38,10 @@ def subprocess_stream(cmd, *, stream="stdout", check=False, input=None, **kwargs
 
     def generate_lines():
         if input is not None:
-            proc.stdin.write(input)
+            try:
+                proc.stdin.write(input)
+            except BrokenPipeError:
+                pass
             proc.stdin.close()
         line_stream = getattr(proc, stream)
         for line in line_stream:

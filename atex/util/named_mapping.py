@@ -116,7 +116,7 @@ class NamedMapping(collections.abc.Mapping, metaclass=_NamedMappingMeta):
 
     def __getattr__(self, item):
         if item in ("_data", "_required", "_default"):
-            return super().__getattr__(item)
+            raise AttributeError(item)  # break infinite recursion
         try:
             return self._data[item]
         except KeyError:

@@ -9,7 +9,6 @@ import pytest
 @pytest.fixture(autouse=True, scope="module")
 def change_test_dir(request):
     old_cwd = Path.cwd()
-    # request.fspath is a py.path.local, its str() is the filesystem path
-    os.chdir(str(request.fspath.dirname))
+    os.chdir(request.path.parent)
     yield
     os.chdir(old_cwd)

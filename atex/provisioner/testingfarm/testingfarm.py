@@ -212,7 +212,8 @@ class TestingFarmProvisioner(Provisioner):
             except util.ThreadJoinQueue.Empty:
                 # always non-blocking
                 return None
-            except BaseException as e:
+            # don't catch BaseException here; let Ctrl-C stop getting a remote
+            except Exception as e:
                 exc_str = f"{type(e).__name__}({e})"
                 with self._lock:
                     if self._retries > 0:

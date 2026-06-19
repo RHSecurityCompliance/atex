@@ -97,7 +97,7 @@ class JSONLinesAggregator(Aggregator):
                 file_names,
                 result_line.get("note"),
             )
-            yield json.dumps(output_line, indent=None)
+            yield json.dumps(output_line, indent=None) + "\n"
 
     def ingest(self, platform, test_name, artifacts):
         unique_id = (platform, test_name)
@@ -132,11 +132,12 @@ class JSONLinesAggregator(Aggregator):
         # at all (ie. if one of the result lines contains JSON errors)
         with open(artifacts_results) as f:
             output_results = self._gen_test_results(f, platform, test_name)
-            output_json = "\n".join(output_results) + "\n"
+            output_json = "".join(output_results)
 
-        with self._lock:
-            self._target_fobj.write(output_json)
-            self._target_fobj.flush()
+        if output_json:
+            with self._lock:
+                self._target_fobj.write(output_json)
+                self._target_fobj.flush()
 
         # clean up the source test_results (Aggregator should 'mv', not 'cp')
         Path(artifacts_results).unlink()

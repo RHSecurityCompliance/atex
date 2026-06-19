@@ -204,6 +204,8 @@ class TestingFarmAPI:
         """
         if not kwargs.get("created_after"):
             raise ValueError("at least 'created_after' is needed for paging")
+        if page < 1:
+            raise ValueError("'page' must be a positive integer")
 
         def from_iso8601(date):
             dt = datetime.datetime.fromisoformat(date)
@@ -701,7 +703,7 @@ class Reserve:
             if self.request:
                 try:
                     self.request.cancel()
-                except APIError:
+                except BaseException:
                     pass
                 finally:
                     self.request = None

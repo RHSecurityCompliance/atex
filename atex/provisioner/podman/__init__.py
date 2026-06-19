@@ -6,7 +6,7 @@ from .systemd import (
     SystemdPodmanProvisioner,
     SystemdPodmanRemote,
 )
-from .utils import (  # noqa: F401
+from .utils import (
     build_container_with_deps,
     build_systemd_container_with_deps,
     pull_image,
@@ -17,4 +17,7 @@ __all__ = (
     "PodmanRemote",
     "SystemdPodmanProvisioner",
     "SystemdPodmanRemote",
+    "pull_image",
+    "build_container_with_deps",
+    "build_systemd_container_with_deps",
 )

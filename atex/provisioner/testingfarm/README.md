@@ -10,6 +10,8 @@ themselves), similarly to how the official `testing-farm reserve` CLI command
 does it.
 
 ```python
+from atex.provisioner.testingfarm import TestingFarmProvisioner
+
 with TestingFarmProvisioner("CentOS-Stream-9", max_remotes=4) as p:
     p.provision(10)
     for _ in range(10):

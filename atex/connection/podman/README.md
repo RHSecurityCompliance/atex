@@ -15,6 +15,8 @@ Since we're just executing commands across Linux Namespaces, this Connection
 does not require any functional network, sshd, etc. in the container.
 
 ```python
+from atex.connection.podman import PodmanConnection
+
 with PodmanConnection("container_name_or_id") as c:
     c.cmd(["ls", "/"])
     ...

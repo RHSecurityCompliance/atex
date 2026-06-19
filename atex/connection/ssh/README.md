@@ -33,6 +33,8 @@ then executes the command.
 The `.connect()` and `.disconnect()` methods are a no-op.
 
 ```python
+from atex.connection.ssh import StatelessSSHConnection
+
 opts = {
     "Hostname": "foo.example.com",
     "Port": "22",
@@ -63,6 +65,8 @@ ManagedSSHConnection.
 See the ControlMaster and ControlPath ssh client options for implementation.
 
 ```python
+from atex.connection.ssh import ManagedSSHConnection
+
 opts = {
     "Hostname": "bar.example.com",
     "Port": "2222",

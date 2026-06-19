@@ -1,11 +1,11 @@
-from .adhoc import (  # noqa: I001
+from .adhoc import (
     AdHocOrchestrator,
 )
 from .mixins import (
-    LimitedRerunsMixin,
+    FMFDestructiveMixin,
     FMFDurationMixin,
     FMFPriorityMixin,
-    FMFDestructiveMixin,
+    LimitedRerunsMixin,
 )
 
 __all__ = (

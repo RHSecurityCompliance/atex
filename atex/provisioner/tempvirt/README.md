@@ -5,6 +5,8 @@
 # Temporary Virtual machine Provisioner
 
 ```python
+from atex.provisioner.tempvirt import TempVirtProvisioner
+
 # pre-existing installed shut-off virtual machine (a.k.a. a "domain")
 origin = "my-fedora-123"
 

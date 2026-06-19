@@ -66,6 +66,12 @@ different purposes.
 ## Examples
 
 ```python
+from atex.aggregator.jsonl import (
+    GzipJSONLinesAggregator,
+    JSONLinesAggregator,
+    LZMAJSONLinesAggregator,
+)
+
 with JSONLinesAggregator("results.jsonl", "uploaded_files") as aggr:
     aggr.ingest("9.8@x86_64", "/some/test", test_artifacts_dir)
 

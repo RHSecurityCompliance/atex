@@ -31,6 +31,8 @@ For example, imagine running 10 tests on 3 Remotes (A,B,C):
 1. Test 2 (rerun) finally finishes on B, fails again destructively, but its reruns were exhausted, so we just release Remote B and finish
 
 ```python
+from atex.orchestrator.adhoc import AdHocOrchestrator
+
 with SomeAggregator(...) as aggr, SomeProvisioner(...) as prov:
     o = AdHocOrchestrator(
         platform="cs10@x86_64",
@@ -91,10 +93,14 @@ All of these can be combined (chained) together, see their docstrings.
     exit codes by default).
 
   ```python
+  from atex.orchestrator.adhoc import AdHocOrchestrator, LimitedRerunsMixin
+
   class CustomOrchestrator(LimitedRerunsMixin(2), AdHocOrchestrator):
       pass
   ```
   ```python
+  from atex.orchestrator.adhoc import AdHocOrchestrator, LimitedRerunsMixin
+
   class CustomOrchestrator(
       LimitedRerunsMixin(reruns=2, cond=lambda code: code not in [0,2]),
       AdHocOrchestrator,
@@ -112,6 +118,8 @@ All of these can be combined (chained) together, see their docstrings.
   - It takes `fmf_tests` so it can inspect discovered test metadata.
 
   ```python
+  from atex.orchestrator.adhoc import AdHocOrchestrator, FMFDurationMixin
+
   class CustomOrchestrator(FMFDurationMixin(fmf_tests), AdHocOrchestrator):
       pass
   ```
@@ -125,6 +133,8 @@ All of these can be combined (chained) together, see their docstrings.
   - It takes `fmf_tests` so it can inspect discovered test metadata.
 
   ```python
+  from atex.orchestrator.adhoc import AdHocOrchestrator, FMFPriorityMixin
+
   class CustomOrchestrator(FMFPriorityMixin(fmf_tests), AdHocOrchestrator):
       pass
   ```
@@ -137,6 +147,8 @@ All of these can be combined (chained) together, see their docstrings.
   - It takes `fmf_tests` so it can inspect discovered test metadata.
 
   ```python
+  from atex.orchestrator.adhoc import AdHocOrchestrator, FMFDestructiveMixin
+
   class CustomOrchestrator(FMFDestructiveMixin(fmf_tests), AdHocOrchestrator):
       pass
   ```

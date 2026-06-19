@@ -8,6 +8,8 @@ This creates podman containers on the local OS and provides the Provisioner
 API for them.
 
 ```python
+from atex.provisioner.podman import PodmanProvisioner
+
 with PodmanProvisioner("fedora:latest") as p:
     p.provision(3)
     for _ in range(3):
@@ -29,10 +31,12 @@ it via `dnf` every time is very costly, it's a good idea to pre-build an image
 with it included, and pass that image to the Provisioner.
 
 ```python
+import subprocess
+
 from atex.provisioner.podman import (
-    pull_image,
-    build_container_with_deps,
     PodmanProvisioner,
+    build_container_with_deps,
+    pull_image,
 )
 
 pulled = pull_image("fedora:latest")
@@ -52,10 +56,12 @@ To boot up a container with full systemd init, pre-build an image with systemd,
 and pass it to the Provisioner.
 
 ```python
+import subprocess
+
 from atex.provisioner.podman import (
-    pull_image,
-    build_systemd_container_with_deps,
     SystemdPodmanProvisioner,
+    build_systemd_container_with_deps,
+    pull_image,
 )
 
 pulled = pull_image("fedora:latest")
@@ -78,8 +84,8 @@ removal.
 
 ```python
 from atex.provisioner.podman import (
-    pull_image,
     SystemdPodmanProvisioner,
+    pull_image,
 )
 
 pulled = pull_image("fedora:latest")

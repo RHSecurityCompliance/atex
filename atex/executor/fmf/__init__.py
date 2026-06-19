@@ -1,16 +1,16 @@
-from .fmf import (  # noqa: F401, I001
+from .discover import (
+    discover,
+)
+from .fmf import (  # noqa: F401
     FMFExecutor,
-    TestSetupError,
     TestAbortedError,
+    TestSetupError,
 )
 from .metadata import (  # noqa: F401
     FMFTests,
+    all_pkg_requires,
     duration_to_seconds,
     test_pkg_requires,
-    all_pkg_requires,
-)
-from .discover import (
-    discover,
 )
 
 __all__ = (

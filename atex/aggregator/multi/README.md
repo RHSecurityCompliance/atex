@@ -13,12 +13,13 @@ AdHocOrchestrator) but you need the result to be stored to multiple locations,
 ie. full results as JSON lines, but a subset of them uploaded to ReportPortal.
 
 ```python
-from atex.aggregator import multi, jsonl, reportportal
+from atex.aggregator import jsonl, multi, reportportal
+from atex.orchestrator.adhoc import AdHocOrchestrator
 
 json_aggr = jsonl.JSONLinesAggregator(...)
 rp_aggr = reportportal.ReportPortalAggregator(...)
 
-with multi.MultiAggregator(json_aggr, rp_aggr) as aggr:
+with multi.MultiAggregator([json_aggr, rp_aggr]) as aggr:
     orchestrator = AdHocOrchestrator(
         ...
         aggregator=aggr,

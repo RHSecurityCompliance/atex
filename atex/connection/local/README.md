@@ -10,6 +10,8 @@ the [Connection](..) API, running all commands locally on the OS.
 The `.connect()` and `.disconnect()` methods are a no-op.
 
 ```python
+from atex.connection.local import LocalConnection
+
 with LocalConnection() as c:
     c.cmd(["ls", "/"])
     ...

@@ -5,6 +5,9 @@
 # Shared Virtual host provisioner
 
 ```python
+from atex.connection.ssh import StatelessSSHConnection
+from atex.provisioner.shvirt import SharedVirtProvisioner
+
 # connection to the VM host
 conn = StatelessSSHConnection(...)
 

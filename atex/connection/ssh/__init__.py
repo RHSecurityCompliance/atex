@@ -1,6 +1,6 @@
-from .ssh import (  # noqa: I001
-    StatelessSSHConnection,
+from .ssh import (
     ManagedSSHConnection,
+    StatelessSSHConnection,
 )
 
 __all__ = (

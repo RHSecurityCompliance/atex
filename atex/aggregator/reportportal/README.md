@@ -131,8 +131,8 @@ instead of the constructor having url, project and token arguments.
 When used with FMFExecutor:
 
 ```python
-from atex.executor.fmf import discover
 from atex.aggregator.reportportal import ReportPortalAPI, get_existing_tests
+from atex.executor.fmf import discover
 
 all_tests = discover(
     "path/to/repo_with_tests",

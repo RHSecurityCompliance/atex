@@ -94,6 +94,8 @@ it is omitted in the YAML (eg. `note: null` never appears).
 ## Examples
 
 ```python
+from atex.aggregator.yamld import YAMLDocumentAggregator
+
 with YAMLDocumentAggregator("results.yaml", "uploaded_files") as aggr:
     aggr.ingest("9.8@x86_64", "/some/test", test_artifacts_dir)
 ```

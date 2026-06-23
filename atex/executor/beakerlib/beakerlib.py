@@ -39,13 +39,12 @@ class BeakerlibExecutor(FMFExecutor):
         test_name=$1 status=$2 log=$3 score=$4
         # atex/tmt use lowercase status/result names
         status=${status,,}  # to lowercase
-        # if called by rlPhaseStart Setup/Test/Cleanup, strip off the log
-        # because it's literally just an output-less journal copy
-        case "$test_name" in Setup|Test|Cleanup) log= ;; esac
+        # if beakerlib uses OUTPUTFILE reporting, avoid uploading it every time
+        [[ $log == $BEAKERLIB_DIR/OUTPUTFILE ]] && log=
+        # if the passed file looks like a rlPhase* journal, skip it too
+        [[ $test_name == @(Setup|Test|Cleanup) ]] && log=
+        [[ $log == */tmp.* ]] && ! grep -qv '^$\|^::' "$log" && log=
         # if log file was specified, create a files[] entry for it
-        # - Beakerlib uses a random tmp name, and we could hardcode it to
-        #   'log.txt', but then multiple rlPhaseStartTest would conflict
-        #   on identical subtest name (Test) + file name (log.txt)
         if [[ -f $log ]]; then
             size=$(stat -L -c '%s' "$log")
             log_base=${log##*/}

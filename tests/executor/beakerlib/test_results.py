@@ -43,7 +43,7 @@ def test_report_result(provisioner, tmp_path):
     result = json.loads(results[4])
     assert result.get("status") == "fail"
     assert result.get("name") == "some-phase-name"
-    assert len(result.get("files", ())) == 1
+    assert "files" not in result  # no logs for re-named Test either
     # Cleanup
     result = json.loads(results[5])
     assert result.get("status") == "pass"

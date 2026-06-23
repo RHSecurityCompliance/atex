@@ -489,6 +489,10 @@ class Reserve:
       `environments->settings->provisioning->tags`, useful for storing
       custom metadata to be queried later.
 
+    - `artifacts` is a list of dicts specifying artifacts to install on the
+      reserved OS, ie. brew/koji builds or repositories. Each dict should
+      have `type` and `id` keys, and optionally `install`.
+
     - `os_cleaning`, when True, runs a custom setup-like script on the
       reserved OS prior to returning it as ReservedMachine.
 
@@ -510,7 +514,7 @@ class Reserve:
     def __init__(
         self, *, compose, arch="x86_64", pool=None, hardware=None, kickstart=None,
         timeout=60, ssh_key=None, source_host=None, skip_guest_setup=False,
-        variables=None, secrets=None, tags=None,
+        variables=None, secrets=None, tags=None, artifacts=None,
         os_cleaning=False, api=None, logger=None,
     ):
         self.logger = logger or logging.getLogger("atex")
@@ -552,6 +556,8 @@ class Reserve:
         spec_env["secrets"] = secrets.copy() if secrets else {}  # we need it for ssh pubkey
         if tags:
             spec_env["settings"]["provisioning"]["tags"] |= tags
+        if artifacts:
+            spec_env["artifacts"] = artifacts
 
         self._spec = spec
         self._ssh_key = Path(ssh_key) if ssh_key else None

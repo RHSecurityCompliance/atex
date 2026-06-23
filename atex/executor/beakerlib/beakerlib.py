@@ -189,9 +189,9 @@ class BeakerlibExecutor(FMFExecutor):
 
         return super().run_test(*args, env=env)
 
-    def _report_fallback_result(self, reporter, exit_code, exception, test_name):
-        if reporter.nameless_result_seen or exception:
-            return super()._report_fallback_result(reporter, exit_code, exception, test_name)
+    def eval_exit_code(self, test_name, reporter, exit_code):  # noqa: ARG002, PLR6301
+        if reporter.nameless_result_seen:
+            return exit_code
 
         # override exit code based fallback with results-based one,
         # because beakerlib tests always exit with 0 (unless aborted),
@@ -212,7 +212,4 @@ class BeakerlibExecutor(FMFExecutor):
                         seen_fail = True
                         break
 
-        # override exit code for the parent, beakerlib always exits 0
-        if seen_fail:
-            exit_code = 1
-        return super()._report_fallback_result(reporter, exit_code, exception, test_name)
+        return 1 if seen_fail else exit_code

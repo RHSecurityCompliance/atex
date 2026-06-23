@@ -130,6 +130,20 @@ class FMFExecutor(Executor):
                         check=True,
                     )
 
+    def eval_exit_code(self, test_name, reporter, exit_code):  # noqa: ARG002, PLR6301
+        """
+        Evaluate the exit code of a finished test, possibly overriding it.
+        Called after the test finishes, but before a possible fallback result
+        is reported.
+
+        - `test_name` is a string with the name of the test that finished.
+
+        - `reporter` is a class Reporter instance for the test.
+
+        - `exit_code` is an integer exit code reported by the test wrapper.
+        """
+        return exit_code
+
     def _report_fallback_result(self, reporter, exit_code, exception, test_name):
         """
         Report a fallback result for a test that hasn't reported a full
@@ -397,6 +411,7 @@ class FMFExecutor(Executor):
                 if control.exit_code is None:
                     abort("exitcode not reported, wrapper bug?")
 
+                control.exit_code = self.eval_exit_code(test_name, reporter, control.exit_code)
                 return control.exit_code
 
             except BaseException as e:

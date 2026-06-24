@@ -22,13 +22,6 @@ class ReportPortalAggregator(Aggregator):
       - `launch_rerun` specifies an UUID of an existing launch to rerun.
         If set, `launch_name` must be left unset (existing name is reused).
 
-    - `tests_promise` is an iterable of `(platform, test_name)` tuples,
-      specifying all the platforms/tests that are expected to report results
-      at some later point.
-
-      If set, all of these are pre-reported as "in progress", helpfully showing
-      to users watching the RP UI what is still left to finish.
-
     - `join_subtest` (string) sets a separator to merge test + subtest names
       with, changing how results are ingested.
 

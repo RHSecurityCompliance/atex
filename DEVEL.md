@@ -41,6 +41,43 @@ put each on its own line.
 Generally speaking, when in doubt, see how the rest of the project looks like,
 and what `ruff` and other Pull Request checks allow.
 
+## Contributions
+
+- Q: "I created a Provisioner, could you please include it?"
+- A: Maybe.
+
+ATEX is at its best as a distributed ecosystem - people creating base API
+implementations on their own and sharing them with the community using repos
+under their control - there is no big benefit from centralized development
+(unlike projects that compile from source code).
+
+Feel free to create a git repo with your code (and `pyproject.toml`, etc.)
+and tell people to just install it alongside base ATEX:
+
+```shell
+pip install atex git+https://gitwhatever.com/your/repo.git
+```
+
+If you depend on a specific ATEX API version, you can use branch/tag names:
+
+```
+pip install 'atex>=1,<2' git+https://gitwhatever.com/your/repo.git@version1
+```
+
+(You could also declare `atex` (even a specific version) in your
+`pyproject.toml` and then just use your URL alone.)
+
+This works best for more domain-specific implementations (ie. an Executor
+that can run tests for an in-house framework used by your team) - if you made
+something with much wider reach that you believe would be generally useful,
+feel free to submit an upstream issue for inclusion into base ATEX.
+
+But keep in mind the base project's code style and allergy towards adding
+additional PyPI dependencies.
+
+If unsure, reach out and ask first - no point in putting a ton of work into
+a PR that might never be merged.
+
 ## Release workflow
 
 NEVER commit these to git, they are ONLY for the PyPI release.

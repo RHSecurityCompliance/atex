@@ -24,6 +24,10 @@ class FMFTests:
     - `root` - Path to the fmf metadata tree root with discovered tests.
 
       Useful when uploading or copying the test files.
+
+    To iterate on / rename / add / remove test names, use `.data.keys()`
+    (dict keys) as the reference list. There is no separate list with
+    just test names - dict keys are ordered and faster to access by name.
     """
     plan: dict
     data: dict

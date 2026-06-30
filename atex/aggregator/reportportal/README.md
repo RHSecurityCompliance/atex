@@ -68,22 +68,17 @@ completed, matching some other result systems, ie. Nitrate.
 With the ATEX Aggregator API, this isn't easily possible as an Aggregator does
 not know, in advance, all the tests and subtests that are to be reported.
 
-However you do (or your code that discovers tests), and you can pass that list
-via `tests_promise`:
+However you do (or your code that discovers tests), and you can "promise" those
+tests prior to running anything:
 
 ```python
-ReportPortalAggregator(
-    ...
-    tests_promise=[
-        ("platform1", "first_test"),
-        ("platform1", "second_test"),
-        ("platform2", "first_test"),
-    ],
-    ...
-)
+aggr = ReportPortalAggregator(...)
+
+aggr.promise("platform1", ["first_test", "second_test"])
+aggr.promise("platform2", ["first_test"])
 ```
 
-ReportPortalAggregator will then literally go over this list and report all the
+ReportPortalAggregator will then literally go over these and report all the
 tests to ReportPortal.
 
 When the same test names are `.ingest()`ed later, the same items are reused
@@ -114,7 +109,7 @@ ReportPortalAggregator(
 instead of `launch_name`.
 
 Partial reruns are supported too, just make sure you don't specify the full
-list via `tests_promise` (if you're using that functionality). Promise only
+list via `.promise()` (if you're using that functionality). Promise only
 what you plan to rerun.
 
 ## Rerunning failed tests only

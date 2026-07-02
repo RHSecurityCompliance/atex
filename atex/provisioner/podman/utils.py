@@ -1,3 +1,4 @@
+import shlex
 import subprocess
 import tempfile
 import uuid
@@ -45,11 +46,12 @@ def build_container_with_deps(origin, tag=None, *, extra_pkgs=None, extra_conten
     pkgs = ["python", "rsync"]
     if extra_pkgs:
         pkgs += extra_pkgs
-    pkgs_str = " ".join(pkgs)
+    pkgs_str = " ".join(shlex.quote(p) for p in pkgs)
 
     with tempfile.NamedTemporaryFile("w+t", delete_on_close=False) as tmpf:
         template = util.dedent(fr"""
-            FROM {origin}
+            ARG BASE_IMAGE
+            FROM $BASE_IMAGE
             RUN if command -v dnf >/dev/null; then \
                   pkg_tool="dnf -y -q --setopt=install_weak_deps=False"; \
               else \
@@ -65,7 +67,11 @@ def build_container_with_deps(origin, tag=None, *, extra_pkgs=None, extra_conten
             tmpf.write(extra_content)
         tmpf.close()
         proc = subprocess.run(
-            ("podman", "image", "build", "-q", "-t", tag, "-f", tmpf.name, "."),
+            (
+                "podman", "image", "build", "-q", "-t", tag,
+                "--build-arg", f"BASE_IMAGE={origin}",
+                "-f", tmpf.name, ".",
+            ),
             check=True,
             text=True,
             stdout=subprocess.PIPE,

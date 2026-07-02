@@ -343,6 +343,8 @@ def resolve_libraries(tests_data, tests_tree, libs_dir, context):
                             new_require.append(require)
                             continue
                         source = Path(node.root) / node.name.lstrip("/")
+                        if not target.resolve().is_relative_to(libs_dir.resolve()):
+                            raise ValueError(f"library path escapes libs directory: {target}")
                         target.parent.mkdir(parents=True, exist_ok=True)
                         shutil.copytree(source, target, symlinks=True, dirs_exist_ok=True)
                         new_require.append(equiv_dict)
@@ -376,6 +378,8 @@ def resolve_libraries(tests_data, tests_tree, libs_dir, context):
                     continue
 
                 target = libs_dir / nick / node.name.lstrip("/")
+                if not target.resolve().is_relative_to(libs_dir.resolve()):
+                    raise ValueError(f"library path escapes libs directory: {target}")
                 # referencing a library inside the tests tree, but not in libs/
                 # - just symlink it to libs/
                 if not target.exists():
@@ -420,6 +424,8 @@ def resolve_libraries(tests_data, tests_tree, libs_dir, context):
                 except fmf.utils.ReferenceError:
                     raise ValueError(f"library node not found in repository: {require}") from None
                 source = Path(node.root) / node.name.lstrip("/")
+                if not target.resolve().is_relative_to(libs_dir.resolve()):
+                    raise ValueError(f"library path escapes libs directory: {target}")
                 target.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copytree(source, target, symlinks=True, dirs_exist_ok=True)
 

@@ -120,7 +120,7 @@ class FMFExecutor(Executor):
                         cwd=self.work_dir / "tests",
                     )
                     self.conn.cmd(
-                        ("env", *env_args, "bash"),
+                        ("env", "--", *env_args, "bash"),
                         func=util.subprocess_log,
                         logger=self.logger,
                         input=full_script,
@@ -319,7 +319,7 @@ class FMFExecutor(Executor):
                             with reporter.open_testout() as testout_fd:
                                 test_proc = self.conn.cmd(
                                     (
-                                        "env", *env_args,
+                                        "env", "--", *env_args,
                                         self.work_dir / "test" / "wrapper.py", *wrapper_args,
                                     ),
                                     stdin=subprocess.DEVNULL,

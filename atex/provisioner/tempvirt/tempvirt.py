@@ -210,7 +210,7 @@ class TempVirtProvisioner(Provisioner):
         ssh_options = {
             "Hostname": self.domain_host or "127.0.0.1",
             "User": self.domain_user,
-            "Port": ssh_port,
+            "Port": str(ssh_port),
             "IdentityFile": Path(self.domain_sshkey).absolute(),
             "ConnectionAttempts": 1000,
             "Compression": "yes" if self.domain_host else "no",  # localhost = no compression

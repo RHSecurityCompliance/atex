@@ -692,7 +692,7 @@ class Reserve:
 
         return self.Reserved(
             host=ssh_host,
-            port=22,
+            port="22",
             user=ssh_user,
             ssh_key=ssh_key,
             request=self.request,

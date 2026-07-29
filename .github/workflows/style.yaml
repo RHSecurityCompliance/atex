@@ -73,3 +73,17 @@ jobs:
       - name: Ensure subtests are not named "subresults"
         run: |
           ! grep -r subresult *
+
+  no-binary-files:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Ensure there are no unexpected binary files
+        run: |
+          # ASCII only (printable + spaces)
+          ! find . \( \
+            -path ./.git -o \
+            -path ./dist -o \
+            -path ./tests/executor/fmf/fmf_trees/results/randfile \
+          \) -prune -o -type f -print0 | \
+          LC_ALL=C xargs -0 grep -Hn '[^[:print:][:space:]]'

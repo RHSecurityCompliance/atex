@@ -20,10 +20,10 @@
 #    - bash forks (no exec optimization because it needs to run cleanup)
 # 2. timeout (GNU coreutils) calls setpgid(0, 0) to create its own process group,
 #    then tcsetpgrp() to claim the foreground
-# 3. But tcsetpgrp() may fail or race — leaving more in a background process group
+# 3. But tcsetpgrp() may fail or race - leaving more in a background process group
 # 4. When more calls tcsetattr() to enter cbreak mode, the kernel sends SIGTTOU
 #    (background process modifying terminal)
-# 5. more is stopped — never writes a single byte
+# 5. more is stopped - never writes a single byte
 # 6. After 2 seconds, timeout kills it without any output
 #
 # With --foreground, timeout skips the setpgid/tcsetpgrp dance, more stays

@@ -38,14 +38,26 @@ class FMFExecutor(Executor):
 
     - `env` is a dict of extra environment variables to pass to the
       plan prepare/finish scripts and to all tests.
+
+    - `work_dir_base` is an optional base directory for the remote work
+      directory (created via ``mktemp -d -p <work_dir_base>``).
+      Defaults to ``/var``, which on bootc systems survives reboots and
+      is not cleaned up by ``systemd-tmpfiles-clean``.
+      Override this when running as a non-root user who lacks write
+      access to ``/var`` — e.g. set it to ``$HOME`` or another writable
+      path. Note that using a path other than ``/var`` may lose the
+      "survives cleanup and reboot" guarantee on bootc systems, so
+      choose a path that is stable across reboots (e.g. a home
+      directory, not ``/tmp``).
     """
 
-    def __init__(self, connection, fmf_tests, *, env=None):
+    def __init__(self, connection, fmf_tests, *, env=None, work_dir_base=None):
         self.logger = _get_logger()
 
         self.fmf_tests = fmf_tests
         self.conn = connection
         self.env = env or {}
+        self.work_dir_base = work_dir_base or "/var"
         self.work_dir = None
         self._cancel_event = threading.Event()
 
@@ -54,7 +66,7 @@ class FMFExecutor(Executor):
 
         proc = self.conn.cmd(
             # /var is not cleaned up by bootc, /var/tmp is
-            ("mktemp", "-d", "-p", "/var", "atex-XXXXXXXXXX"),
+            ("mktemp", "-d", "-p", self.work_dir_base, "atex-XXXXXXXXXX"),
             stdout=subprocess.PIPE,
             text=True,
             check=True,

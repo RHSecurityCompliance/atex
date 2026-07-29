@@ -24,6 +24,27 @@ with FMFExecutor(conn, fmf_tests=fmf_tests) as e:
     e.run_test(...)
 ```
 
+### Work directory base
+
+By default, FMFExecutor creates its remote work directory under `/var`
+(via `mktemp -d -p /var`). This is intentional on bootc-based systems where
+`/var` is persistent state — it is not cleaned up by `systemd-tmpfiles-clean`
+and survives reboots, which matters for tests that use `atex-reboot`/`rhts-reboot`.
+
+If you are running as a non-root user without write access to `/var`, you can
+override this with the `work_dir_base` parameter:
+
+```python
+with FMFExecutor(conn, fmf_tests=fmf_tests, work_dir_base="/home/testuser") as e:
+    e.run_test(...)
+```
+
+> [!WARNING]
+> Using a path other than `/var` may lose the "survives cleanup and reboot"
+> guarantee on bootc systems. Choose a path that is stable across reboots
+> (e.g. a home directory) rather than one subject to cleanup (e.g. `/tmp`
+> or `/var/tmp`).
+
 You are free to modify the discovered FMFTests prior to passing them to
 the Executor. See documented FMFTests instance attributes.\
 Ie. to double allowed `duration`:

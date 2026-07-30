@@ -80,6 +80,11 @@ def setup_timeout():
 
 def pytest_collection_modifyitems(config, items):  # noqa: ARG001
     for item in items:
+        # skip ssh backend on old images (slow systemd boot)
+        if item.nodeid.endswith(("[centos7-ssh]", "[centos8-ssh]")):
+            item.add_marker(pytest.mark.skip(
+                reason="ssh backend too slow on centos7/centos8 (systemd boot)",
+            ))
         if "centos7" in item.nodeid:
             # cgroup v1/v2 conflict with modern host kernels
             if (

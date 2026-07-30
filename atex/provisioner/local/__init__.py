@@ -1,9 +1,3 @@
-from .local import (
-    LocalProvisioner,
-    LocalRemote,
-)
+from .local import LocalProvisioner
 
-__all__ = (
-    "LocalProvisioner",
-    "LocalRemote",
-)
+__all__ = ("LocalProvisioner",)

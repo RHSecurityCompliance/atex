@@ -6,7 +6,7 @@
 
 A simple Provisioner that provides Remotes backed by
 [LocalConnection](../../connection/local), running commands on the local
-system. No external resources are allocated, and releasing a LocalRemote
+system. No external resources are allocated, and releasing a Remote
 is a no-op.
 
 ```python

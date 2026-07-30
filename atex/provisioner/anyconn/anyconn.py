@@ -1,87 +1,73 @@
-import subprocess
+import functools
 import threading
 
-from ... import connection, util
+from ... import util
 from .. import Provisioner, ProvisionerError, Remote
 
-_get_logger = util.get_loggers("atex.provisioner.podman")
+_get_logger = util.get_loggers("atex.provisioner.anyconn")
 
 
-class PodmanRemote(Remote, connection.podman.PodmanConnection):
+class AnyConnectionRemoteBase:
     """
-    - `image` is an image tag (used for `str(self)`).
+    Mixin providing `.release()` for dynamically-created Remote types.
 
-    - `container` is a podman container ID / name.
-
-    - `release_hook` is a callable called on `.release()` in addition
-      to disconnecting the connection.
-
-    - `kwargs` are passed to the underlying PodmanConnection.
+    The release state is set up via `__init_remote()` after construction,
+    keeping `__init__` free for the connection type's own constructor.
     """
 
-    def __init__(self, image, *, release_hook, **kwargs):
-        super().__init__(**kwargs)
-        self._lock = threading.RLock()
-        self.image = image
-        self._release_called = False
-        self.release_hook = release_hook
+    # conn_type may define __eq__, which would make instances unhashable
+    __hash__ = object.__hash__
+
+    def __init_remote(self, release_hook):
+        self.__lock = threading.RLock()
+        self.__release_called = False
+        self.__release_hook = release_hook
 
     def release(self):
-        with self._lock:
-            if self._release_called:
+        with self.__lock:
+            if self.__release_called:
                 return
             else:
-                self._release_called = True
+                self.__release_called = True
         try:
             self.disconnect()
         finally:
-            self.release_hook(self)
-            subprocess.run(
-                ("podman", "container", "rm", "-f", "-t", "0", self.container),
-                check=False,  # ignore if it fails
-                stdout=subprocess.DEVNULL,
-            )
+            self.__release_hook(self)
 
     def __str__(self):
-        class_name = self.__class__.__name__
-
-        if "/" in self.image:
-            image = self.image.rsplit("/",1)[1]
-        elif len(self.image) > 20:
-            image = f"{self.image[:17]}..."
-        else:
-            image = self.image
-
-        name = f"{self.container[:17]}..." if len(self.container) > 20 else self.container
-
-        return f"{class_name}({image}, {name})"
+        # eg. AnyConnectionRemote[ManagedSSHConnection]()
+        return f"{self.__class__.__name__}()"
 
 
-class PodmanProvisioner(Provisioner):
+@functools.cache
+def _remote_type(conn_type):
+    return type(
+        f"AnyConnectionRemote[{conn_type.__name__}]",
+        (AnyConnectionRemoteBase, Remote, conn_type),
+        {"__module__": __name__},
+    )
+
+
+class AnyConnectionProvisioner(Provisioner):
     """
-    - `image` is a string of image tag/ID to create containers from.
-      It can be a local identifier or a URL.
+    - `conn_type` is a Connection class to instantiate for each remote.
 
-    - `max_remotes` is how many containers can exist at any one time.
+    - `conn_args` and `conn_kwargs` are passed to `conn_type.__init__()`.
 
-    - `run_options` is an iterable with additional CLI options passed
-      to `podman container run`.
+      The connection must not be connected after construction, the provisioner
+      calls `.connect()` itself.
 
-    - `run_command` is an iterable (cmd + args) specifying the command
-      to execute as the "init system" in the container.
+    - `max_remotes` is how many connected Connections can exist at any one time.
     """
 
-    def __init__(
-        self, image, *,
-        max_remotes=10, run_options=None, run_command=("sleep", "inf"),
-    ):
+    def __init__(self, conn_type, conn_args=None, conn_kwargs=None, *, max_remotes=10):
         self._lock = threading.Condition()
         self.logger = _get_logger()
 
-        self.image = image
+        self.conn_type = conn_type
+        self.conn_args = conn_args or ()
+        self.conn_kwargs = conn_kwargs or {}
         self.max_remotes = max_remotes
-        self.run_options = run_options or ()
-        self.run_command = run_command
 
         self._remotes = set()
         self._to_reserve = 0
@@ -120,13 +106,6 @@ class PodmanProvisioner(Provisioner):
     def _has_capacity(self):
         return len(self._remotes) + self._reserving < self.max_remotes
 
-    def _make_remote(self, container_id, release_hook):
-        return PodmanRemote(
-            self.image,
-            release_hook=release_hook,
-            container=container_id,
-        )
-
     def get_remote(self, block=True):
         with self._lock:
             if block:
@@ -145,15 +124,6 @@ class PodmanProvisioner(Provisioner):
 
         remote = None
         try:
-            cmd = (
-                "podman", "container", "run", "--quiet", "--detach", "--pull", "never",
-                *self.run_options, self.image, *self.run_command,
-            )
-
-            proc = subprocess.run(cmd, check=True, text=True, stdout=subprocess.PIPE)
-            container_id = proc.stdout.rstrip("\n")
-            self.logger.debug(f"new container: {cmd} --> {container_id}")
-
             def release_hook(remote):
                 self.logger.debug(f"releasing {remote}")
                 # remove from the list of remotes inside this Provisioner
@@ -161,13 +131,15 @@ class PodmanProvisioner(Provisioner):
                     self._remotes.discard(remote)
                     self._lock.notify()
 
-            remote = self._make_remote(container_id, release_hook)
+            remote_cls = _remote_type(self.conn_type)
+            remote = remote_cls(*self.conn_args, **self.conn_kwargs)
+            remote._AnyConnectionRemoteBase__init_remote(release_hook)
             remote.connect()
         except BaseException:
             with self._lock:
                 self._reserving -= 1
                 self._lock.notify()
-            if remote:
+            if remote is not None:
                 try:
                     remote.release()
                 except Exception:
@@ -191,4 +163,4 @@ class PodmanProvisioner(Provisioner):
     def __str__(self):
         class_name = self.__class__.__name__
         remotes = f"{len(self._remotes)}/{self.max_remotes}"
-        return f"{class_name}({self.image}, {remotes} remotes)"
+        return f"{class_name}({self.conn_type.__name__}, {remotes} remotes)"

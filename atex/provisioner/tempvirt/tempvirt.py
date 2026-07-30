@@ -300,7 +300,10 @@ class TempVirtProvisioner(Provisioner):
                     remote.release()
                     raise RuntimeError("maximum .connect() retries reached") from None
             except BaseException:
-                remote.release()
+                try:
+                    remote.release()
+                except Exception:
+                    self.logger.warning(f"failed to release {remote}", exc_info=True)
                 raise
             else:
                 break

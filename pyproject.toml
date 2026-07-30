@@ -76,49 +76,49 @@ select = [
     "FURB", # refurb
 ]
 ignore = [
-    "PTH123",   # builtin-open
-    "SIM108",   # if-else-block-instead-of-if-exp
-    "SIM102",   # collapsible-if
-    "SIM117",   # multiple-with-statements
-    "SIM401",   # if-else-block-instead-of-dict-get
-    "PLR0904",  # too-many-public-methods
-    "PLR0911",  # too-many-return-statements
-    "PLR0912",  # too-many-branches
-    "PLR0913",  # too-many-arguments
-    "PLR0914",  # too-many-locals
-    "PLR0915",  # too-many-statements
-    "PLR0916",  # too-many-boolean-expressions
-    "PLR0917",  # too-many-positional-arguments
-    "PLR1702",  # too-many-nested-blocks
-    "PLW0717",  # too-many-statements-in-try-clause
-    "PLR2004",  # magic-value-comparison
-    "PLR5501",  # collapsible-else-if
-    "PLW0603",  # global-statement
-    "PLW1510",  # subprocess-run-without-check
-    "PLW2901",  # redefined-loop-name
-    "RUF010",   # explicit-f-string-type-conversion
-    "RUF012",   # mutable-class-default
-    "RUF067",   # non-empty-init-module
-    "RUF022",   # unsorted-dunder-all
-    "SIM103",   # needless-bool
-    "SIM105",   # suppressible-exception
-    "SIM115",   # open-file-with-context-handler
-    "FURB101",  # read-whole-file
-    "FURB118",  # reimplemented-operator
+    "builtin-open",
+    "if-else-block-instead-of-if-exp",
+    "collapsible-if",
+    "multiple-with-statements",
+    "if-else-block-instead-of-dict-get",
+    "too-many-public-methods",
+    "too-many-return-statements",
+    "too-many-branches",
+    "too-many-arguments",
+    "too-many-locals",
+    "too-many-statements",
+    "too-many-boolean-expressions",
+    "too-many-positional-arguments",
+    "too-many-nested-blocks",
+    "too-many-statements-in-try-clause",
+    "magic-value-comparison",
+    "collapsible-else-if",
+    "global-statement",
+    "subprocess-run-without-check",
+    "redefined-loop-name",
+    "explicit-f-string-type-conversion",
+    "mutable-class-default",
+    "non-empty-init-module",
+    "unsorted-dunder-all",
+    "needless-bool",
+    "suppressible-exception",
+    "open-file-with-context-handler",
+    "read-whole-file",
+    "reimplemented-operator",
 
     # rules from preview
-    "E115",     # no-indented-block-comment
-    "E226",     # missing-whitespace-around-arithmetic-operator
-    "E231",     # missing-whitespace
-    "E265",     # no-space-after-block-comment
-    "E266",     # multiple-leading-hashes-for-block-comment
-    "PLR6201",  # literal-membership
-    "PLW1514",  # unspecified-encoding
-    "PLW1641",  # eq-without-hash
-    "RUF076",   # pytest-fixture-autouse
+    "no-indented-block-comment",
+    "missing-whitespace-around-arithmetic-operator",
+    "missing-whitespace",
+    "no-space-after-block-comment",
+    "multiple-leading-hashes-for-block-comment",
+    "literal-membership",
+    "unspecified-encoding",
+    "eq-without-hash",
+    "noqa-comments",
 
     # buggy in ruff, inconsistent across ruff versions
-    "RUF100",   # unused-noqa
+    "unused-noqa",
 ]
 
 [tool.ruff.format]

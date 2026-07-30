@@ -9,13 +9,13 @@ from atex.provisioner.podman import (
     pull_image,
 )
 from tests.provisioner import shared
-from tests.provisioner.test_podman import IMAGE
+from tests.provisioner.test_podman import BASE_IMAGE, IMAGES
 
 
 # pull once, to avoid flooding the remote hub with pull requests
 @pytest.fixture(scope="module")
 def image_id():
-    pulled = pull_image(IMAGE)
+    pulled = BASE_IMAGE or pull_image(IMAGES["fedora"])
     custom_image = build_systemd_container_with_deps(pulled)
     yield custom_image
     subprocess.run(
@@ -89,7 +89,7 @@ def test_rsync(image_id):
 
 
 def test_build_from():
-    pulled = pull_image(IMAGE)
+    pulled = BASE_IMAGE or pull_image(IMAGES["fedora"])
     with SystemdPodmanProvisioner.build_from(pulled) as p:
         p.provision(1)
         remote = p.get_remote()

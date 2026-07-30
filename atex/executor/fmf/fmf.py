@@ -53,8 +53,8 @@ class FMFExecutor(Executor):
         self.logger.debug(f"starting: {self}")
 
         proc = self.conn.cmd(
-            # /var is not cleaned up by bootc, /var/tmp is
-            ("mktemp", "-d", "-p", "/var", "atex-XXXXXXXXXX"),
+            # /var/tmp is not cleaned up by bootc
+            ("mktemp", "-d", "-p", "/var/tmp", "atex-XXXXXXXXXX"),
             stdout=subprocess.PIPE,
             text=True,
             check=True,

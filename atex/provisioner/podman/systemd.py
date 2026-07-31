@@ -11,7 +11,6 @@ class SystemdPodmanRemote(PodmanRemote, connection.podman.SystemdPodmanConnectio
 
 
 class SystemdPodmanProvisioner(PodmanProvisioner):
-
     def __init__(self, image, *, run_options=None, run_command=("/sbin/init",), **kwargs):
         opts = ["--systemd=always", "--restart=always"]
         if run_options:

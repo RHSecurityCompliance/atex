@@ -129,6 +129,8 @@ def custom_image_ssh(base_image, ssh_key):
         extra_content=(
             "RUN ssh-keygen -A\n"
             "RUN systemctl enable sshd\n"
+            "RUN sed -i '1i UsePAM no' /etc/ssh/sshd_config\n"
+            "RUN usermod -U root && chage -d 1 root\n"
             "RUN mkdir -p /root/.ssh && chmod 700 /root/.ssh"
             f" && echo '{pubkey}' > /root/.ssh/authorized_keys"
             " && chmod 600 /root/.ssh/authorized_keys\n"

@@ -272,7 +272,7 @@ class TempVirtProvisioner(Provisioner):
         self.logger.debug(f"waiting for sshd on {remote}")
         if not util.wait_for_sshd(
             ssh_options["Hostname"],
-            ssh_options["Port"],
+            ssh_port,
             event=self._stopped,
             logger=self.logger,
         ):

@@ -7,7 +7,7 @@ on:
 jobs:
   provisioner-testing-farm:
     if: github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     environment:
       name: testing-farm
     steps:
@@ -22,7 +22,7 @@ jobs:
           TESTING_FARM_API_TOKEN: ${{ secrets.TESTING_FARM_API_TOKEN }}
 
   provisioner-podman:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@v6
       - run: sudo apt-get install -y python3-pytest podman
@@ -32,7 +32,7 @@ jobs:
           python3 -m pytest -s tests/provisioner/test_podman*.py
 
   provisioner-local:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@v6
       - run: sudo apt-get install -y python3-pytest rsync
@@ -42,7 +42,7 @@ jobs:
           python3 -m pytest -s tests/provisioner/test_local.py
 
   executors:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     strategy:
       fail-fast: false
       matrix:
@@ -62,7 +62,7 @@ jobs:
         run: python3 -m pytest -s -k "${{ matrix.image }} and ${{ matrix.backend }}" tests/executor
 
   executors-small:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@v6
       - run: sudo apt-get install -y python3-pytest
@@ -75,7 +75,7 @@ jobs:
               tests/executor/fmf/test_metadata.py
 
   aggregators:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@v6
       - run: sudo apt-get install -y python3-pytest
@@ -85,7 +85,7 @@ jobs:
           python3 -m pytest -s tests/aggregator
 
   orchestrators:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@v6
       - run: sudo apt-get install -y python3-pytest

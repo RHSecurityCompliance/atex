@@ -12,11 +12,11 @@ from tests.executor.fmf.conftest import SSHPodmanProvisioner
 
 # epel-release enables EPEL, so beakerlib can be installed from it
 # in a second phase via BEAKERLIB_CONTENT
-BEAKERLIB_PKGS = ["beakerlib", "git-core", "epel-release"]
+BEAKERLIB_PKGS = ("beakerlib", "git-core", "epel-release")
 BEAKERLIB_CONTENT = (
     "RUN rpm --quiet -q beakerlib || if command -v dnf >/dev/null; then "
     "dnf -y -q --setopt=install_weak_deps=False install beakerlib; "
-    "else yum -y -q install beakerlib; fi"
+    "else yum -y -q install beakerlib; fi\n"
 )
 
 
@@ -61,9 +61,8 @@ def custom_image_systemd(base_image):
 @pytest.fixture(scope="session")
 def custom_image_ssh(base_image, ssh_key):
     _, pubkey_path = ssh_key
-    pubkey = pubkey_path.read_text().strip()
+    pubkey = pubkey_path.read_text().rstrip()
     content = BEAKERLIB_CONTENT + (
-        "\n"
         "RUN ssh-keygen -A\n"
         "RUN systemctl enable sshd\n"
         "RUN sed -i '1i UsePAM no' /etc/ssh/sshd_config\n"
@@ -74,7 +73,7 @@ def custom_image_ssh(base_image, ssh_key):
     )
     image = build_systemd_container_with_deps(
         base_image,
-        extra_pkgs=[*BEAKERLIB_PKGS, "openssh-server"],
+        extra_pkgs=(*BEAKERLIB_PKGS, "openssh-server"),
         extra_content=content,
     )
     try:

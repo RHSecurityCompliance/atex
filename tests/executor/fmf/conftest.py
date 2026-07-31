@@ -1,9 +1,11 @@
 import subprocess
 import threading
+from pathlib import Path
 
 import pytest
 
 from atex import connection, util
+from atex.connection import NotConnectedError
 from atex.connection.ssh import ManagedSSHConnection
 from atex.provisioner import Remote
 from atex.provisioner.podman import (
@@ -15,38 +17,46 @@ from atex.provisioner.podman import (
 
 
 class SSHPodmanRemote(Remote, connection.podman.SystemdPodmanConnection):
-    def __init__(self, container_id, host, port, ssh_key, *, release_hook):
+    def __init__(self, container, ssh_host, ssh_port, ssh_key, *, release_hook):
         self._lock = threading.RLock()
-        super().__init__(container=container_id)
-        self._host = host
-        self._port = port
-        self._ssh_key = ssh_key
+        super().__init__(container=container)
+        self.ssh_host = ssh_host
+        self.ssh_port = ssh_port
+        self.ssh_key = ssh_key
         self.release_hook = release_hook
         self._ssh_conn = None
         self._release_called = False
 
     def connect(self):
-        # wait for systemd via crun exec (inherited from SystemdPodmanConnection)
+        # wait for systemd via crun exec
         super().connect()
         # then connect via SSH
-        util.wait_for_sshd(self._host, self._port)
-        self._ssh_conn = ManagedSSHConnection({
-            "Hostname": self._host,
-            "Port": str(self._port),
-            "IdentityFile": str(self._ssh_key),
+        util.wait_for_sshd(self.ssh_host, self.ssh_port)
+        new_conn = ManagedSSHConnection({
+            "Hostname": self.ssh_host,
+            "Port": self.ssh_port,
+            "IdentityFile": Path(self.ssh_key).absolute(),
             "User": "root",
         })
-        self._ssh_conn.connect()
+        new_conn.connect()
+        with self._lock:
+            self._ssh_conn = new_conn
 
     def disconnect(self):
-        if self._ssh_conn:
-            self._ssh_conn.disconnect()
+        with self._lock:
+            if self._ssh_conn:
+                self._ssh_conn.disconnect()
+                self._ssh_conn = None
         super().disconnect()
 
     def cmd(self, command, *, func=subprocess.run, **func_args):
+        if not self._ssh_conn:
+            raise NotConnectedError
         return self._ssh_conn.cmd(command, func=func, **func_args)
 
     def rsync(self, *args, func=subprocess.run, **func_args):
+        if not self._ssh_conn:
+            raise NotConnectedError
         return self._ssh_conn.rsync(*args, func=func, **func_args)
 
     def release(self):
@@ -67,24 +77,28 @@ class SSHPodmanRemote(Remote, connection.podman.SystemdPodmanConnection):
 
 
 class SSHPodmanProvisioner(SystemdPodmanProvisioner):
-    def __init__(self, image, ssh_key, **kwargs):
-        super().__init__(
-            image,
-            run_options=["-p", "127.0.0.1::22"],
-            **kwargs,
-        )
+    def __init__(self, image, ssh_key, *, run_options=None, **kwargs):
+        publish_port = ("-p", "127.0.0.1::22")
+        combined = publish_port if not run_options else tuple(run_options) + publish_port
+        super().__init__(image, run_options=combined, **kwargs)
         self._ssh_key = ssh_key
 
     def _make_remote(self, container_id, release_hook):
-        port_output = subprocess.run(
+        # get podman-style published port mapping, like "127.0.0.1:12345"
+        proc = subprocess.run(
             ("podman", "port", container_id, "22"),
             check=True, text=True, stdout=subprocess.PIPE,
-        ).stdout.strip()
-        # podman port may output both IPv4 and IPv6 lines, use the first
-        first_line = port_output.split("\n")[0]
-        host_port = int(first_line.rsplit(":", 1)[1])
+        )
+        output = proc.stdout.rstrip()
+        # since we requested ipv4 127.0.0.1, there should be no ipv6 line
+        assert "\n" not in output
+        _, _, port = output.partition(":")
+        assert port
         return SSHPodmanRemote(
-            container_id, "127.0.0.1", host_port, self._ssh_key,
+            container=container_id,
+            ssh_host="127.0.0.1",
+            ssh_port=int(port),
+            ssh_key=self._ssh_key,
             release_hook=release_hook,
         )
 
@@ -122,10 +136,10 @@ def custom_image_systemd(base_image):
 @pytest.fixture(scope="session")
 def custom_image_ssh(base_image, ssh_key):
     _, pubkey_path = ssh_key
-    pubkey = pubkey_path.read_text().strip()
+    pubkey = pubkey_path.read_text().rstrip()
     image = build_systemd_container_with_deps(
         base_image,
-        extra_pkgs=["openssh-server"],
+        extra_pkgs=("openssh-server",),
         extra_content=(
             "RUN ssh-keygen -A\n"
             "RUN systemctl enable sshd\n"

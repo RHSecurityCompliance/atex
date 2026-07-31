@@ -7,19 +7,17 @@ import testutil
 
 from atex import util
 from atex.provisioner.podman import pull_image
-from tests.provisioner.test_podman import IMAGES
-
-# centos 7 and stream 8 have been EOL'd, their repos need to point to vault
-VAULT_REPOS = ("centos7", "centos8")
+from tests.conftest import IMAGES
 
 
 def _fixup_vault_repos(image):
     """Build an intermediate image with mirror.centos.org swapped to vault."""
     tag = str(uuid.uuid4())
     proc = subprocess.run(
-        ("podman", "build", "-q", "-t", tag, "-f", "-", "."),
+        ("podman", "build", "-q", "-t", tag, "--build-arg", f"SRC_IMG={image}", "-f", "-", "."),
         input=(
-            f"FROM {image}\n"
+            "ARG SRC_IMG\n"
+            "FROM $SRC_IMG\n"
             "RUN sed -i"
             " -e 's/^mirrorlist/#mirrorlist/'"
             " -e 's/^#baseurl/baseurl/'"
@@ -38,29 +36,32 @@ def _fixup_vault_repos(image):
     return proc.stdout.strip()
 
 
-@pytest.fixture(params=["podman", "ssh"])
+@pytest.fixture(params=("podman", "ssh"))
 def backend(request):
     return request.param
 
 
 @pytest.fixture(
     scope="session",
-    params=[os.environ["BASE_IMAGE"]] if "BASE_IMAGE" in os.environ else list(IMAGES),
+    # allow override via user-provided BASE_IMAGE env var (name/id)
+    params=(_base,) if (_base := os.environ.get("BASE_IMAGE")) else IMAGES,
 )
 def base_image(request):
-    if "BASE_IMAGE" in os.environ:
-        yield os.environ["BASE_IMAGE"]
+    if base := os.environ.get("BASE_IMAGE"):
+        yield base
         return
-    url = IMAGES.get(request.param, request.param)
+    url = IMAGES[request.param]
     pulled = pull_image(url)
-    if request.param in VAULT_REPOS:
+    if request.param in ("centos7", "centos8"):
         fixed = _fixup_vault_repos(pulled)
-        yield fixed
-        subprocess.run(
-            ("podman", "image", "rm", "-f", fixed),
-            check=False,
-            stdout=subprocess.DEVNULL,
-        )
+        try:
+            yield fixed
+        finally:
+            subprocess.run(
+                ("podman", "image", "rm", "-f", fixed),
+                check=False,
+                stdout=subprocess.DEVNULL,
+            )
     else:
         yield pulled
 
@@ -78,14 +79,18 @@ def setup_timeout():
         yield
 
 
-def pytest_collection_modifyitems(config, items):  # noqa: ARG001
+def pytest_collection_modifyitems(items):
+    if os.environ.get("BASE_IMAGE"):
+        return
     for item in items:
         # skip ssh backend on old images (slow systemd boot)
         if item.nodeid.endswith(("[centos7-ssh]", "[centos8-ssh]")):
             item.add_marker(pytest.mark.skip(
                 reason="ssh backend too slow on centos7/centos8 (systemd boot)",
             ))
-        if "centos7" in item.nodeid:
+            continue
+
+        if "[centos7-" in item.nodeid:
             # cgroup v1/v2 conflict with modern host kernels
             if (
                 "fmf/test_reboot.py" in item.nodeid
@@ -94,8 +99,11 @@ def pytest_collection_modifyitems(config, items):  # noqa: ARG001
                 item.add_marker(pytest.mark.skip(
                     reason="centos7 reboot tests fail due to cgroup v1/v2 conflict",
                 ))
+                continue
+
             # YUM exits 0 even when some packages fail to install
             if "fmf/test_pkgs.py::test_require_fail" in item.nodeid:
                 item.add_marker(pytest.mark.skip(
                     reason="centos7 YUM exits 0 on partial install failure",
                 ))
+                continue

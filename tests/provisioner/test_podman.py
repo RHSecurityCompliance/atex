@@ -5,30 +5,23 @@ import pytest
 import testutil
 
 from atex.provisioner.podman import PodmanProvisioner, build_container_with_deps, pull_image
+from tests.conftest import DEFAULT_IMAGE, IMAGES
 from tests.provisioner import shared
-
-IMAGES = {
-    "fedora": "registry.fedoraproject.org/fedora:latest",
-    "centos10": "quay.io/centos/centos:stream10",
-    "centos9": "quay.io/centos/centos:stream9",
-    "centos8": "quay.io/centos/centos:stream8",
-    "centos7": "quay.io/centos/centos:centos7.9.2009",
-}
-
-BASE_IMAGE = os.environ.get("BASE_IMAGE")
 
 
 # pull once, to avoid flooding the remote hub with pull requests
 @pytest.fixture(scope="module")
 def image_id():
-    pulled = BASE_IMAGE or pull_image(IMAGES["fedora"])
+    pulled = os.environ.get("BASE_IMAGE") or pull_image(IMAGES[DEFAULT_IMAGE])
     custom_image = build_container_with_deps(pulled)
-    yield custom_image
-    subprocess.run(
-        ("podman", "image", "rm", "-f", custom_image),
-        check=True,
-        stdout=subprocess.DEVNULL,
-    )
+    try:
+        yield custom_image
+    finally:
+        subprocess.run(
+            ("podman", "image", "rm", "-f", custom_image),
+            check=True,
+            stdout=subprocess.DEVNULL,
+        )
 
 
 # safeguard against blocking API function freezing pytest

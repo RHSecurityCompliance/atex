@@ -16,7 +16,7 @@ jobs:
       - run: python3 -m pip install .
       - name: Run tests
         run: |
-          python3 -m pytest -s -n 50 tests/provisioner/test_testingfarm.py
+          python3 -m pytest -svvx -n 50 tests/provisioner/test_testingfarm.py
         env:
           TESTING_FARM_COMPOSE: CentOS-Stream-10
           TESTING_FARM_API_TOKEN: ${{ secrets.TESTING_FARM_API_TOKEN }}
@@ -29,7 +29,7 @@ jobs:
       - run: python3 -m pip install .
       - name: Run tests
         run: |
-          python3 -m pytest -s tests/provisioner/test_podman*.py
+          python3 -m pytest -svvx tests/provisioner/test_podman*.py
 
   provisioner-local:
     runs-on: ubuntu-26.04
@@ -39,7 +39,7 @@ jobs:
       - run: python3 -m pip install .
       - name: Run tests
         run: |
-          python3 -m pytest -s tests/provisioner/test_local.py
+          python3 -m pytest -svvx tests/provisioner/test_local.py
 
   executors:
     runs-on: ubuntu-26.04
@@ -56,10 +56,13 @@ jobs:
     name: executors-${{ matrix.image }}-${{ matrix.backend }}
     steps:
       - uses: actions/checkout@v6
-      - run: sudo apt-get install -y python3-pytest podman openssh-client
+      - run: sudo apt-get install -y python3-pytest podman openssh-client rsync
       - run: python3 -m pip install .
       - name: Run tests
-        run: python3 -m pytest -s -k "${{ matrix.image }} and ${{ matrix.backend }}" tests/executor
+        run: >-
+          python3 -m pytest -svvx
+          -k "${{ matrix.image }}-${{ matrix.backend }}"
+          tests/executor
 
   executors-small:
     runs-on: ubuntu-26.04
@@ -69,7 +72,7 @@ jobs:
       - run: python3 -m pip install .
       - name: Run tests
         run: |
-          python3 -m pytest -s \
+          python3 -m pytest -svvx \
               tests/executor/command \
               tests/executor/fmf/test_discover.py \
               tests/executor/fmf/test_metadata.py
@@ -82,7 +85,7 @@ jobs:
       - run: python3 -m pip install .
       - name: Run tests
         run: |
-          python3 -m pytest -s tests/aggregator
+          python3 -m pytest -svvx tests/aggregator
 
   orchestrators:
     runs-on: ubuntu-26.04
@@ -92,4 +95,4 @@ jobs:
       - run: python3 -m pip install .
       - name: Run tests
         run: |
-          python3 -m pytest -s tests/orchestrator
+          python3 -m pytest -svvx tests/orchestrator

@@ -22,6 +22,8 @@ DEFAULT_OPTIONS = {
     "TCPKeepAlive": "no",
     "EscapeChar": "none",
     "ExitOnForwardFailure": "yes",
+    "IdentitiesOnly": "yes",
+    "GSSAPIAuthentication": "no",
     "RequestTTY": "no",
 }
 
@@ -266,6 +268,7 @@ class ManagedSSHConnection(Connection):
                 time.sleep(0.1)
             else:
                 code = proc.poll()
+                os.set_blocking(proc.stdout.fileno(), True)
                 out = proc.stdout.read()
                 out = f":\n{out.decode()}" if out else ""
                 self._master_proc = None
@@ -275,6 +278,7 @@ class ManagedSSHConnection(Connection):
         else:
             code = proc.poll()
             if code is not None:
+                os.set_blocking(proc.stdout.fileno(), True)
                 out = proc.stdout.read()
                 out = f":\n{out.decode()}" if out else ""
                 self._master_proc = None

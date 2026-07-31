@@ -60,11 +60,13 @@ class PodmanConnection(Connection):
 
 
 class SystemdPodmanConnection(PodmanConnection):
+    systemd_boot_wait = 3000  # tenths of a second
+
     def _wait_for_systemd(self):
         # wait for the full system to be up
         # (--wait doesn't exist on old RHELs and needs extra waiting
         #  for /run/systemd/private)
-        for _ in range(600):
+        for _ in range(self.systemd_boot_wait):
             proc = super().cmd(
                 ("systemctl", "is-system-running"),
                 stdout=subprocess.PIPE,

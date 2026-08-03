@@ -13,6 +13,7 @@ def reserve(args):
         args.origin_domain,
         domain_sshkey=args.ssh_key,
         domain_user=args.user,
+        domain_sshport_from=args.port,
         uri=args.connect,
     ) as p:
         p.provision()
@@ -60,4 +61,9 @@ def add_reserve_args(parser):
         "--ssh-key", "-i",
         help="ssh key to use for the user",
         default=util.default_ssh_key(),
+    )
+    parser.add_argument(
+        "--port", "-p",
+        help="ssh port for the temp domain",
+        type=int,
     )

@@ -1,6 +1,7 @@
 import collections
 import concurrent.futures
 import copy
+import socket
 import threading
 import uuid
 import xml.etree.ElementTree as ET
@@ -91,6 +92,13 @@ class TempVirtProvisioner(Provisioner):
       If `domain_host` is specified (non-local), these ports need to be
       reachable from outside that host.
 
+      If `None` (default), the OS picks a free ephemeral port instead.
+      This has race condition potential, but works with multiple provisioner
+      instances automagically.
+
+      If you can, prefer setting `domain_sshport_from` explicitly, especially
+      if you need just one instance or when using a remote `uri`.
+
     - `uri` is a libvirt connection URI, see https://libvirt.org/uri.html.
 
       If not specified, 'virsh' defaults are used.
@@ -108,7 +116,7 @@ class TempVirtProvisioner(Provisioner):
 
     def __init__(
         self, origin_domain, *,
-        domain_user="root", domain_sshkey, domain_host=None, domain_sshport_from=5100,
+        domain_user="root", domain_sshkey, domain_host=None, domain_sshport_from=None,
         uri=None, max_remotes=3,
     ):
         if uri and uri not in ("qemu:///system", "qemu:///session") and not domain_host:
@@ -131,7 +139,10 @@ class TempVirtProvisioner(Provisioner):
         self._stopped = threading.Event()
         self._stopped.set()
         self._domain_template = None
-        self._domain_portalloc = PortAllocator(start=domain_sshport_from)
+        if domain_sshport_from:
+            self._domain_portalloc = PortAllocator(start=domain_sshport_from)
+        else:
+            self._domain_portalloc = None
 
     def start(self):
         self.logger.debug(f"starting: {self}")
@@ -205,7 +216,13 @@ class TempVirtProvisioner(Provisioner):
         # if libvirt is remote, allow forwarding remote connections (us),
         # else keep everything local
         ssh_addr = "0.0.0.0" if self.domain_host else "127.0.0.1"
-        ssh_port = self._domain_portalloc.acquire()
+
+        if self._domain_portalloc:
+            ssh_port = self._domain_portalloc.acquire()
+        else:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.bind((ssh_addr, 0))
+                ssh_port = s.getsockname()[1]
 
         ssh_options = {
             "Hostname": self.domain_host or "127.0.0.1",
@@ -234,7 +251,8 @@ class TempVirtProvisioner(Provisioner):
             connect=self.uri,
         )
         if code != 0:
-            self._domain_portalloc.release(ssh_port)
+            if self._domain_portalloc:
+                self._domain_portalloc.release(ssh_port)
             raise RuntimeError(f"failed creating transient domain: {output}")
 
         domain_name = xml_root.find("name").text
@@ -242,7 +260,8 @@ class TempVirtProvisioner(Provisioner):
 
         if self._stopped.is_set():
             virsh("destroy", domain_name, connect=self.uri)
-            self._domain_portalloc.release(ssh_port)
+            if self._domain_portalloc:
+                self._domain_portalloc.release(ssh_port)
             raise RuntimeError
 
         def release_hook(remote):
@@ -252,8 +271,8 @@ class TempVirtProvisioner(Provisioner):
             # - ignore any failure, ie. if the domain is already undefined
             virsh("destroy", domain_name, connect=self.uri)
 
-            # free up ssh port allocated for portForward
-            self._domain_portalloc.release(ssh_port)
+            if self._domain_portalloc:
+                self._domain_portalloc.release(ssh_port)
 
             # remove from the list of remotes inside this Provisioner
             with self._lock:

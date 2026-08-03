@@ -111,13 +111,22 @@ pytest -n 20 tests/provisioner/test_testingfarm.py
 export TEMPVIRT_LOCATION=...
 pytest tests/provisioner/test_tempvirt.py
 
+# these are hundreds of tests with all Fedora + CentOS Streams and podman/ssh
+# versions, you might want to run only a sensible subset
+pytest -k fedora tests/executor/{fmf,beakerlib}  # or -k "fedora and podman"
+
 # fast enough for synchronous execution
 pytest \
-    tests/executor \
+    tests/connection \
+    tests/executor --ignore=tests/executor/{fmf,beakerlib} \
     tests/aggregator \
     tests/orchestrator \
     tests/provisioner/test_local.py
 ```
+
+You can also export `BASE_IMAGE` as a podman image name or ID to be used across
+the tests as a baseline for container creation - for example, the executor tests
+above don't need `-k` as the matrix collapses to just the one image.
 
 ## What it stands for
 

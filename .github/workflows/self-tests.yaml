@@ -31,7 +31,7 @@ jobs:
         run: |
           python3 -m pytest -svvx tests/provisioner/test_podman*.py
 
-  provisioner-local:
+  provisioners-small:
     runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@v6
@@ -39,7 +39,19 @@ jobs:
       - run: python3 -m pip install .
       - name: Run tests
         run: |
-          python3 -m pytest -svvx tests/provisioner/test_local.py
+          python3 -m pytest -svvx \
+              tests/provisioner \
+              --ignore-glob=tests/provisioner/test_{podman*,testingfarm,tempvirt}.py
+
+  connection:
+    runs-on: ubuntu-26.04
+    steps:
+      - uses: actions/checkout@v6
+      - run: sudo apt-get install -y python3-pytest podman openssh-client
+      - run: python3 -m pip install .
+      - name: Run tests
+        run: |
+          python3 -m pytest -svvx tests/connection
 
   executors:
     runs-on: ubuntu-26.04

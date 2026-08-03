@@ -27,7 +27,7 @@ class SSHPodmanRemote(Remote, connection.podman.SystemdPodmanConnection):
         util.wait_for_sshd(self.ssh_host, self.ssh_port)
         new_conn = ManagedSSHConnection({
             "Hostname": self.ssh_host,
-            "Port": self.ssh_port,
+            "Port": str(self.ssh_port),
             "IdentityFile": Path(self.ssh_key).absolute(),
             "User": "root",
         })
@@ -126,3 +126,25 @@ def build_ssh_image(origin, pubkey, *, extra_pkgs=None, extra_content=""):
     )
     content += extra_content
     return build_systemd_container_with_deps(origin, extra_pkgs=pkgs, extra_content=content)
+
+
+def ssh_options(remote, *, user="root", password=None):
+    options = {
+        "Hostname": remote.ssh_host,
+        "Port": str(remote.ssh_port),
+        "User": user,
+    }
+    if password is None:
+        options["IdentityFile"] = Path(remote.ssh_key).absolute()
+    return options
+
+
+def setup_user(remote, user, password="dummy_password"):
+    remote.cmd(("useradd", "-m", user), check=True)
+    # unlock the account - UsePAM=no rejects locked accounts even for key auth
+    remote.cmd(("chpasswd",), input=f"{user}:{password}\n", check=True, text=True)
+    remote.cmd(("mkdir", "-p", f"/home/{user}/.ssh"), check=True)
+    remote.cmd(("chmod", "700", f"/home/{user}/.ssh"), check=True)
+    remote.cmd(("cp", "/root/.ssh/authorized_keys", f"/home/{user}/.ssh/"), check=True)
+    remote.cmd(("chmod", "600", f"/home/{user}/.ssh/authorized_keys"), check=True)
+    remote.cmd(("chown", "-R", f"{user}:{user}", f"/home/{user}/.ssh"), check=True)

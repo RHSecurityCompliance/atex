@@ -146,7 +146,9 @@ class StatelessSSHConnection(Connection):
     def cmd(self, command, *, options=None, func=subprocess.run, **func_args):
         unified_options = self.options | (options or {})
         if command:
-            unified_options["RemoteCommand"] = _shell_cmd(command, sudo=self.sudo)
+            # ssh_config RemoteCommand interprets %-tokens (%h, %p, etc.)
+            remote_cmd = _shell_cmd(command, sudo=self.sudo)
+            unified_options["RemoteCommand"] = remote_cmd.replace("%", "%%")
         return func(
             _options_to_ssh(unified_options, password=self.password),
             **func_args,
@@ -314,7 +316,9 @@ class ManagedSSHConnection(Connection):
         self.assert_master()
         unified_options = self.options | (options or {})
         if command:
-            unified_options["RemoteCommand"] = _shell_cmd(command, sudo=self.sudo)
+            # ssh_config RemoteCommand interprets %-tokens (%h, %p, etc.)
+            remote_cmd = _shell_cmd(command, sudo=self.sudo)
+            unified_options["RemoteCommand"] = remote_cmd.replace("%", "%%")
         unified_options["ControlPath"] = self._tmpdir / "control.sock"
         return func(
             _options_to_ssh(unified_options),

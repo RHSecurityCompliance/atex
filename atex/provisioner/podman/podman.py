@@ -35,12 +35,14 @@ class PodmanRemote(Remote, connection.podman.PodmanConnection):
         try:
             self.disconnect()
         finally:
-            self.release_hook(self)
-            subprocess.run(
-                ("podman", "container", "rm", "-f", "-t", "0", self.container),
-                check=False,  # ignore if it fails
-                stdout=subprocess.DEVNULL,
-            )
+            try:
+                self.release_hook(self)
+            finally:
+                subprocess.run(
+                    ("podman", "container", "rm", "-f", "-t", "0", self.container),
+                    check=False,  # ignore if it fails
+                    stdout=subprocess.DEVNULL,
+                )
 
     def __str__(self):
         class_name = self.__class__.__name__

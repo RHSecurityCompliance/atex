@@ -1,6 +1,7 @@
 import subprocess
 
 import pytest
+from testutil import SSHPodmanProvisioner, build_ssh_image
 
 from atex.provisioner.podman import (
     PodmanProvisioner,
@@ -8,7 +9,6 @@ from atex.provisioner.podman import (
     build_container_with_deps,
     build_systemd_container_with_deps,
 )
-from tests.executor.fmf.conftest import SSHPodmanProvisioner
 
 # epel-release enables EPEL, so beakerlib can be installed from it
 # in a second phase via BEAKERLIB_CONTENT
@@ -20,10 +20,7 @@ BEAKERLIB_CONTENT = (
 )
 
 
-# ---------------------------------------------------------------------------
-# Session-scoped image builds
-# ---------------------------------------------------------------------------
-
+# -----------------------------------------------------------------------------
 @pytest.fixture(scope="session")
 def custom_image(base_image):
     image = build_container_with_deps(
@@ -62,19 +59,10 @@ def custom_image_systemd(base_image):
 def custom_image_ssh(base_image, ssh_key):
     _, pubkey_path = ssh_key
     pubkey = pubkey_path.read_text().rstrip()
-    content = BEAKERLIB_CONTENT + (
-        "RUN ssh-keygen -A\n"
-        "RUN systemctl enable sshd\n"
-        "RUN sed -i '1i UsePAM no' /etc/ssh/sshd_config\n"
-        "RUN usermod -U root && chage -d 1 root\n"
-        "RUN mkdir -p /root/.ssh && chmod 700 /root/.ssh"
-        f" && echo '{pubkey}' > /root/.ssh/authorized_keys"
-        " && chmod 600 /root/.ssh/authorized_keys\n"
-    )
-    image = build_systemd_container_with_deps(
-        base_image,
-        extra_pkgs=(*BEAKERLIB_PKGS, "openssh-server"),
-        extra_content=content,
+    image = build_ssh_image(
+        base_image, pubkey,
+        extra_pkgs=BEAKERLIB_PKGS,
+        extra_content=BEAKERLIB_CONTENT,
     )
     try:
         yield image
@@ -86,10 +74,7 @@ def custom_image_ssh(base_image, ssh_key):
         )
 
 
-# ---------------------------------------------------------------------------
-# Provisioner fixtures
-# ---------------------------------------------------------------------------
-
+# -----------------------------------------------------------------------------
 @pytest.fixture
 def provisioner(request, backend, base_image):
     # base_image is not used directly, but must be in the signature so pytest

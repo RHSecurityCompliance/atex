@@ -165,22 +165,39 @@ def custom_image_ssh(base_image, ssh_key):
 # ---------------------------------------------------------------------------
 
 @pytest.fixture
-def provisioner(backend, custom_image, custom_image_ssh, ssh_key):
-    if backend == "podman":
-        with PodmanProvisioner(custom_image) as prov:
-            yield prov
-    else:
-        privkey, _ = ssh_key
-        with SSHPodmanProvisioner(custom_image_ssh, privkey) as prov:
-            yield prov
+def provisioner(request, backend, base_image):
+    # base_image is not used directly, but must be in the signature so pytest
+    # can see its parametrization and generate per-image test IDs;
+    # the actual image fixtures are resolved lazily so that ie. running just
+    # -k podman doesn't trigger building the ssh image (and vice versa)
+    assert base_image
+    match backend:
+        case "podman":
+            custom_image = request.getfixturevalue("custom_image")
+            with PodmanProvisioner(custom_image) as prov:
+                yield prov
+        case "ssh":
+            custom_image_ssh = request.getfixturevalue("custom_image_ssh")
+            privkey, _ = request.getfixturevalue("ssh_key")
+            with SSHPodmanProvisioner(custom_image_ssh, privkey) as prov:
+                yield prov
+        case _:
+            raise ValueError(backend)
 
 
 @pytest.fixture
-def provisioner_systemd(backend, custom_image_systemd, custom_image_ssh, ssh_key):
-    if backend == "podman":
-        with SystemdPodmanProvisioner(custom_image_systemd) as prov:
-            yield prov
-    else:
-        privkey, _ = ssh_key
-        with SSHPodmanProvisioner(custom_image_ssh, privkey) as prov:
-            yield prov
+def provisioner_systemd(request, backend, base_image):
+    # see provisioner() above for why base_image is in the signature
+    assert base_image
+    match backend:
+        case "podman":
+            custom_image_systemd = request.getfixturevalue("custom_image_systemd")
+            with SystemdPodmanProvisioner(custom_image_systemd) as prov:
+                yield prov
+        case "ssh":
+            custom_image_ssh = request.getfixturevalue("custom_image_ssh")
+            privkey, _ = request.getfixturevalue("ssh_key")
+            with SSHPodmanProvisioner(custom_image_ssh, privkey) as prov:
+                yield prov
+        case _:
+            raise ValueError(backend)

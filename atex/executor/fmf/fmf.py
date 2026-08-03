@@ -38,14 +38,18 @@ class FMFExecutor(Executor):
 
     - `env` is a dict of extra environment variables to pass to the
       plan prepare/finish scripts and to all tests.
+
+    - `work_dir_base` is a base directory on the remote side for uploading
+      tests and storing additional run-time metadata.
     """
 
-    def __init__(self, connection, fmf_tests, *, env=None):
+    def __init__(self, connection, fmf_tests, *, env=None, work_dir_base="/var/tmp"):
         self.logger = _get_logger()
 
         self.fmf_tests = fmf_tests
         self.conn = connection
         self.env = env or {}
+        self.work_dir_base = work_dir_base
         self.work_dir = None
         self._cancel_event = threading.Event()
 
@@ -53,8 +57,7 @@ class FMFExecutor(Executor):
         self.logger.debug(f"starting: {self}")
 
         proc = self.conn.cmd(
-            # /var/tmp is not cleaned up by bootc
-            ("mktemp", "-d", "-p", "/var/tmp", "atex-XXXXXXXXXX"),
+            ("mktemp", "-d", "-p", self.work_dir_base, "atex-XXXXXXXXXX"),
             stdout=subprocess.PIPE,
             text=True,
             check=True,

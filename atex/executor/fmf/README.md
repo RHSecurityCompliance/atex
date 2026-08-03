@@ -321,3 +321,17 @@ for name in ["/first/foo", "/first/bar"]:
     if name in fmf_tests.data:
         del fmf_tests.data[name]
 ```
+
+### Running with `/var/tmp` being `noexec`
+
+The FMFExecutor uses `/var/tmp` on the remote side (via the given Connection)
+to temporarily store a test wrapper/runner script, before executing it.
+
+This breaks on DISA STIG and CIS (govt. certifications) hardened systems,
+which force it to be on a separate mount point with `noexec` in `/etc/fstab`.
+
+In these cases, use the `work_dir_base=` argument to specify an executable
+alternative, writable for the user on the remote side - typically either
+`/var` when connecting to `root`, or `/home/someuser` when unprivileged.
+
+This location must persist through a reboot if the tests perform OS reboots.

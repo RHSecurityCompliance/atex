@@ -193,10 +193,15 @@ class TestingFarmProvisioner(Provisioner):
 
         # parallelize at most stop_release_workers TF API release (DELETE) calls
         if release_funcs:
+            def _release(func):
+                try:
+                    func()
+                except Exception:
+                    self.logger.warning("failed to release during stop", exc_info=True)
             workers = min(len(release_funcs), self.stop_release_workers)
             with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as ex:
                 for func in release_funcs:
-                    ex.submit(func)
+                    ex.submit(_release, func)
 
     def provision(self, count=1):
         with self._lock:

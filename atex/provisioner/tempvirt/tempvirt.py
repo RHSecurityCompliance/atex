@@ -165,11 +165,15 @@ class TempVirtProvisioner(Provisioner):
             self._queue.clear()
 
         if to_release:
-            release_funcs = [remote.release for remote in to_release]
-            workers = min(len(release_funcs), self.stop_release_workers)
+            def _release(remote):
+                try:
+                    remote.release()
+                except Exception:
+                    self.logger.warning(f"failed to release {remote}", exc_info=True)
+            workers = min(len(to_release), self.stop_release_workers)
             with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as ex:
-                for func in release_funcs:
-                    ex.submit(func)
+                for remote in to_release:
+                    ex.submit(_release, remote)
 
     def provision(self, count=1):
         if self._stopped.is_set():

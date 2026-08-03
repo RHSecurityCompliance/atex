@@ -1,0 +1,12 @@
+/plan:
+  discover:
+    how: fmf
+  execute:
+    how: tmt
+
+/test_whoami:
+  test: whoami
+
+/test_output:
+  test: |
+    printf 'test output \x00\x01\x02\x03'

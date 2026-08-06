@@ -494,6 +494,9 @@ class Reserve:
       reserved OS, ie. brew/koji builds or repositories. Each dict should
       have `type` and `id` keys, and optionally `install`.
 
+    - `tmt_env` is a dict of tmt-specific environment variables, passed by
+      Testing Farm to the tmt process running the reservation test.
+
     - `os_cleaning`, when True, runs a custom setup-like script on the
       reserved OS prior to returning it as ReservedMachine.
 
@@ -515,7 +518,7 @@ class Reserve:
     def __init__(
         self, *, compose, arch="x86_64", pool=None, hardware=None, kickstart=None,
         timeout=60, ssh_key=None, source_host=None, skip_guest_setup=False,
-        variables=None, secrets=None, tags=None, artifacts=None,
+        variables=None, secrets=None, tags=None, artifacts=None, tmt_env=None,
         os_cleaning=False, api=None, logger=None,
     ):
         self.logger = logger or logging.getLogger("atex")
@@ -559,6 +562,8 @@ class Reserve:
             spec_env["settings"]["provisioning"]["tags"] |= tags
         if artifacts:
             spec_env["artifacts"] = artifacts
+        if tmt_env:
+            spec_env["tmt"] = {"environment": tmt_env}
 
         self._spec = spec
         self._ssh_key = Path(ssh_key) if ssh_key else None

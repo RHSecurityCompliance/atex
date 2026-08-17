@@ -13,12 +13,14 @@ class PodmanConnection(Connection):
 
         self.container = container
         self._container_id = None
+        self._rootless = True
         self._connected = False
 
     def connect(self):
+        self.logger.info(f"connecting to {self.container}")
+
         # get the full long OCI container ID, not just a short ID or podman name
         # (needed by "crun exec")
-        self.logger.info(f"connecting to {self.container}")
         proc = subprocess.run(
             ("podman", "inspect", "--format", "{{.ID}}", self.container),
             stdout=subprocess.PIPE,
@@ -26,6 +28,23 @@ class PodmanConnection(Connection):
             check=True,
         )
         self._container_id = proc.stdout.strip()
+
+        # check if the podman is running as rootful/rootless
+        proc = subprocess.run(
+            ("podman", "info", "--format", "{{.Host.Security.Rootless}}"),
+            stdout=subprocess.PIPE,
+            text=True,
+            check=True,
+        )
+        rootless = proc.stdout.strip()
+        match rootless:
+            case "true":
+                self._rootless = True
+            case "false":
+                self._rootless = False
+            case _:
+                raise RuntimeError(f"invalid Rootless value: {rootless}")
+
         self._connected = True
 
     def disconnect(self):
@@ -36,32 +55,44 @@ class PodmanConnection(Connection):
     def cmd(self, command, *, func=subprocess.run, **func_args):
         if not self._connected:
             raise NotConnectedError("this Connection requires .connect() first")
-        return func(
-            (
+
+        # see README for both rootless (systemd-run) and rootful (env unset)
+        if self._rootless:
+            crun_cmd = (
                 "systemd-run", "--quiet", "--user", "--scope", "--collect", "--",
                 "crun", "exec", self._container_id, *command,
-            ),
-            **func_args,
-        )
+            )
+        else:
+            crun_cmd = (
+                "env", "-u", "XDG_RUNTIME_DIR",
+                "crun", "exec", self._container_id, *command,
+            )
+
+        return func(crun_cmd, **func_args)
 
     def rsync(self, *args, func=subprocess.run, **func_args):
         if not self._connected:
             raise NotConnectedError("this Connection requires .connect() first")
+
+        # use shell to strip off the destination argument rsync passes
+        #   cmd[0]=/bin/bash cmd[1]=-c cmd[2]=exec crun ... cmd[3]=destination
+        #   cmd[4]=rsync cmd[5]=--server cmd[6]=-vve.LsfxCIvu cmd[7]=. cmd[8]=.
+        if self._rootless:
+            crun_cmd = (
+                "/bin/bash -c '"
+                "exec systemd-run --quiet --user --scope --collect -- "
+                f'crun exec {self._container_id} "$@"'
+                "'"
+            )
+        else:
+            crun_cmd = (
+                "/bin/bash -c '"
+                f'env -u XDG_RUNTIME_DIR crun exec {self._container_id} "$@"'
+                "'"
+            )
+
         return func(
-            (
-                "rsync",
-                "-e",
-                (
-                    # use shell to strip off the destination argument rsync passes
-                    #   cmd[0]=/bin/bash cmd[1]=-c cmd[2]=exec crun ... cmd[3]=destination
-                    #   cmd[4]=rsync cmd[5]=--server cmd[6]=-vve.LsfxCIvu cmd[7]=. cmd[8]=.
-                    "/bin/bash -c '"
-                    "exec systemd-run --quiet --user --scope --collect -- "
-                    f'crun exec {self._container_id} "$@"'
-                    "'"
-                ),
-                *args,
-            ),
+            ("rsync", "-e", crun_cmd, *args),
             **{"check": True, "stdin": subprocess.DEVNULL} | func_args,
         )
 

@@ -1,11 +1,16 @@
 import subprocess
 import time
 
+from ... import util
 from .. import Connection, NotConnectedError
+
+_get_logger = util.get_loggers("atex.connection.podman")
 
 
 class PodmanConnection(Connection):
     def __init__(self, container):
+        self.logger = _get_logger()
+
         self.container = container
         self._container_id = None
         self._connected = False
@@ -13,6 +18,7 @@ class PodmanConnection(Connection):
     def connect(self):
         # get the full long OCI container ID, not just a short ID or podman name
         # (needed by "crun exec")
+        self.logger.info(f"connecting to {self.container}")
         proc = subprocess.run(
             ("podman", "inspect", "--format", "{{.ID}}", self.container),
             stdout=subprocess.PIPE,
@@ -23,6 +29,7 @@ class PodmanConnection(Connection):
         self._connected = True
 
     def disconnect(self):
+        self.logger.info(f"disconnecting from {self.container}")
         self._connected = False
         self._container_id = None
 
@@ -83,4 +90,6 @@ class SystemdPodmanConnection(PodmanConnection):
 
     def connect(self):
         super().connect()
+        self.logger.debug(f"waiting for systemd on {self.container}")
         self._wait_for_systemd()
+        self.logger.debug(f"wait for systemd finished on {self.container}")

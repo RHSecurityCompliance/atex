@@ -6,6 +6,37 @@
 
 set -e -x
 
+# ------------------------------------------------------------------------------
+
+# remove access for the testing-farm-spawned tmt test
+sed '/atex-reserved@host$/!d' -i /root/.ssh/authorized_keys*
+
+# find the ssh session of the testing-farm-spawned tmt test and kill it,
+# making the ssh client watched by tmt itself return 255, making tmt attempt
+# a reconnect, as if the OS was rebooted
+# (this needs TMT_REBOOT_TIMEOUT sufficiently high so it reconnects forever)
+
+function find_ssh_session() {
+    local pid=$1
+    while [[ "$pid" -gt 1 ]]; do
+        pid=$(ps -o ppid= -p "$pid")
+        pid=${pid// /}
+        local args
+        args=$(ps -o args= -p "$pid") || break
+        if [[ "$args" == "sshd: root"* || "$args" == "sshd-session: root"* ]]; then
+            echo "$pid"
+            return 0
+        fi
+    done
+    return 1
+}
+
+tmt_wrapper_pid=$(pgrep -o -f TESTING_FARM_REQUEST_ID)
+tmt_ssh_session=$(find_ssh_session "$tmt_wrapper_pid")
+kill -9 "$tmt_ssh_session"
+
+# ------------------------------------------------------------------------------
+
 os_id=$(. /etc/os-release; echo "$ID")
 os_version=$(. /etc/os-release; echo "$VERSION_ID")
 
@@ -19,7 +50,12 @@ fi
 
 # remove tmt-related commands
 # (if running tmt via 'provision -h connect', tmt will upload its own)
-rm -f /usr/local/bin/{tmt,rstrnt,rhts}-*
+rm -rf \
+    /usr/local/bin/{tmt,rstrnt,rhts}-* \
+    /var/lib/tmt \
+    /var/tmp/tmt-test.pid* \
+    /var/ARTIFACTS \
+    /var/opt/standalone-python
 
 # ------------------------------------------------------------------------------
 
@@ -27,8 +63,10 @@ rm -f /usr/local/bin/{tmt,rstrnt,rhts}-*
 # make the reservation last until pipeline timeout (ignoring its timers)
 touch /var/tmp/.testing-farm-keep
 echo -n > /etc/motd
-echo -n > /etc/profile.d/sh.local
-rm -rf /root/bin /root/.reserved-until
+rm -rf \
+    /root/bin /root/set-hostname /root/.reserved-until /root/.ansible \
+    /var/tmp/.testing-farm-keep
+sed '\|^export PATH=\${PATH}:/root/bin$|d' -i /etc/profile.d/sh.local
 
 # ------------------------------------------------------------------------------
 
@@ -145,6 +183,14 @@ rmdir /mnt/*/*/* /mnt/*/* /mnt/* || true
 sed -rn '/^[^ ]+ \/mnt/!p' -i /etc/fstab
 # prevent /mnt/scratch* from being created on reboot
 echo -n > /etc/tmpfiles.d/restraint.conf
+
+# ------------------------------------------------------------------------------
+
+# remove cloud-init leftovers, prevent it being run on every reboot
+$pkg_tool remove cloud-init cloud-utils-growpart
+rm -f /etc/sudoers.d/90-cloud-init-users
+killall -u cloud-user -9 || true
+userdel -r cloud-user || true
 
 # ------------------------------------------------------------------------------
 

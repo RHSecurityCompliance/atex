@@ -562,8 +562,12 @@ class Reserve:
             spec_env["settings"]["provisioning"]["tags"] |= tags
         if artifacts:
             spec_env["artifacts"] = artifacts
+
+        tmt_env_preset = {"TMT_REBOOT_TIMEOUT": "31536000"} if os_cleaning else {}
         if tmt_env:
-            spec_env["tmt"] = {"environment": tmt_env}
+            tmt_env_preset |= tmt_env
+        if tmt_env_preset:
+            spec_env["tmt"] = {"environment": tmt_env_preset}
 
         self._spec = spec
         self._ssh_key = Path(ssh_key) if ssh_key else None
@@ -632,7 +636,7 @@ class Reserve:
         # a secret username or hostname
         pubkey_contents = ssh_pubkey.read_text().strip()
         pubkey_type, pubkey_key, *_ = pubkey_contents.split(maxsplit=2)
-        pubkey_contents = f"{pubkey_type} {pubkey_key} foo@bar\n"
+        pubkey_contents = f"{pubkey_type} {pubkey_key} atex-reserved@host\n"
         # the TF native reserve test expects a base64-encoded pubkey
         encoded_pubkey = base64.b64encode(pubkey_contents.encode()).decode()
         spec_env["secrets"]["TF_RESERVATION_AUTHORIZED_KEYS_BASE64"] = encoded_pubkey

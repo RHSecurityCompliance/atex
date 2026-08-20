@@ -110,14 +110,15 @@ class SystemdPodmanConnection(PodmanConnection):
                 stdout=subprocess.PIPE,
                 # also silence systemd-run and crun errors during container
                 # shutdown, when it's off, and when it's being set-up
-                stderr=subprocess.DEVNULL,
+                stderr=subprocess.PIPE,
             )
             out = proc.stdout.strip()
             if out in (b"running", b"degraded"):
                 break
             time.sleep(0.1)
         else:
-            raise RuntimeError(f"systemctl is-system-running failed: {out}")
+            errout = proc.stderr.strip()
+            raise RuntimeError(f"systemctl is-system-running failed: {out} ({errout})")
 
     def connect(self):
         super().connect()

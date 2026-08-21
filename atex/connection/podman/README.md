@@ -39,6 +39,9 @@ way of running commands, using session tracking and "conmon", which breaks
 SIGPIPE handling - instead, it uses `crun exec` to run commands as directly
 as possible.
 
+This also neatly avoids all the /dev/shm and SQLite race condition bugs and
+lock contention that parallel `podman exec` suffers from.
+
 For rootless podman, `crun exec` is wrapped in `systemd-run --user --scope`
 to place it in the user's cgroup hierarchy. This is needed because cgroup v2
 process migration requires write access to `cgroup.procs` of the common

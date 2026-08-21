@@ -12,7 +12,8 @@ class SystemdPodmanRemote(PodmanRemote, connection.podman.SystemdPodmanConnectio
 
 class SystemdPodmanProvisioner(PodmanProvisioner):
     def __init__(self, image, *, run_options=None, run_command=("/sbin/init",), **kwargs):
-        opts = ["--systemd=always", "--restart=always"]
+        # default PIDs is just 2048, likely not enough for large OSes
+        opts = ["--systemd=always", "--restart=always", "--pids-limit", "65536"]
         if run_options:
             opts += run_options
         super().__init__(image, run_options=opts, run_command=run_command, **kwargs)

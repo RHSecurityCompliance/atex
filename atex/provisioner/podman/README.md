@@ -92,3 +92,20 @@ pulled = pull_image("fedora:latest")
 with SystemdPodmanProvisioner.build_from(pulled) as p:
     ...
 ```
+
+## Fedora/RHEL inotify instances limit
+
+When running many SystemdPodmanProvisioner containers with `--userns=auto`,
+the default Fedora `fs.inotify.max_user_instances` limit of 128 is shared
+across all containers - inotify instances in child user namespaces count
+against the init namespace's ceiling via hierarchical ucounts accounting.
+
+Each systemd instance uses ~15-20 inotify instances, so the ~9th container
+fails with `EMFILE` on `inotify_init1()`, preventing D-Bus from starting.
+
+If you want to run many systemd-enabled containers, just increase the limit
+on the host:
+
+```bash
+sysctl -w fs.inotify.max_user_instances=65536
+```

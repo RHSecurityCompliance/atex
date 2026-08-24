@@ -43,9 +43,9 @@ def test_one_remote(image_id):
         shared.one_remote(p)
 
 
-#def test_one_remote_nonblock(image_id):
-#    with SystemdPodmanProvisioner(image_id) as p:
-#        shared.one_remote_nonblock(p)
+def test_one_remote_nonblock(image_id):
+    with SystemdPodmanProvisioner(image_id) as p:
+        shared.one_remote_nonblock(p)
 
 
 def test_two_remotes(image_id):
@@ -53,9 +53,9 @@ def test_two_remotes(image_id):
         shared.two_remotes(p)
 
 
-#def test_two_remotes_nonblock(image_id):
-#    with SystemdPodmanProvisioner(image_id) as p:
-#        shared.two_remotes_nonblock(p)
+def test_two_remotes_nonblock(image_id):
+    with SystemdPodmanProvisioner(image_id) as p:
+        shared.two_remotes_nonblock(p)
 
 
 def test_sharing_remote_slot(image_id):

@@ -1,3 +1,4 @@
+import collections
 import subprocess
 import threading
 
@@ -88,23 +89,37 @@ class PodmanProvisioner(Provisioner):
         self._remotes = set()
         self._to_reserve = 0
         self._reserving = 0
-        self._stopped = True
+        self._stopped = threading.Event()
+        self._stopped.set()
+        self._connecting_queue = collections.deque()
+        self._ready_queue = collections.deque()
+        self._worker_thread = None
 
     def start(self):
         self.logger.debug(f"starting: {self}")
-        self._stopped = False
+        with self._lock:
+            if not self._stopped.is_set():
+                raise ProvisionerError("the provisioner is already started")
+            self._stopped.clear()
+            self._ready_queue.clear()
+            self._worker_thread = threading.Thread(target=self._worker)
+            self._worker_thread.start()
 
     def stop(self):
         self.logger.debug(f"stopping: {self}")
         with self._lock:
-            self._stopped = True
+            self._stopped.set()
             self._to_reserve = 0
-            # wait for currently-reserving get_remote() to finish and
-            # self-release based on self._stopped == True
             self._lock.notify_all()
-            self._lock.wait_for(lambda: self._reserving == 0)
-            to_release = self._remotes
+        self._worker_thread.join()
+        self._worker_thread = None
+        with self._lock:
+            self._reserving = 0
+            to_release = set(self._remotes)
+            to_release.update(self._connecting_queue)
             self._remotes = set()
+            self._connecting_queue.clear()
+            self._ready_queue.clear()
         for remote in to_release:
             try:
                 remote.release()
@@ -113,7 +128,7 @@ class PodmanProvisioner(Provisioner):
 
     def provision(self, count=1):
         with self._lock:
-            if self._stopped:
+            if self._stopped.is_set():
                 raise ProvisionerError("the provisioner is stopped")
             self.logger.debug(f"provisioning {count}")
             self._to_reserve += count
@@ -129,62 +144,133 @@ class PodmanProvisioner(Provisioner):
             container=container_id,
         )
 
+    def _worker(self):
+        while True:
+            # phase 1:
+            # poll all remotes waiting for connection, moving successfully
+            # connected ones to the output queue
+
+            for remote in tuple(self._connecting_queue):
+                if self._stopped.is_set():
+                    return
+
+                try:
+                    remote.connect(block=False)
+                # regular "not connected yet"
+                except BlockingIOError:
+                    continue
+                # any unexpected exception - add a failure to the queue
+                except BaseException as e:
+                    try:
+                        remote.release()
+                    except Exception:
+                        self.logger.warning(f"failed to release {remote}", exc_info=True)
+                    with self._lock:
+                        self._reserving -= 1
+                        self._connecting_queue.remove(remote)
+                        self._ready_queue.append(util.ThreadResult(exception=e))
+                        self._lock.notify_all()
+                    continue
+
+                # success - add the remote to the queue
+                with self._lock:
+                    self._reserving -= 1
+                    self._connecting_queue.remove(remote)
+                    self._remotes.add(remote)
+                    self._ready_queue.append(util.ThreadResult(value=remote))
+                    self._lock.notify_all()
+
+            if self._stopped.is_set():
+                return
+
+            # phase 2: create a new container if there is pending work
+
+            with self._lock:
+                if self._to_reserve > 0 and self._has_capacity():
+                    self._to_reserve -= 1
+                    self._reserving += 1
+                    will_create = True
+                else:
+                    will_create = False
+
+            if self._stopped.is_set():
+                return
+
+            if will_create:
+                container_id = None
+                remote = None
+
+                try:
+                    cmd = (
+                        "podman", "container", "run", "--quiet", "--detach", "--pull", "never",
+                        *self.run_options, self.image, *self.run_command,
+                    )
+                    proc = subprocess.run(cmd, check=True, text=True, stdout=subprocess.PIPE)
+                    container_id = proc.stdout.rstrip("\n")
+                    self.logger.debug(f"new container: {cmd} --> {container_id}")
+
+                    def release_hook(remote):
+                        self.logger.debug(f"releasing {remote}")
+                        with self._lock:
+                            self._remotes.discard(remote)
+                            self._lock.notify_all()
+
+                    remote = self._make_remote(container_id, release_hook)
+                    with self._lock:
+                        self._connecting_queue.append(remote)
+
+                except BaseException as e:
+                    with self._lock:
+                        self._reserving -= 1
+                        self._ready_queue.append(util.ThreadResult(exception=e))
+                        self._lock.notify_all()
+                    if remote:
+                        try:
+                            remote.release()
+                        except Exception:
+                            self.logger.warning(f"failed to release {remote}", exc_info=True)
+                    elif container_id:
+                        subprocess.run(
+                            ("podman", "container", "rm", "-f", "-t", "0", container_id),
+                            check=False,
+                            stdout=subprocess.DEVNULL,
+                        )
+
+                # try connecting to the newly created Remote (also all others)
+                continue
+
+            # phase 3: sleep
+
+            # if there are remotes still waiting on connect, and we haven't
+            # created a new container, add a small sleep to avoid a rapid retry
+            with self._lock:
+                connecting = len(self._connecting_queue)
+            if connecting > 0:
+                self._stopped.wait(timeout=0.1)
+                continue
+
+            # phase 4: wait for work to become available
+
+            with self._lock:
+                self._lock.wait_for(
+                    lambda: (self._to_reserve > 0 and self._has_capacity())
+                    or self._stopped.is_set(),
+                )
+
     def get_remote(self, block=True):
         with self._lock:
             if block:
-                self._lock.wait_for(
-                    lambda: (self._to_reserve > 0 and self._has_capacity()) or self._stopped,
-                )
+                self._lock.wait_for(lambda: len(self._ready_queue) > 0 or self._stopped.is_set())
 
-            if self._stopped:
+            if self._stopped.is_set():
                 raise ProvisionerError("the provisioner is stopped")
 
-            if self._to_reserve <= 0 or not self._has_capacity():
-                return None
+            try:
+                item = self._ready_queue.popleft()
+            except IndexError:
+                return None  # only non-blocking
 
-            self._to_reserve -= 1
-            self._reserving += 1
-
-        remote = None
-        try:
-            cmd = (
-                "podman", "container", "run", "--quiet", "--detach", "--pull", "never",
-                *self.run_options, self.image, *self.run_command,
-            )
-
-            proc = subprocess.run(cmd, check=True, text=True, stdout=subprocess.PIPE)
-            container_id = proc.stdout.rstrip("\n")
-            self.logger.debug(f"new container: {cmd} --> {container_id}")
-
-            def release_hook(remote):
-                self.logger.debug(f"releasing {remote}")
-                # remove from the list of remotes inside this Provisioner
-                with self._lock:
-                    self._remotes.discard(remote)
-                    self._lock.notify()
-
-            remote = self._make_remote(container_id, release_hook)
-            remote.connect()
-        except BaseException:
-            with self._lock:
-                self._reserving -= 1
-                self._lock.notify()
-            if remote:
-                try:
-                    remote.release()
-                except Exception:
-                    self.logger.warning(f"failed to release {remote}", exc_info=True)
-            raise
-
-        with self._lock:
-            self._reserving -= 1
-            # if .stop() was called while .get_remote() was running
-            if self._stopped:
-                remote.release()
-                raise ProvisionerError("the provisioner is stopped")
-            self._remotes.add(remote)
-
-        return remote
+        return item.result()
 
     def clear(self):
         with self._lock:

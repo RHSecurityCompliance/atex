@@ -7,6 +7,7 @@ import threading
 from pathlib import Path
 
 from ... import util
+from ...connection.podman import PodmanConnection
 from ...connection.ssh import ManagedSSHConnection
 from .. import Executor, ExecutorError
 from .duration import Duration
@@ -383,7 +384,7 @@ class FMFExecutor(Executor):
 
                     elif state == self.State.RECONNECTING:
                         try:
-                            if isinstance(self.conn, ManagedSSHConnection):
+                            if isinstance(self.conn, (ManagedSSHConnection, PodmanConnection)):
                                 self.conn.connect(block=False)
                             else:
                                 self.conn.connect()

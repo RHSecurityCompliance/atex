@@ -176,11 +176,10 @@ class TempVirtProvisioner(Provisioner):
                     ex.submit(_release, remote)
 
     def provision(self, count=1):
-        if self._stopped.is_set():
-            raise ProvisionerError("the provisioner is stopped")
-
-        self.logger.debug(f"provisioning {count}")
         with self._lock:
+            if self._stopped.is_set():
+                raise ProvisionerError("the provisioner is stopped")
+            self.logger.debug(f"provisioning {count}")
             self._to_reserve += count
             self._lock.notify(count)
         self._spin_up_domains()

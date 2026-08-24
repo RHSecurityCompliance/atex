@@ -10,6 +10,12 @@ from atex.provisioner.podman import SystemdPodmanProvisioner, build_systemd_cont
 
 
 class SSHPodmanRemote(Remote, connection.podman.SystemdPodmanConnection):
+    # how many times to retry the SSH connection while the container's sshd is
+    # still starting up - pasta/slirp may accept the TCP connection but stall
+    # data until sshd is listening, confusing ssh into a kex disconnect
+    # (~5 minutes of worker poll retries, like TempVirtProvisioner)
+    connect_retries = 3000
+
     def __init__(self, container, ssh_host, ssh_port, ssh_key, *, release_hook):
         self._lock = threading.RLock()
         super().__init__(container=container)
@@ -18,28 +24,49 @@ class SSHPodmanRemote(Remote, connection.podman.SystemdPodmanConnection):
         self.ssh_key = ssh_key
         self.release_hook = release_hook
         self._ssh_conn = None
+        self._connect_retries = self.connect_retries
         self._release_called = False
 
-    def connect(self):
+    def connect(self, *, block=True):
         # wait for systemd via crun exec
-        super().connect()
-        # then connect via SSH
-        util.wait_for_sshd(self.ssh_host, self.ssh_port)
-        new_conn = ManagedSSHConnection({
-            "Hostname": self.ssh_host,
-            "Port": str(self.ssh_port),
-            "IdentityFile": Path(self.ssh_key).absolute(),
-            "User": "root",
-        })
-        new_conn.connect()
+        # (raises BlockingIOError if not block and systemd is not up yet)
+        super().connect(block=block)
+
+        # lazily create the SSH connection once the container is up, so that
+        # repeated non-blocking connect() polls reuse the same ControlMaster
         with self._lock:
-            self._ssh_conn = new_conn
+            if self._ssh_conn is None:
+                self._ssh_conn = ManagedSSHConnection({
+                    "Hostname": self.ssh_host,
+                    "Port": str(self.ssh_port),
+                    "IdentityFile": Path(self.ssh_key).absolute(),
+                    "User": "root",
+                })
+            conn = self._ssh_conn
+
+        # then connect via SSH
+        if block:
+            util.wait_for_sshd(self.ssh_host, self.ssh_port)
+            conn.connect(block=True)
+        else:
+            try:
+                # raises BlockingIOError while the ControlMaster is coming up
+                conn.connect(block=False)
+            except ConnectionError:
+                # pasta/slirp may accept the TCP connection but stall data until
+                # sshd is actually listening, confusing ssh into a kex disconnect;
+                # retry on a later poll (bounded), like TempVirtProvisioner does
+                self._connect_retries -= 1
+                if self._connect_retries <= 0:
+                    raise
+                raise BlockingIOError("sshd not ready yet") from None
 
     def disconnect(self):
         with self._lock:
             if self._ssh_conn:
                 self._ssh_conn.disconnect()
                 self._ssh_conn = None
+            self._connect_retries = self.connect_retries
         super().disconnect()
 
     def cmd(self, command, *, func=subprocess.run, **func_args):

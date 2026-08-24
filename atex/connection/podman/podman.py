@@ -13,37 +13,39 @@ class PodmanConnection(Connection):
 
         self.container = container
         self._container_id = None
-        self._rootless = True
+        self._rootless = None
         self._connected = False
 
-    def connect(self):
+    def connect(self, *, block=True):  # noqa: ARG002
         self.logger.info(f"connecting to {self.container}")
 
-        # get the full long OCI container ID, not just a short ID or podman name
-        # (needed by "crun exec")
-        proc = subprocess.run(
-            ("podman", "inspect", "--format", "{{.ID}}", self.container),
-            stdout=subprocess.PIPE,
-            text=True,
-            check=True,
-        )
-        self._container_id = proc.stdout.strip()
+        try:
+            if self._container_id is None:
+                proc = subprocess.run(
+                    ("podman", "inspect", "--format", "{{.ID}}", self.container),
+                    stdout=subprocess.PIPE,
+                    text=True,
+                    check=True,
+                )
+                self._container_id = proc.stdout.strip()
 
-        # check if the podman is running as rootful/rootless
-        proc = subprocess.run(
-            ("podman", "info", "--format", "{{.Host.Security.Rootless}}"),
-            stdout=subprocess.PIPE,
-            text=True,
-            check=True,
-        )
-        rootless = proc.stdout.strip()
-        match rootless:
-            case "true":
-                self._rootless = True
-            case "false":
-                self._rootless = False
-            case _:
-                raise RuntimeError(f"invalid Rootless value: {rootless}")
+            if self._rootless is None:
+                proc = subprocess.run(
+                    ("podman", "info", "--format", "{{.Host.Security.Rootless}}"),
+                    stdout=subprocess.PIPE,
+                    text=True,
+                    check=True,
+                )
+                rootless = proc.stdout.strip()
+                match rootless:
+                    case "true":
+                        self._rootless = True
+                    case "false":
+                        self._rootless = False
+                    case _:
+                        raise RuntimeError(f"invalid Rootless value: {rootless}")
+        except subprocess.CalledProcessError as e:
+            raise ConnectionError(e) from e
 
         self._connected = True
 
@@ -100,11 +102,22 @@ class PodmanConnection(Connection):
 class SystemdPodmanConnection(PodmanConnection):
     systemd_boot_wait = 3000  # tenths of a second
 
-    def _wait_for_systemd(self):
+    def __init__(self, container):
+        super().__init__(container)
+        self._systemd_boot_remaining = self.systemd_boot_wait
+
+    def disconnect(self):
+        super().disconnect()
+        self._systemd_boot_remaining = self.systemd_boot_wait
+
+    def _wait_for_systemd(self, block=True):
         # wait for the full system to be up
         # (--wait doesn't exist on old RHELs and needs extra waiting
         #  for /run/systemd/private)
-        for _ in range(self.systemd_boot_wait):
+        if self._systemd_boot_remaining <= 0:
+            raise RuntimeError("systemctl is-system-running timed out")
+        while self._systemd_boot_remaining > 0:
+            self._systemd_boot_remaining -= 1
             proc = super().cmd(
                 ("systemctl", "is-system-running"),
                 stdout=subprocess.PIPE,
@@ -114,14 +127,21 @@ class SystemdPodmanConnection(PodmanConnection):
             )
             out = proc.stdout.strip()
             if out in (b"running", b"degraded"):
+                return True
+            if not block:
+                if self._systemd_boot_remaining > 0:
+                    return False
                 break
             time.sleep(0.1)
-        else:
-            errout = proc.stderr.strip()
-            raise RuntimeError(f"systemctl is-system-running failed: {out} ({errout})")
+        errout = proc.stderr.strip()
+        raise RuntimeError(f"systemctl is-system-running failed: {out} ({errout})")
 
-    def connect(self):
-        super().connect()
+    def connect(self, *, block=True):
+        super().connect(block=block)
         self.logger.debug(f"waiting for systemd on {self.container}")
-        self._wait_for_systemd()
+        if block:
+            self._wait_for_systemd(block=True)
+        else:
+            if not self._wait_for_systemd(block=False):
+                raise BlockingIOError("systemd not ready yet")
         self.logger.debug(f"wait for systemd finished on {self.container}")

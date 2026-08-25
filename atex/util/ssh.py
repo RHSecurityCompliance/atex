@@ -1,7 +1,7 @@
+import contextlib
 import errno
 import socket
 import subprocess
-import threading
 import time
 from pathlib import Path
 
@@ -18,81 +18,6 @@ def ssh_keygen(dest_dir, key_type="rsa"):
     return (dest_dir / f"key_{key_type}", dest_dir / f"key_{key_type}.pub")
 
 
-def wait_for_sshd(host, port, *, event=None, logger=NULL_LOGGER):
-    """
-    Wait for a real OpenSSH server to start responding on `host`:`port`,
-    in an interruptible way.
-
-    - `event` is an optional `threading.Event` that, when set, interrupts
-      the wait. If None, the wait blocks until sshd is up.
-
-    Return True if successful, False if `event` was set and the waiting
-    was thus interrupted.
-    """
-    event = event or threading.Event()
-
-    # 2 secs to reply over connected socket initially,
-    # with exponential back off (in case the system is too slow
-    # to respond)
-    backoff_sleep = 2
-
-    while True:
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            s.setblocking(False)
-
-            # try connecting
-            try:
-                s.connect((host, port))
-            except BlockingIOError:
-                pass
-
-            connected = False
-            while not connected:
-                if event.wait(timeout=0.1):
-                    return False
-                # wait for the connection to either fail (SO_ERROR)
-                if s.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR) != 0:
-                    break
-                # or succeed (getpeername)
-                try:
-                    s.getpeername()
-                except OSError as e:
-                    if e.errno == errno.ENOTCONN:
-                        continue
-                    break
-                else:
-                    connected = True
-
-            # re-try connecting with a new socket
-            if not connected:
-                logger.debug("connection attempt to sshd failed, re-trying")
-                continue
-
-            # connected, try receiving
-            sshd_signature = False
-            end = time.monotonic() + backoff_sleep
-            backoff_sleep = min(backoff_sleep * 2, 180)  # up to 3min
-            while not sshd_signature and time.monotonic() < end:
-                if event.wait(timeout=0.1):
-                    return False
-                try:
-                    data = s.recv(4)
-                except BlockingIOError:
-                    continue
-                except OSError:
-                    break
-                else:
-                    if data == b"SSH-":
-                        sshd_signature = True
-                    break
-
-            if not sshd_signature:
-                logger.debug("connected to sshd, but no signature, re-trying")
-                continue
-
-            return True
-
-
 def default_ssh_key():
     ssh_dir = Path.home() / ".ssh"
     if not ssh_dir.is_dir():
@@ -102,3 +27,99 @@ def default_ssh_key():
         if file.name.startswith("id_") and Path(f"{file}.pub").exists():
             return file
     return None
+
+
+def wait_for_sshd(host, port, *, logger=NULL_LOGGER):
+    """
+    Wait for a real OpenSSH server to start responding on `host`:`port`,
+    in an interruptible way.
+
+    This is a generator that performs a complex set of steps of resolving,
+    connecting to and reading a remote non-blocking socket, driven only by
+    the caller's repeated `next()` iteration, up until either StopIteration
+    (success) or any other exception (failure).
+
+    Again - the caller is responsible for any `sleep(1)` to guide the frequency
+    of checking the connectivity and they are free to perform other tasks
+    outside the scope of this function.
+
+    - `logger` is an optional logging-based logger to write in-progress
+      debug details to.
+    """
+    # resolve the name once, retrying until DNS answers
+    # - unfortunately, this may block for some time
+    addrs = None
+    while addrs is None:
+        try:
+            addrs = socket.getaddrinfo(host, port, type=socket.SOCK_STREAM)
+        except socket.gaierror as e:
+            logger.debug(f"cannot resolve {host} yet, re-trying: {e}")
+            yield
+
+    if not addrs:
+        raise ConnectionError(f"unable to get a single address for {host}")
+    family, _, _, _, sockaddr = addrs[0]
+
+    backoff = 1
+    while True:
+        backoff = min(backoff * 2, 180)  # up to 3min
+        deadline = time.monotonic() + backoff
+        with socket.socket(family, socket.SOCK_STREAM) as s:
+            s.setblocking(False)
+
+            try:
+                s.connect(sockaddr)
+            except BlockingIOError:
+                # this is expected and normal for a non-blocking socket
+                pass
+
+            connected = False
+            while not connected and time.monotonic() < deadline:
+                yield
+                # has connecting failed?
+                if s.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR) != 0:
+                    break
+                # has it succeeded, but is still in progress?
+                try:
+                    s.getpeername()
+                except OSError as e:
+                    if e.errno == errno.ENOTCONN:
+                        continue
+                    break
+                connected = True
+            if not connected:
+                logger.debug("no connection to sshd, re-trying")
+                continue
+
+            # connected: read enough of the banner to recognise sshd,
+            # accumulating in case it arrives in more than one piece
+            buffer = b""
+            while time.monotonic() < deadline:
+                yield
+                try:
+                    chunk = s.recv(4 - len(buffer))
+                except BlockingIOError:
+                    continue
+                except OSError:
+                    break
+                # no data to read - closed connection?
+                if not chunk:
+                    break
+                buffer += chunk
+                if buffer == b"SSH-":
+                    return
+                # could the less-than-4 bytes we have potentially match or not?
+                if not b"SSH-".startswith(buffer):
+                    raise ConnectionError(f"remote side is not sshd: {buffer!r}")
+            logger.debug("connected to sshd, but no banner, re-trying")
+
+
+def blocking_wait_for_sshd(host, port, *, logger=NULL_LOGGER, sleep=1):
+    """
+    Wait for a real OpenSSH server to start responding on `host`:`port`.
+
+    This is just a fully synchronous blocking wrapper of `wait_for_ssh()`.
+    """
+    with contextlib.closing(wait_for_sshd(host, port, logger=logger)) as waiter:
+        for _ in waiter:
+            time.sleep(sleep)

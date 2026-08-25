@@ -126,7 +126,7 @@ def reserve(args):
     domain_ssh_host = "127.0.0.1" if args.helper_localhost else args.helper_host
 
     logging.info(f"waiting for sshd on {domain_ssh_host}:{domain_ssh_port}")
-    util.wait_for_sshd(domain_ssh_host, int(domain_ssh_port))
+    util.blocking_wait_for_sshd(domain_ssh_host, int(domain_ssh_port))
 
     while True:
         logging.info(

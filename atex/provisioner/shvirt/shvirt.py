@@ -1,3 +1,4 @@
+import contextlib
 import json
 import math
 import subprocess
@@ -314,10 +315,11 @@ class SharedVirtProvisioner(Provisioner):
             )
 
             self.logger.debug(f"waiting for sshd on {remote}")
-            if not util.wait_for_sshd(
-                self.domain_host, int(port), event=self._reserving_exit, logger=self.logger,
-            ):
-                return
+            waiter_gen = util.wait_for_sshd(self.domain_host, int(port), logger=self.logger)
+            with contextlib.closing(waiter_gen) as waiter:
+                for _ in waiter:
+                    if self._reserving_exit.wait(timeout=0.1):
+                        return
 
             self.logger.debug(f"connecting to {remote}")
             retries = 0

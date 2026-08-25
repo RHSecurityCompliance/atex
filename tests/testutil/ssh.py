@@ -1,83 +1,94 @@
+import contextlib
 import subprocess
 import threading
+import time
 from pathlib import Path
 
-from atex import connection, util
-from atex.connection import NotConnectedError
+from atex import util
 from atex.connection.ssh import ManagedSSHConnection
 from atex.provisioner import Remote
-from atex.provisioner.podman import SystemdPodmanProvisioner, build_systemd_container_with_deps
+from atex.provisioner.podman import (
+    SystemdPodmanProvisioner,
+    build_systemd_container_with_deps,
+)
 
 
-class SSHPodmanRemote(Remote, connection.podman.SystemdPodmanConnection):
-    # how many times to retry the SSH connection while the container's sshd is
-    # still starting up - pasta/slirp may accept the TCP connection but stall
-    # data until sshd is listening, confusing ssh into a kex disconnect
-    # (~5 minutes of worker poll retries, like TempVirtProvisioner)
+class SSHPodmanRemote(Remote, ManagedSSHConnection):
+    # how many worker poll steps to wait for the container's sshd to come up
+    # before giving up (~5 minutes worth of retries)
     connect_retries = 3000
 
-    def __init__(self, container, ssh_host, ssh_port, ssh_key, *, release_hook):
+    def __init__(self, container, *, ssh_host, ssh_port, ssh_key, release_hook):
+        super().__init__({
+            "Hostname": ssh_host,
+            "Port": str(ssh_port),
+            "IdentityFile": Path(ssh_key).absolute(),
+            "User": "root",
+        })
         self._lock = threading.RLock()
-        super().__init__(container=container)
+        self.container = container
         self.ssh_host = ssh_host
         self.ssh_port = ssh_port
         self.ssh_key = ssh_key
         self.release_hook = release_hook
-        self._ssh_conn = None
-        self._connect_retries = self.connect_retries
         self._release_called = False
+        self._connect_waiter = None
+
+    def _connect_gen(self):
+        with contextlib.closing(
+            util.wait_for_sshd(self.ssh_host, self.ssh_port, logger=self.logger),
+        ) as waiter:
+            for _ in range(self.connect_retries):
+                try:
+                    next(waiter)
+                except StopIteration:
+                    break
+                yield
+            else:
+                raise ConnectionError(
+                    f"sshd did not come up on {self.ssh_host}:{self.ssh_port}",
+                )
+
+        while True:
+            try:
+                super().connect(block=False)
+                return
+            except BlockingIOError:
+                yield
 
     def connect(self, *, block=True):
-        # wait for systemd via crun exec
-        # (raises BlockingIOError if not block and systemd is not up yet)
-        super().connect(block=block)
-
-        # lazily create the SSH connection once the container is up, so that
-        # repeated non-blocking connect() polls reuse the same ControlMaster
         with self._lock:
-            if self._ssh_conn is None:
-                self._ssh_conn = ManagedSSHConnection({
-                    "Hostname": self.ssh_host,
-                    "Port": str(self.ssh_port),
-                    "IdentityFile": Path(self.ssh_key).absolute(),
-                    "User": "root",
-                })
-            conn = self._ssh_conn
-
-        # then connect via SSH
-        if block:
-            util.wait_for_sshd(self.ssh_host, self.ssh_port)
-            conn.connect(block=True)
-        else:
-            try:
-                # raises BlockingIOError while the ControlMaster is coming up
-                conn.connect(block=False)
-            except ConnectionError:
-                # pasta/slirp may accept the TCP connection but stall data until
-                # sshd is actually listening, confusing ssh into a kex disconnect;
-                # retry on a later poll (bounded), like TempVirtProvisioner does
-                self._connect_retries -= 1
-                if self._connect_retries <= 0:
-                    raise
-                raise BlockingIOError("sshd not ready yet") from None
+            if self._release_called:
+                raise ConnectionError("remote released, cannot connect")
+        if self._connect_waiter is None:
+            self._connect_waiter = self._connect_gen()
+        try:
+            if block:
+                for _ in self._connect_waiter:
+                    time.sleep(0.1)
+            else:
+                try:
+                    next(self._connect_waiter)
+                # a spent (returned) generator raises StopIteration, which reads
+                # as success - fine, connect() is idempotent once connected
+                except StopIteration:
+                    pass  # connected
+                else:
+                    raise BlockingIOError("not connected yet")
+        except BlockingIOError:
+            raise
+        except Exception:
+            # drop the spent generator so the next connect() retries with
+            # a fresh one, instead of a dead generator's next() raising
+            # StopIteration and being misread as connected
+            self._connect_waiter = None
+            raise
 
     def disconnect(self):
-        with self._lock:
-            if self._ssh_conn:
-                self._ssh_conn.disconnect()
-                self._ssh_conn = None
-            self._connect_retries = self.connect_retries
+        if self._connect_waiter is not None:
+            self._connect_waiter.close()
+            self._connect_waiter = None
         super().disconnect()
-
-    def cmd(self, command, *, func=subprocess.run, **func_args):
-        if not self._ssh_conn:
-            raise NotConnectedError
-        return self._ssh_conn.cmd(command, func=func, **func_args)
-
-    def rsync(self, *args, func=subprocess.run, **func_args):
-        if not self._ssh_conn:
-            raise NotConnectedError
-        return self._ssh_conn.rsync(*args, func=func, **func_args)
 
     def release(self):
         with self._lock:
@@ -93,9 +104,14 @@ class SSHPodmanRemote(Remote, connection.podman.SystemdPodmanConnection):
             finally:
                 subprocess.run(
                     ("podman", "container", "rm", "-f", "-t", "0", self.container),
-                    check=False,
+                    check=False,  # ignore if it fails
                     stdout=subprocess.DEVNULL,
                 )
+
+    def __str__(self):
+        class_name = self.__class__.__name__
+        name = f"{self.container[:17]}..." if len(self.container) > 20 else self.container
+        return f"{class_name}({name}, root@{self.ssh_host}:{self.ssh_port})"
 
 
 class SSHPodmanProvisioner(SystemdPodmanProvisioner):

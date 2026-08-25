@@ -4,7 +4,6 @@ import copy
 import datetime
 import importlib.resources
 import json
-import logging
 import os
 import re
 import subprocess
@@ -363,8 +362,8 @@ class PipelineLogStreamer:
     # how frequently to check for pipeline.log updates (seconds)
     pipeline_query_limit = 30
 
-    def __init__(self, request, logger=None):
-        self.logger = logger or logging.getLogger("atex")
+    def __init__(self, request, logger=util.NULL_LOGGER):
+        self.logger = logger
         self.request = request
 
     def _wait_for_entry(self):
@@ -519,9 +518,9 @@ class Reserve:
         self, *, compose, arch="x86_64", pool=None, hardware=None, kickstart=None,
         timeout=60, ssh_key=None, source_host=None, skip_guest_setup=False,
         variables=None, secrets=None, tags=None, artifacts=None, tmt_env=None,
-        os_cleaning=False, api=None, logger=None,
+        os_cleaning=False, api=None, logger=util.NULL_LOGGER,
     ):
-        self.logger = logger or logging.getLogger("atex")
+        self.logger = logger
 
         spec = {
             "test": {

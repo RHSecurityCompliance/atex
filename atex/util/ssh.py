@@ -1,10 +1,11 @@
 import errno
-import logging
 import socket
 import subprocess
 import threading
 import time
 from pathlib import Path
+
+from .null_logger import NULL_LOGGER
 
 
 def ssh_keygen(dest_dir, key_type="rsa"):
@@ -17,7 +18,7 @@ def ssh_keygen(dest_dir, key_type="rsa"):
     return (dest_dir / f"key_{key_type}", dest_dir / f"key_{key_type}.pub")
 
 
-def wait_for_sshd(host, port, *, event=None, logger=None):
+def wait_for_sshd(host, port, *, event=None, logger=NULL_LOGGER):
     """
     Wait for a real OpenSSH server to start responding on `host`:`port`,
     in an interruptible way.
@@ -28,7 +29,6 @@ def wait_for_sshd(host, port, *, event=None, logger=None):
     Return True if successful, False if `event` was set and the waiting
     was thus interrupted.
     """
-    logger = logger or logging.getLogger("atex")
     event = event or threading.Event()
 
     # 2 secs to reply over connected socket initially,

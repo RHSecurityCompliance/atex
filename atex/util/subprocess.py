@@ -1,6 +1,8 @@
 import logging
 import subprocess
 
+from .null_logger import NULL_LOGGER
+
 
 def subprocess_stream(cmd, *, stream="stdout", check=False, input=None, **kwargs):
     """
@@ -53,7 +55,7 @@ def subprocess_stream(cmd, *, stream="stdout", check=False, input=None, **kwargs
     return (proc, generate_lines())
 
 
-def subprocess_log(cmd, *, logger=None, level=logging.DEBUG, **kwargs):
+def subprocess_log(cmd, *, logger=NULL_LOGGER, level=logging.DEBUG, **kwargs):
     """
     A wrapper to stream every (text) line output from the process to the
     logging module.
@@ -62,7 +64,6 @@ def subprocess_log(cmd, *, logger=None, level=logging.DEBUG, **kwargs):
 
     - `logger` is a logging-API object to log messages to.
     """
-    logger = logger or logging.getLogger("atex")
     proc, lines = subprocess_stream(cmd, **kwargs)
     logger.log(level, f"subprocess_log {proc.pid}: '{cmd}' with {kwargs=}")
     for line in lines:

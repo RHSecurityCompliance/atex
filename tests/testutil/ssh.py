@@ -14,6 +14,7 @@ from atex.provisioner.podman import (
 
 
 class SSHPodmanRemote(Remote, ManagedSSHConnection):
+    podman_command = ("podman",)
     # how many worker poll steps to wait for the container's sshd to come up
     # before giving up (~5 minutes worth of retries)
     connect_retries = 3000
@@ -103,7 +104,7 @@ class SSHPodmanRemote(Remote, ManagedSSHConnection):
                 self.release_hook(self)
             finally:
                 subprocess.run(
-                    ("podman", "container", "rm", "-f", "-t", "0", self.container),
+                    (*self.podman_command, "container", "rm", "-f", "-t", "0", self.container),
                     check=False,  # ignore if it fails
                     stdout=subprocess.DEVNULL,
                 )
@@ -124,7 +125,7 @@ class SSHPodmanProvisioner(SystemdPodmanProvisioner):
     def _make_remote(self, container_id, release_hook):
         # get podman-style published port mapping, like "127.0.0.1:12345"
         proc = subprocess.run(
-            ("podman", "port", container_id, "22"),
+            (*self._podman, "port", container_id, "22"),
             check=True, text=True, stdout=subprocess.PIPE,
         )
         output = proc.stdout.rstrip()

@@ -35,18 +35,22 @@ class SystemdPodmanProvisioner(PodmanProvisioner):
         - `extra_content` is appended to the Containerfile.
 
         - `kwargs` are passed to the provisioner constructor.
+
+        The image is built and removed using the `podman_command` class
+        attribute (see PodmanProvisioner).
         """
         built = build_systemd_container_with_deps(
             origin,
             extra_pkgs=extra_pkgs,
             extra_content=extra_content,
+            podman_command=cls.podman_command,
         )
         try:
             with cls(built, **kwargs) as instance:
                 yield instance
         finally:
             subprocess.run(
-                ("podman", "image", "rm", "-f", built),
+                (*cls.podman_command, "image", "rm", "-f", built),
                 check=False,  # ignore if it fails
                 stdout=subprocess.DEVNULL,
             )

@@ -6,12 +6,16 @@ import uuid
 from ... import util
 
 
-def pull_image(origin):
+def pull_image(origin, *, podman_command=("podman",)):
     """
     Pull a podman image from a repository.
+
+    - `origin` is an image reference to pull from a repository.
+
+    - `podman_command` is the podman CLI command with args to use.
     """
     proc = subprocess.run(
-        ("podman", "image", "pull", "-q", origin),
+        (*podman_command, "image", "pull", "-q", origin),
         check=True,
         text=True,
         stdout=subprocess.PIPE,
@@ -19,7 +23,10 @@ def pull_image(origin):
     return proc.stdout.rstrip("\n")
 
 
-def build_container_with_deps(origin, tag=None, *, extra_pkgs=None, extra_content=""):
+def build_container_with_deps(
+    origin, tag=None, *,
+    extra_pkgs=None, extra_content="", podman_command=("podman",),
+):
     """
     Create a new podman image with dependencies needed for PodmanProvisioner.
 
@@ -31,6 +38,8 @@ def build_container_with_deps(origin, tag=None, *, extra_pkgs=None, extra_conten
       the base PodmanProvisioner dependencies.
 
     - `extra_content` is appended to the Containerfile.
+
+    - `podman_command` is the podman CLI command with args to use.
     """
     # podman *requires* tags for images
     # - this is an undocumented quirk; any image without a tag is considered
@@ -68,7 +77,7 @@ def build_container_with_deps(origin, tag=None, *, extra_pkgs=None, extra_conten
         tmpf.close()
         proc = subprocess.run(
             (
-                "podman", "image", "build", "-q", "-t", tag,
+                *podman_command, "image", "build", "-q", "-t", tag,
                 "--build-arg", f"BASE_IMAGE={origin}",
                 "-f", tmpf.name, ".",
             ),
@@ -79,7 +88,10 @@ def build_container_with_deps(origin, tag=None, *, extra_pkgs=None, extra_conten
         return proc.stdout.rstrip("\n")
 
 
-def build_systemd_container_with_deps(origin, tag=None, *, extra_pkgs=None, extra_content=""):
+def build_systemd_container_with_deps(
+    origin, tag=None, *,
+    extra_pkgs=None, extra_content="", podman_command=("podman",),
+):
     """
     Create a new podman image with dependencies needed for
     SystemdPodmanProvisioner.
@@ -95,6 +107,8 @@ def build_systemd_container_with_deps(origin, tag=None, *, extra_pkgs=None, extr
       the base dependencies and `systemd`.
 
     - `extra_content` is appended to the Containerfile.
+
+    - `podman_command` is the podman CLI command with args to use.
     """
     pkgs = ["systemd", "dbus-broker"]
     if extra_pkgs:
@@ -113,4 +127,10 @@ def build_systemd_container_with_deps(origin, tag=None, *, extra_pkgs=None, extr
     )
     # add user-passed content (if any)
     content += extra_content
-    return build_container_with_deps(origin, tag=tag, extra_pkgs=pkgs, extra_content=content)
+    return build_container_with_deps(
+        origin,
+        tag=tag,
+        extra_pkgs=pkgs,
+        extra_content=content,
+        podman_command=podman_command,
+    )

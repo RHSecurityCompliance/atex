@@ -40,7 +40,7 @@ class PodmanRemote(Remote, connection.podman.PodmanConnection):
                 self.release_hook(self)
             finally:
                 subprocess.run(
-                    ("podman", "container", "rm", "-f", "-t", "0", self.container),
+                    (*self.podman_command, "container", "rm", "-f", "-t", "0", self.container),
                     check=False,  # ignore if it fails
                     stdout=subprocess.DEVNULL,
                 )
@@ -73,6 +73,8 @@ class PodmanProvisioner(Provisioner):
     - `run_command` is an iterable (cmd + args) specifying the command
       to execute as the "init system" in the container.
     """
+
+    podman_command = ("podman",)
 
     def __init__(
         self, image, *,
@@ -202,7 +204,8 @@ class PodmanProvisioner(Provisioner):
 
                 try:
                     cmd = (
-                        "podman", "container", "run", "--quiet", "--detach", "--pull", "never",
+                        *self.podman_command,
+                        "container", "run", "--quiet", "--detach", "--pull", "never",
                         *self.run_options, self.image, *self.run_command,
                     )
                     proc = subprocess.run(cmd, check=True, text=True, stdout=subprocess.PIPE)
@@ -231,7 +234,10 @@ class PodmanProvisioner(Provisioner):
                             self.logger.warning(f"failed to release {remote}", exc_info=True)
                     elif container_id:
                         subprocess.run(
-                            ("podman", "container", "rm", "-f", "-t", "0", container_id),
+                            (
+                                *self.podman_command,
+                                "container", "rm", "-f", "-t", "0", container_id,
+                            ),
                             check=False,
                             stdout=subprocess.DEVNULL,
                         )

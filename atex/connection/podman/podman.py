@@ -1,3 +1,4 @@
+import shlex
 import subprocess
 import time
 
@@ -8,6 +9,9 @@ _get_logger = util.get_loggers("atex.connection.podman")
 
 
 class PodmanConnection(Connection):
+    podman_command = ("podman",)
+    crun_command = ("crun",)
+
     def __init__(self, container):
         self.logger = _get_logger()
 
@@ -22,7 +26,7 @@ class PodmanConnection(Connection):
         try:
             if self._container_id is None:
                 proc = subprocess.run(
-                    ("podman", "inspect", "--format", "{{.ID}}", self.container),
+                    (*self.podman_command, "inspect", "--format", "{{.ID}}", self.container),
                     stdout=subprocess.PIPE,
                     text=True,
                     check=True,
@@ -31,7 +35,7 @@ class PodmanConnection(Connection):
 
             if self._rootless is None:
                 proc = subprocess.run(
-                    ("podman", "info", "--format", "{{.Host.Security.Rootless}}"),
+                    (*self.podman_command, "info", "--format", "{{.Host.Security.Rootless}}"),
                     stdout=subprocess.PIPE,
                     text=True,
                     check=True,
@@ -62,12 +66,12 @@ class PodmanConnection(Connection):
         if self._rootless:
             crun_cmd = (
                 "systemd-run", "--quiet", "--user", "--scope", "--collect", "--",
-                "crun", "exec", self._container_id, *command,
+                *self.crun_command, "exec", self._container_id, *command,
             )
         else:
             crun_cmd = (
                 "env", "-u", "XDG_RUNTIME_DIR",
-                "crun", "exec", self._container_id, *command,
+                *self.crun_command, "exec", self._container_id, *command,
             )
 
         return func(crun_cmd, **func_args)
@@ -76,25 +80,29 @@ class PodmanConnection(Connection):
         if not self._connected:
             raise NotConnectedError("this Connection requires .connect() first")
 
-        # use shell to strip off the destination argument rsync passes
-        #   cmd[0]=/bin/bash cmd[1]=-c cmd[2]=exec crun ... cmd[3]=destination
-        #   cmd[4]=rsync cmd[5]=--server cmd[6]=-vve.LsfxCIvu cmd[7]=. cmd[8]=.
         if self._rootless:
-            crun_cmd = (
-                "/bin/bash -c '"
-                "exec systemd-run --quiet --user --scope --collect -- "
-                f'crun exec {self._container_id} "$@"'
-                "'"
+            crun_argv = (
+                "systemd-run", "--quiet", "--user", "--scope", "--collect", "--",
+                *self.crun_command, "exec", self._container_id,
             )
         else:
-            crun_cmd = (
-                "/bin/bash -c '"
-                f'env -u XDG_RUNTIME_DIR crun exec {self._container_id} "$@"'
-                "'"
+            crun_argv = (
+                "env", "-u", "XDG_RUNTIME_DIR",
+                *self.crun_command, "exec", self._container_id,
             )
 
+        # rsync runs the -e command as "<cmd> <destination> rsync --server ...",
+        # so pass crun_argv as bash positional params ($1..$N), then exec them
+        # with the rsync args ($N+2..) while dropping the destination at $N+1.
+        # the whole rsh string is shlex-quoted so rsync's -e tokenizer (which
+        # honors quotes but does no backslash escaping) splits it back into the
+        # original words - keeping any spaces inside crun_command intact.
+        n = len(crun_argv)
+        script = f'exec "${{@:1:{n}}}" "${{@:{n + 2}}}"'
+        rsh = shlex.join(("/bin/bash", "-c", script, "_", *crun_argv))
+
         return func(
-            ("rsync", "-e", crun_cmd, *args),
+            ("rsync", "-e", rsh, *args),
             **{"check": True, "stdin": subprocess.DEVNULL} | func_args,
         )
 

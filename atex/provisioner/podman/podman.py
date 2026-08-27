@@ -32,22 +32,26 @@ class PodmanRemote(Remote, connection.podman.PodmanConnection):
         self.release_hook = release_hook
 
     def release(self):
+        # do everything under the lock - the storage for the container backing
+        # this Remote must not be removed/umounted prior to the 'rm' below
         with self._lock:
             if self._release_called:
                 return
             else:
                 self._release_called = True
-        try:
-            self.disconnect()
-        finally:
+
             try:
-                self.release_hook(self)
+                self.disconnect()
             finally:
+                # needs to be called before release_hook() removes it from remotes,
+                # as .stop() collects remotes to a list when holding just the
+                # provisioner-wide lock, not our self._lock
                 subprocess.run(
                     (*self.podman_command, "container", "rm", "-f", "-t", "0", self.container),
                     check=False,  # ignore if it fails
                     stdout=subprocess.DEVNULL,
                 )
+                self.release_hook(self)
 
     def __str__(self):
         class_name = self.__class__.__name__

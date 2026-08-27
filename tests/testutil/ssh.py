@@ -91,23 +91,23 @@ class SSHPodmanRemote(Remote, ManagedSSHConnection):
             self._connect_waiter = None
         super().disconnect()
 
+    # see PodmanRemote for why this is structured this way
     def release(self):
         with self._lock:
             if self._release_called:
                 return
             else:
                 self._release_called = True
-        try:
-            self.disconnect()
-        finally:
+
             try:
-                self.release_hook(self)
+                self.disconnect()
             finally:
                 subprocess.run(
                     (*self.podman_command, "container", "rm", "-f", "-t", "0", self.container),
                     check=False,  # ignore if it fails
                     stdout=subprocess.DEVNULL,
                 )
+                self.release_hook(self)
 
     def __str__(self):
         class_name = self.__class__.__name__

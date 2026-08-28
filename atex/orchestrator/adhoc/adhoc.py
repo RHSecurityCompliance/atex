@@ -212,7 +212,7 @@ class AdHocOrchestrator(Orchestrator):
                 finfo.artifacts.cleanup()
 
         else:
-            self.logger.info(f"'{finfo.test_name}' completed, ingesting result")
+            self.logger.info(f"ingesting completed '{finfo.test_name}' from {finfo.remote}")
 
             # ingest the artifacts into the main aggregator
             self._ingest_queue.start_thread(

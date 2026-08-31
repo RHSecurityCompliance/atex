@@ -93,6 +93,40 @@ with SystemdPodmanProvisioner.build_from(pulled) as p:
     ...
 ```
 
+## Multiple provisioner instances and `isolate=True`
+
+Podman is a very buggy piece of software when it comes to parallel `podman`
+commands being executed - even v6.0 has frequent race conditions and SQLite
+DB corruptions. As such, **never use multiple PodmanProvisioner instances**
+under a single user (or root), and even with a single one, never issue manual
+`podman` commands while the ATEX-using script is running.
+
+If you have root, the ideal solution is to add multiple unprivileged users,
+and configure each PodmanProvisioner instance to use `sudo`:
+
+```python
+from atex.provisioner.podman import PodmanProvisioner
+
+inst = PodmanProvisioner(...)
+inst.podman_command = ("sudo", "-i", "-u", "foobar1", "--", "podman")
+inst.crun_command = ("sudo", "-i", "-u", "foobar1", "--", "crun")
+```
+
+Otherwise, PodmanProvisioner can partially isolate its container storage
+to avoid at least the DB-corrupting race conditions, at the cost of a small
+slowdown during container creation:
+
+```python
+from atex.provisioner.podman import PodmanProvisioner
+
+with PodmanProvisioner(..., isolate=True):
+    ...
+```
+
+This creates a temporary directory under the regular container storage dir,
+e.g. `/var/lib/containers` or `~/.local/share/containers`, and passes extra
+CLI args to `podman` to use it.
+
 ## Fedora/RHEL inotify instances limit
 
 When running many SystemdPodmanProvisioner containers with `--userns=auto`,

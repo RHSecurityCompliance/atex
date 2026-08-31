@@ -156,11 +156,13 @@ class PodmanProvisioner(Provisioner):
       to execute as the "init system" in the container.
     """
 
+    # both get propagated to PodmanRemote / PodmanConnection
     podman_command = ("podman",)
+    crun_command = ("crun",)
 
     def __init__(
         self, image, *,
-        max_remotes=10, isolate=True, run_options=None, run_command=("sleep", "inf"),
+        max_remotes=10, isolate=False, run_options=None, run_command=("sleep", "inf"),
     ):
         self._lock = threading.Condition()
         self.logger = _get_logger()
@@ -188,7 +190,7 @@ class PodmanProvisioner(Provisioner):
             if not self._stopped.is_set():
                 raise ProvisionerError("the provisioner is already started")
 
-            self._podman = type(self).podman_command
+            self._podman = self.podman_command
             if self.isolate:
                 self._isolation_handler = _PodmanIsolation(self._podman)
                 self._podman = self._isolation_handler.podman_cmd_with_opts
@@ -322,6 +324,7 @@ class PodmanProvisioner(Provisioner):
 
                     remote = self._make_remote(container_id, release_hook)
                     remote.podman_command = self._podman
+                    remote.crun_command = self.crun_command
                     with self._lock:
                         self._connecting_queue.append(remote)
 

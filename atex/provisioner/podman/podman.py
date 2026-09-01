@@ -238,7 +238,7 @@ class PodmanProvisioner(Provisioner):
                 raise ProvisionerError("the provisioner is stopped")
             self.logger.debug(f"provisioning {count}")
             self._to_reserve += count
-            self._lock.notify(count)
+            self._lock.notify_all()
 
     def _has_capacity(self):
         return len(self._remotes) + self._reserving < self.max_remotes

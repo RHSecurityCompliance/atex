@@ -61,7 +61,6 @@ rm -rf \
 
 # remove testing farm reservation test related files,
 # make the reservation last until pipeline timeout (ignoring its timers)
-touch /var/tmp/.testing-farm-keep
 echo -n > /etc/motd
 rm -rf \
     /root/bin /root/set-hostname /root/.reserved-until /root/.ansible \

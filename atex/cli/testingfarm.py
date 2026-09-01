@@ -1,5 +1,6 @@
 import collections
 import json
+import logging
 import pprint
 import subprocess
 import sys
@@ -199,6 +200,7 @@ def reserve(args):
         os_cleaning=not args.no_cleaning,
         skip_guest_setup=not args.no_skip_guest_setup,
         api=api,
+        logger=logging.getLogger("api"),
     )
     with res as m:
         print(f"Got machine: {m}")
@@ -241,7 +243,7 @@ def watch_pipeline(args):
 
     print("Querying pipeline.log")
     try:
-        for line in tf.PipelineLogStreamer(request):
+        for line in tf.PipelineLogStreamer(request, logger=logging.getLogger("pipeline")):
             sys.stdout.write(line)
             sys.stdout.write("\n")
     except tf.GoneAwayError:

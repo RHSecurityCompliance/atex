@@ -118,7 +118,7 @@ def blocking_wait_for_sshd(host, port, *, logger=NULL_LOGGER, sleep=1):
     """
     Wait for a real OpenSSH server to start responding on `host`:`port`.
 
-    This is just a fully synchronous blocking wrapper of `wait_for_ssh()`.
+    This is just a fully synchronous blocking wrapper of `wait_for_sshd()`.
     """
     with contextlib.closing(wait_for_sshd(host, port, logger=logger)) as waiter:
         for _ in waiter:

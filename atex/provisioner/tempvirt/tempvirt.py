@@ -293,12 +293,15 @@ class TempVirtProvisioner(Provisioner):
         )
 
         self.logger.debug(f"waiting for sshd on {remote}")
-        waiter_gen = util.wait_for_sshd(ssh_options["Hostname"], ssh_port, logger=self.logger)
-        with contextlib.closing(waiter_gen) as waiter:
-            for _ in waiter:
-                if self._stopped.wait(timeout=0.1):
-                    remote.release()
-                    raise RuntimeError
+        try:
+            waiter_gen = util.wait_for_sshd(ssh_options["Hostname"], ssh_port, logger=self.logger)
+            with contextlib.closing(waiter_gen) as waiter:
+                for _ in waiter:
+                    if self._stopped.wait(timeout=0.1):
+                        raise RuntimeError
+        except BaseException:
+            remote.release()
+            raise
 
         self.logger.debug(f"connecting to {remote}")
         retries = 0

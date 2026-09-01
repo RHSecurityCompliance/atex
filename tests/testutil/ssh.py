@@ -82,7 +82,7 @@ class SSHPodmanRemote(Remote, ManagedSSHConnection):
             # drop the spent generator so the next connect() retries with
             # a fresh one, instead of a dead generator's next() raising
             # StopIteration and being misread as connected
-            self._connect_waiter = None
+            self.disconnect()
             raise
 
     def disconnect(self):

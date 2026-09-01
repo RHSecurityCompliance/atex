@@ -128,13 +128,14 @@ class SystemdPodmanConnection(PodmanConnection):
             self._systemd_boot_remaining -= 1
             proc = super().cmd(
                 ("systemctl", "is-system-running"),
+                text=True,
                 stdout=subprocess.PIPE,
                 # also silence systemd-run and crun errors during container
                 # shutdown, when it's off, and when it's being set-up
                 stderr=subprocess.PIPE,
             )
             out = proc.stdout.strip()
-            if out in (b"running", b"degraded"):
+            if out in ("running", "degraded"):
                 return True
             if not block:
                 if self._systemd_boot_remaining > 0:

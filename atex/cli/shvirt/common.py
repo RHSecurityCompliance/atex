@@ -13,7 +13,7 @@ def make_helper_cmd(args):
             "ssh",
             "-oLogLevel=ERROR",
             "-oStrictHostKeyChecking=no", "-oUserKnownHostsFile=/dev/null",
-            "-oConnectionAttempts=3", "-oServerAliveCountMax=4", "-oServerAliveInterval=5",
+            "-oConnectionAttempts=3", "-oServerAliveCountMax=10", "-oServerAliveInterval=30",
             "-oTCPKeepAlive=no", "-oEscapeChar=none", "-oRequestTTY=no",
             f"-oIdentityFile={str(Path(args.helper_sshkey).absolute())}",
             f"-oUser={args.helper_user}", f"-oHostname={args.helper_host}",

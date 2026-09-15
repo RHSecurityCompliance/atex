@@ -129,7 +129,6 @@ def install(args):
             "--graphics", "none",
             "--console", "pty",
             "--rng", "/dev/urandom",
-            "--os-variant", "rhel8-unknown",
             "--extra-args", (
                 "brltty=no "  # avoid heavy console spam on missing devices
                 "mitigations=off "  # make things a bit faster during install

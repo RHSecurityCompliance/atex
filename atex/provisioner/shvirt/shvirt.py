@@ -345,11 +345,22 @@ class SharedVirtProvisioner(Provisioner):
                 else:
                     break
 
-            self.logger.debug(f"adding {remote}")
+            # .stop() or .clear() was called while we were reserving,
+            # release the just-reserved Remote
+            abort = False
             with self._lock:
-                self._remotes.add(remote)
-                self._reserving_remotes.add(remote)
-                self._to_reserve -= 1
+                if self._to_reserve <= 0:
+                    abort = True
+                else:
+                    self._to_reserve -= 1
+                    self._remotes.add(remote)
+                    self._reserving_remotes.add(remote)
+            if abort:
+                self.logger.debug(f"releasing unrequested {remote}")
+                remote.release()
+                continue
+
+            self.logger.debug(f"created new {remote}")
             self._reserving_events.release(1)
 
             # delay for reserve_delay before reserving more
@@ -468,10 +479,8 @@ class SharedVirtProvisioner(Provisioner):
         return None
 
     def clear(self):
-        # if there's a reservation in progress, it will lower to_reserve
-        # to -1, but that's fine because the next .provision() will increase
-        # it back to >= 0 and a follow-up .get_remote() will get the one
-        # Remote that was reserved before
+        # any reservation in progress will be released, not returned
+        # via .get_remote(), when it completes
         with self._lock:
             self._to_reserve = 0
 

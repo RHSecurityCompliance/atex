@@ -670,21 +670,28 @@ class Reserve:
         # (it will be failing to login for a while, until the reserve test
         #  installs our ssh pubkey into authorized_keys)
         ssh_cmd = (
-            "ssh", "-q", "-i", ssh_key.absolute(), "-oConnectionAttempts=60",
+            "ssh", "-q", "-i", ssh_key.absolute(),
             "-oStrictHostKeyChecking=no", "-oUserKnownHostsFile=/dev/null",
-            "-oBatchMode=yes", f"{ssh_user}@{ssh_host}",
+            "-oBatchMode=yes",
+            f"{ssh_user}@{ssh_host}",
         )
         while True:
             time.sleep(1)
             self.request.assert_alive()
 
             self.logger.info(f"request {self.request.id} trying ssh {ssh_user}@{ssh_host}")
-            proc = subprocess.run(
-                (*ssh_cmd, "exit 123"),
-                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-            )
-            if proc.returncode == 123:
-                break
+            try:
+                proc = subprocess.run(
+                    (*ssh_cmd, "exit 123"),
+                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                    # don't get stuck in KEX after TCP is already established
+                    timeout=300,
+                )
+            except subprocess.TimeoutExpired:
+                pass
+            else:
+                if proc.returncode == 123:
+                    break
 
         # run OS cleaning script (if requested)
         if self._os_cleaning:

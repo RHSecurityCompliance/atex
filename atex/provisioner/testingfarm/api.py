@@ -681,6 +681,7 @@ class Reserve:
             time.sleep(1)
             self.request.assert_alive()
 
+            self.logger.info(f"request {self.request.id} trying ssh {ssh_user}@{ssh_host}")
             proc = subprocess.run(
                 (*ssh_cmd, "exit 123"),
                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
@@ -690,6 +691,7 @@ class Reserve:
 
         # run OS cleaning script (if requested)
         if self._os_cleaning:
+            self.logger.info(f"request {self.request.id} doing os_cleaning")
             util.subprocess_log(
                 (*ssh_cmd, "bash"),
                 logger=self.logger,

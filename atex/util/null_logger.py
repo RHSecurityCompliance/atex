@@ -10,6 +10,3 @@ NULL_LOGGER.addHandler(logging.NullHandler())
 
 # don't pass the record to parents, handle/discard it in here
 NULL_LOGGER.propagate = False
-
-# work around __module__ based detection in __init__.py
-__all__ = ("NULL_LOGGER",)

@@ -157,7 +157,7 @@ class BeakerlibExecutor(FMFExecutor):
             check=True,
         )
 
-    def run_test(self, *args, env=None):
+    def run_test(self, test_name, artifacts, *, env=None):
         # create BEAKERLIB_DIR, symlink metadata.yaml to it
         quoted_dir = shlex.quote(str(self.work_dir / "beakerlib"))
         # prepare metadata.yaml for rlImport --all
@@ -186,7 +186,7 @@ class BeakerlibExecutor(FMFExecutor):
         }
         env = beakerlib_env if env is None else env | beakerlib_env
 
-        return super().run_test(*args, env=env)
+        return super().run_test(test_name, artifacts, env=env)
 
     def eval_exit_code(self, test_name, reporter, exit_code):  # noqa: ARG002, PLR6301
         if reporter.nameless_result_seen:

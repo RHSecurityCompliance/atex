@@ -69,16 +69,20 @@ def FMFPriorityMixin(fmf_tests):  # noqa: N802
             def priority(name):
                 return fmf_tests.data[name].get("extra-priority", 0)
 
-            # this will be >0 if there are higher-than-0 priority tests,
-            # and <0 if there are no 0-priority tests left
-            # - in either case, we want the highest priority
             best = max(to_run, key=priority)
-            if priority(best) != 0:
-                return best
+            highest_prio = priority(best)
 
-            # only tests with 0 priority left (or with it unspecified),
-            # pass on the original order
-            return super().next_test(to_run, previous)
+            # tests with a positive prio run first; pick highest-prio one
+            if highest_prio > 0:
+                return best
+            # only zero or lower prio left, delegate any zero-prio in orig order
+            # - these must not contain non-zero-prio tests, those run after
+            elif highest_prio == 0:
+                zero_prio = [name for name in to_run if priority(name) == 0]
+                return super().next_test(zero_prio, previous)
+            # only negative priorities remain; pick highest-prio one
+            else:
+                return best
 
     return FMFPriorityMixin
 

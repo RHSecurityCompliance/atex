@@ -199,6 +199,10 @@ class ManagedSSHConnection(Connection):
         self.sudo = sudo
         self._tmpdir = None
         self._master_proc = None
+        # for nice name=value printouts
+        self._log_options = " ".join(
+            f"{key}={shlex.quote(str(value))}" for key, value in options.items()
+        )
 
     def assert_master(self):
         proc = self._master_proc
@@ -219,7 +223,7 @@ class ManagedSSHConnection(Connection):
         proc = self._master_proc
         if not proc:
             return
-        self.logger.info(f"disconnecting: {self.options}")
+        self.logger.info(f"disconnecting: {self._log_options}")
         proc.kill()
         # don't zombie forever, return EPIPE on any attempts to write to us
         proc.stdout.close()
@@ -242,7 +246,7 @@ class ManagedSSHConnection(Connection):
         sock = self._tmpdir / "control.sock"
 
         if not self._master_proc:
-            self.logger.info(f"connecting: {self.options}")
+            self.logger.info(f"connecting: {self._log_options}")
             options = self.options.copy()
             options["SessionType"] = "none"
             options["ControlMaster"] = "yes"

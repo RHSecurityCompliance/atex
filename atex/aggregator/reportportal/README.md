@@ -178,3 +178,21 @@ ie. for specific platform or test names.
 
 Useful for test suites with huge amounts of results, to lighten the load
 on ReportPortal's database.
+
+## Limitations
+
+### Subtest results before test result
+
+ReportPortal needs test results to be "finished" (closed). Here, that is always
+done after the first test-only result is ingested (without a `name` field),
+causing any subsequent results, both subtest and non-subtest for that one test,
+to be ignored.
+
+This is NOT an issue when ingesting multiple tests with the same name (multiple
+`.ingest()` calls), even on the same platform - that is fine and works well via
+the native RP "retries" concept.\
+However, from the artifacts given to one `.ingest()`, only the results up to
+and including the first test-only are processed.
+
+Chances are this is not something relevant to you - tests typically always
+report subtest results before one final test-only result.

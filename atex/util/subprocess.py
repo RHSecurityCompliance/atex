@@ -44,7 +44,11 @@ def subprocess_stream(cmd, *, stream="stdout", check=False, input=None, **kwargs
                 proc.stdin.write(input)
             except BrokenPipeError:
                 pass
-            proc.stdin.close()
+            # TextIOWrapper.close() may still try to write buffered data
+            try:
+                proc.stdin.close()
+            except BrokenPipeError:
+                pass
         line_stream = getattr(proc, stream)
         for line in line_stream:
             yield line.rstrip("\n")

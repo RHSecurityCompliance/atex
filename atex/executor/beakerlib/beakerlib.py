@@ -44,6 +44,8 @@ class BeakerlibExecutor(FMFExecutor):
         # if the passed file looks like a rlPhase* journal, skip it too
         [[ $test_name == @(Setup|Test|Cleanup) ]] && log=
         [[ $log == */tmp.* ]] && ! grep -qv '^$\|^::' "$log" && log=
+        # sanitize for valid JSON
+        test_name=${test_name//[^a-zA-Z0-9 _.,:\-+=%@\/]/_}
         # if log file was specified, create a files[] entry for it
         if [[ -f $log ]]; then
             size=$(stat -L -c '%s' "$log")

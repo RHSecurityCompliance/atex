@@ -188,7 +188,10 @@ class TestControl:
                     if written == 0:
                         raise BadControlError("EOF when reading data")
                     file_length -= written
-                    yield
+                    # yield only if there is still data left to be read next,
+                    # fall through to .report() if we already read everything
+                    if file_length > 0:
+                        yield
 
                 self.logger.debug("file recv ended")
 

@@ -23,8 +23,8 @@ class SSHPodmanRemote(Remote, ManagedSSHConnection):
         super().__init__({
             "Hostname": ssh_host,
             "Port": str(ssh_port),
-            "IdentityFile": Path(ssh_key).absolute(),
             "User": "root",
+            "IdentityFile": Path(ssh_key).absolute(),
         })
         self._lock = threading.RLock()
         self.container = container

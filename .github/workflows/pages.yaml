@@ -21,7 +21,7 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Post-process .md and __init__.py files
         run: ./.github/scripts/pdoc/post_process_repo.sh
@@ -40,9 +40,9 @@ jobs:
       - name: Generate docs
         run: pdoc -n -d markdown -t pdoc_templates -o docs ./atex '!atex.cli'
 
-      - uses: actions/upload-pages-artifact@v4
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: docs
 
-      - uses: actions/deploy-pages@v4
+      - uses: actions/deploy-pages@v5
         id: deployment

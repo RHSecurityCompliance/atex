@@ -11,7 +11,7 @@ jobs:
     environment:
       name: testing-farm
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - run: sudo apt-get install -y python3-pytest python3-pytest-xdist
       - run: python3 -m pip install .
       - name: Run tests
@@ -24,7 +24,7 @@ jobs:
   provisioner-podman:
     runs-on: ubuntu-26.04
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - run: sudo apt-get install -y python3-pytest podman
       - run: python3 -m pip install .
       - name: Run tests
@@ -34,7 +34,7 @@ jobs:
   provisioners-small:
     runs-on: ubuntu-26.04
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - run: sudo apt-get install -y python3-pytest rsync
       - run: python3 -m pip install .
       - name: Run tests
@@ -46,7 +46,7 @@ jobs:
   connection:
     runs-on: ubuntu-26.04
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - run: sudo apt-get install -y python3-pytest podman openssh-client
       - run: python3 -m pip install .
       - name: Run tests
@@ -67,7 +67,7 @@ jobs:
             backend: ssh
     name: executors-${{ matrix.image }}-${{ matrix.backend }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - run: sudo apt-get install -y python3-pytest podman openssh-client rsync
       - run: python3 -m pip install .
       - name: Run tests
@@ -79,7 +79,7 @@ jobs:
   executors-small:
     runs-on: ubuntu-26.04
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - run: sudo apt-get install -y python3-pytest
       - run: python3 -m pip install .
       - name: Run tests
@@ -92,7 +92,7 @@ jobs:
   aggregators:
     runs-on: ubuntu-26.04
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - run: sudo apt-get install -y python3-pytest
       - run: python3 -m pip install .
       - name: Run tests
@@ -102,7 +102,7 @@ jobs:
   orchestrators:
     runs-on: ubuntu-26.04
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - run: sudo apt-get install -y python3-pytest
       - run: python3 -m pip install .
       - name: Run tests
